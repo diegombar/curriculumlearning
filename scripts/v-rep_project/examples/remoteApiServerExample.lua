@@ -61,9 +61,7 @@ else
     -- simExtRemoteApiStart(19998)
     -- Now we start the client application:
     -- result=simLaunchExecutable('bubbleRobClient',portNb.." "..leftMotor.." "..rightMotor.." "..noseSensor,1) -- set the last argument to 1 to see the console of the launched client
-    command_path="/home/diego/anaconda3/bin/python"
-    command_args=scenePath .. "/micoArmClientScript.py "..portNb.." "..leftMotor.." "..rightMotor.." "..noseSensor
-    result = simLaunchExecutable(command_path, command_args, 1)
+    result = simLaunchExecutable("/home/diego/anaconda3/bin/python", scenePath .. "/bubbleRobClientScript.py "..portNb.." "..leftMotor.." "..rightMotor.." "..noseSensor, 0)
     if (result==-1) then
         -- The executable could not be launched!
         simDisplayDialog('Error',"'bubbleRobClient' could not be launched. &&nSimulation will not run properly",sim_dlgstyle_ok,true,nil,{0.8,0,0,0,0,0},{0.5,0,0,1,1,1})
