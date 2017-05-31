@@ -87,3 +87,31 @@ end
 
 -- targetPos3={math.pi,math.pi,math.pi,math.pi,math.pi,math.pi}
 -- simRMLMoveToJointPositions(jointHandles,-1,currentVel,currentAccel,maxVel,maxAccel,maxJerk,targetPos3,targetVel,{-1,0,0,1,1,1})
+
+
+--------------
+
+-- threadFunction=function()
+--    while simGetSimulationState()~=sim_simulation_advancing_abouttostop do
+--       local data=simGetStringSignal('moveToPosition')
+--       if data then
+--          local dof=simUnpackInts(data,0,1)[1]
+--          local jointHandles=simUnpackInts(data,1,dof)
+--          local currentVel=simUnpackFloats(data,1+dof,dof)
+--          local currentAccel=simUnpackFloats(data,1+2*dof,dof)
+--          local maxVel=simUnpackFloats(data,1+3*dof,dof)
+--          local maxAccel=simUnpackFloats(data,1+4*dof,dof)
+--          local maxJerk=simUnpackFloats(data,1+5*dof,dof)
+--          local targetPos=simUnpackFloats(data,1+6*dof,dof)
+--          local targetVel=simUnpackFloats(data,1+7*dof,dof)
+--          simRMLMoveToJointPositions(jointHandles,-1,currentVel,currentAccel,maxVel,maxAccel,maxJerk,targetPos,targetVel)
+--          simClearStringSignal('moveToPosition') -- tell the remote API client we are done!
+--       else
+--          simSwitchThread()
+--    end
+-- end
+
+-- res,err=xpcall(threadFunction,function(err) return debug.traceback(err) end)
+-- if not res then
+--    simAddStatusbarMessage('Lua runtime error: '..err)
+-- end

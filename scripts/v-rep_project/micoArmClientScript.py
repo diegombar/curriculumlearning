@@ -103,4 +103,32 @@ if clientID != -1:
     vrep.simxFinish(clientID)
 else:
     print('Failed connecting to remote API server')
+
 print('Mico Arm Program ended')
+
+
+### send string signal to execute setTargetPositions in the server side
+
+# #pack lists of int lists into a single string
+# def pack2DIntArray(intLists):
+#     stringData = ""
+#     for intList in intLists:
+#         stringData += vrep.simxPackInts(intList)
+#     return stringData
+
+# #pack lists of float lists into a single string
+# def pack2DFloatArray(floatLists):
+#     stringData = ""
+#     for floatList in floatLists:
+#         stringData += vrep.simxPackInts(floatList)
+#     return stringData
+
+# intLists = jointHandles
+# floatLists = [currentVel, currentAccel, maxVel, maxAccel, maxJerk, targetPos, targetVel]
+# stringData = pack2DIntArray(intLists)+pack2DFloatArray(floatLists)
+# vrep.simxSetStringSignal(clientID, "moveToPosition", stringData, vrep.simx_opmode_oneshot_wait)
+
+# while True:
+#     returnCode, signalValue = vrep.simxGetStringSignal(clientID, "moveToPosition", vrep.simx_opmode_oneshot_wait)
+
+# explore simxCallScriptFunction to call v-rep Lua script functions?
