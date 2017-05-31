@@ -45,6 +45,7 @@ targetVel = [0]*6
 targetPos1=[90*pi/180]*6
 targetPos2=[90*pi/180,135*pi/180,225*pi/180,180*pi/180,180*pi/180,350*pi/180]
 targetPos3=[pi]*6
+targetPos4=[pi,135*pi/180,225*pi/180,180*pi/180,180*pi/180,350*pi/180]
 
 #Hand
 closingVel=-0.04
@@ -59,40 +60,44 @@ closingVel=-0.04
 if len(sys.argv) >= 10:
     portNb = int(sys.argv[1])
     jointHandles = list(map(int,sys.argv[2:8]))
-    j0 = int(sys.argv[8])
-    j1 = int(sys.argv[9])
+    fingersH1 = int(sys.argv[8])
+    fingersH2 = int(sys.argv[9])
 else:
     print("Indicate following arguments: 'portNumber jointHandles'")
     time.sleep(5.0)
     sys.exit(0)
+
+def openHand(clientID):
+    errorCode = vrep.simxSetJointTargetVelocity(clientID, fingersH1, -closingVel, vrep.simx_opmode_oneshot)
+    errorCode = vrep.simxSetJointTargetVelocity(clientID, fingersH2, -closingVel, vrep.simx_opmode_oneshot)
+
+def closeHand(clientID):
+    errorCode = vrep.simxSetJointTargetVelocity(clientID, fingersH1, closingVel, vrep.simx_opmode_oneshot)
+    errorCode = vrep.simxSetJointTargetVelocity(clientID, fingersH2, closingVel, vrep.simx_opmode_oneshot)
+
+def setJointTargetPositions(clientID, targetPositions):
+    for i in range(6):
+        errorCode = vrep.simxSetJointTargetPosition(clientID, jointHandles[i], targetPositions[i], vrep.simx_opmode_oneshot)
+        if errorCode != vrep.simx_return_ok:
+            print("SetJointTargetPosition got error code: %s" % errorCode)
+
+
 
 vrep.simxFinish(-1)# close all opened connections
 clientID = vrep.simxStart('127.0.0.1', portNb, True, True, 2000, 5)
 if clientID != -1:
     print('Connected to remote API server')
     while vrep.simxGetConnectionId(clientID) != -1:
-        errorCode = vrep.simxSetJointTargetVelocity(clientID, j0, closingVel, vrep.simx_opmode_oneshot)
-        errorCode = vrep.simxSetJointTargetVelocity(clientID, j1, closingVel, vrep.simx_opmode_oneshot)
-        for i in range(6):
-            errorCode = vrep.simxSetJointTargetPosition(clientID, jointHandles[i], targetPos1[i], vrep.simx_opmode_oneshot)
-            if errorCode != vrep.simx_return_ok:
-                print("SetJointTargetPosition got error code: %s" % errorCode)
+        closeHand(clientID)
+        setJointTargetPositions(clientID, targetPos1)
         time.sleep(2.0) #in sec
 
-        errorCode = vrep.simxSetJointTargetVelocity(clientID, j0, -closingVel, vrep.simx_opmode_oneshot)
-        errorCode = vrep.simxSetJointTargetVelocity(clientID, j1, -closingVel, vrep.simx_opmode_oneshot)
-        for i in range(6):
-            errorCode = vrep.simxSetJointTargetPosition(clientID, jointHandles[i], targetPos2[i], vrep.simx_opmode_oneshot)
-            if errorCode != vrep.simx_return_ok:
-                print("SetJointTargetPosition got error code: %s" % errorCode)
+        openHand(clientID)
+        setJointTargetPositions(clientID, targetPos2)
         time.sleep(2.0) #in sec
 
-        errorCode = vrep.simxSetJointTargetVelocity(clientID, j0, closingVel, vrep.simx_opmode_oneshot)
-        errorCode = vrep.simxSetJointTargetVelocity(clientID, j1, closingVel, vrep.simx_opmode_oneshot)
-        for i in range(6):
-            errorCode = vrep.simxSetJointTargetPosition(clientID, jointHandles[i], targetPos3[i], vrep.simx_opmode_oneshot)
-            if errorCode != vrep.simx_return_ok:
-                print("SetJointTargetPosition got error code: %s" % errorCode)
+        closeHand(clientID)
+        setJointTargetPositions(clientID, targetPos3)
         time.sleep(2.0) #in sec
 
     vrep.simxFinish(clientID)

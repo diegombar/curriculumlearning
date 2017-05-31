@@ -2,13 +2,13 @@ simSetThreadSwitchTiming(2)
 -- Get scene path:
 scenePath = simGetStringParameter(sim_stringparam_scene_path)
 
--- Get joint handles:
+-- Get handles:
 jointHandles={-1,-1,-1,-1,-1,-1}
 for i=1,6,1 do
     jointHandles[i]=simGetObjectHandle('Mico_joint'..i)
 end
-j0=simGetObjectHandle("MicoHand_fingers12_motor1")
-j1=simGetObjectHandle("MicoHand_fingers12_motor2")
+fingersH1=simGetObjectHandle("MicoHand_fingers12_motor1")
+fingersH2=simGetObjectHandle("MicoHand_fingers12_motor2")
 
 -- Choose a port that is probably not used:
 simSetThreadAutomaticSwitch(false)
@@ -56,13 +56,13 @@ else
     simExtRemoteApiStart(portNb) -- this server function will automatically close again at simulation end
     -- simExtRemoteApiStart(19998)
     -- Now we start the client application:
-    -- result=simLaunchExecutable('bubbleRobClient',portNb.." "..leftMotor.." "..rightMotor.." "..noseSensor,1) -- set the last argument to 1 to see the console of the launched client
     command_path="/home/diego/anaconda3/bin/python"
-    command_args=scenePath.."/micoArmClientScript.py "..portNb.." "..jointHandles[1].." "..jointHandles[2].." "..jointHandles[3].." "..jointHandles[4].." "..jointHandles[5].." "..jointHandles[6].." "..j0.." "..j1
-    result = simLaunchExecutable(command_path, command_args, 1)
+    handles= table.concat(jointHandles, " ").." "..fingersH1.." "..fingersH2
+    command_args=scenePath.."/micoArmClientScript.py "..portNb.." "..handles
+    result = simLaunchExecutable(command_path, command_args, 1) -- set the last argument to 1 to see the console of the launched client
     if (result==-1) then
         -- The executable could not be launched!
-        simDisplayDialog('Error',"'bubbleRobClient' could not be launched. &&nSimulation will not run properly",sim_dlgstyle_ok,true,nil,{0.8,0,0,0,0,0},{0.5,0,0,1,1,1})
+        simDisplayDialog('Error',"'micoArmClientScript' could not be launched. &&nSimulation will not run properly",sim_dlgstyle_ok,true,nil,{0.8,0,0,0,0,0},{0.5,0,0,1,1,1})
     end
 end
 
