@@ -20,7 +20,7 @@ class robotEnv():
     
     # reset the state for each new episode
     def reset(self):
-    	#reset robot position in V-REP
+    	#reset robot position in V-REP, i.e. reset simulation (or reset scene?)
         return state
 
     # check if a goal state has been reached
