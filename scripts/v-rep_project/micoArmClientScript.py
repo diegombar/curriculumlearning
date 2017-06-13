@@ -1,3 +1,13 @@
+#!/usr/bin/env python3
+print('Mico Arm Program started')
+
+# launch v-rep
+import os
+import signal
+import subprocess
+vrepPath = "/home/diego/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
+vrepProcess = subprocess.Popen(vrepPath, shell=True, stdout=subprocess.PIPE, preexec_fn=os.setsid)
+
 try:
     import vrep
 except:
@@ -11,161 +21,136 @@ except:
 import sys
 import time
 import readchar
+import numpy as np
 
-print('Mico Arm Program started')
-vrep.simxFinish(-1)# close all opened connections
+def printlog(functionName, returnCode):
+    if returnCode == vrep.simx_return_ok:
+        print("{} successful".format(functionName))
+    else:
+        print("{} got error code: {}".format(functionName, returnCode))
+
 # connect to V-Rep Remote Api Server
-portNb = 19998 # must match the server specified in remoteApiConnections.txt
-clientID=vrep.simxStart('127.0.0.1',portNb,True,True,5000,5) # Connect to V-REP
+vrep.simxFinish(-1)# close all opened connections
+portNb = 19998 # must match the portNb on server side specified in remoteApiConnections.txt
+clientID=vrep.simxStart('127.0.0.1',portNb,True,False,5000,5) # Connect to V-REP
 
-#Arm
-pi = 3.1416
-jointHandles = [0]*6
-vel = 5 # looks fast in simulation!
-
-targetPos1 = [90*pi/180] * 6
-targetPos2 = [90*pi/180, 135*pi/180, 225*pi/180, 180*pi/180, 180*pi/180,350*pi/180]
-targetPos3 = [pi] * 6
-targetPos4 = [pi, 135*pi/180, 225*pi/180, 180*pi/180, 180*pi/180, 350*pi/180]
-
-#Hand
-closingVel = -0.04
-# if (not closing) then
-#     simSetJointTargetVelocity(j0,-closingVel)
-#     simSetJointTargetVelocity(j1,-closingVel)
-# else
-#     simSetJointTargetVelocity(j0,closingVel)
-#     simSetJointTargetVelocity(j1,closingVel)
-# end
-
-# if len(sys.argv) >= 10:
-#     portNb = int(sys.argv[1])
-#     jointHandles = list(map(int,sys.argv[2:8]))
-#     fingersH1 = int(sys.argv[8])
-#     fingersH2 = int(sys.argv[9])
-# else:
-#     print("Indicate following arguments: 'portNumber jointHandles'")
-#     time.sleep(5.0)
-#     sys.exit(0)
-
-# def openHand(clientID):
-#     errorCode = vrep.simxSetJointTargetVelocity(clientID, fingersH1, -closingVel, vrep.simx_opmode_oneshot)
-#     errorCode = vrep.simxSetJointTargetVelocity(clientID, fingersH2, -closingVel, vrep.simx_opmode_oneshot)
-
-# def closeHand(clientID):
-#     errorCode = vrep.simxSetJointTargetVelocity(clientID, fingersH1, closingVel, vrep.simx_opmode_oneshot)
-#     errorCode = vrep.simxSetJointTargetVelocity(clientID, fingersH2, closingVel, vrep.simx_opmode_oneshot)
-
-# def setJointTargetPositions(clientID, targetPositions):
-#     for i in range(6):
-#         errorCode = vrep.simxSetJointTargetPosition(clientID, jointHandles[i], targetPositions[i], vrep.simx_opmode_oneshot)
-#         if errorCode != vrep.simx_return_ok:
-#             print("SetJointTargetPosition got error code: %s" % errorCode)
-
-
-# clientID = vrep.simxStart('127.0.0.1', portNb, True, True, 2000, 5)
-jointHandles = [0] * 6
-
-# load scene
-errorCode = vrep.simxLoadScene(clientID, 'MicoRobot.ttt', 1, vrep.simx_opmode_blocking)
-if errorCode != vrep.simx_return_ok:
-    print("simxLoadScene got error code: %s" % errorCode)
-
-
-# get Handles
-for i in range(0,6):
-    errorCode, jointHandles[i] = vrep.simxGetObjectHandle(clientID, 'Mico_joint' + str(i+1), vrep.simx_opmode_blocking)
-if errorCode == vrep.simx_return_ok:
-    print("GetHandle got no error")
+if clientID ==-1:
+    print('Failed connecting to remote API server')
 else:
-    print("GetHandle got error code: %s" % errorCode)
-errorCode, fingersH1 = vrep.simxGetObjectHandle(clientID, 'MicoHand_fingers12_motor1', vrep.simx_opmode_blocking)
-errorCode, fingersH2 = vrep.simxGetObjectHandle(clientID, 'MicoHand_fingers12_motor2', vrep.simx_opmode_blocking)
-errorCode, mic = vrep.simxGetObjectHandle(clientID, 'Mico', vrep.simx_opmode_blocking)
-
-# Start simulation
-errorCode = vrep.simxStartSimulation(clientID,vrep.simx_opmode_blocking)
-if errorCode != vrep.simx_return_ok:
-    print("simxStartSimulation got error code: %s" % errorCode)
-if clientID != -1:
     print('Connected to remote API server')
+    # load scene
+    # time.sleep(5) # to avoid errors
+    scenePath = 'MicoRobot.ttt'
+    returnCode = vrep.simxLoadScene(clientID, scenePath, 1, vrep.simx_opmode_oneshot_wait) # vrep.simx_opmode_blocking is recommended
+    printlog('simxLoadScene', returnCode)
+
+    # when using child script
+    # if len(sys.argv) >= 10:
+    #     portNb = int(sys.argv[1])
+    #     jointHandles = list(map(int,sys.argv[2:8]))
+    #     fingersH1 = int(sys.argv[8])
+    #     fingersH2 = int(sys.argv[9])
+    # else:
+    #     print("Indicate following arguments: 'portNumber jointHandles'")
+    #     time.sleep(5.0)
+    #     sys.exit(0)
+
+    # get Handles
+    jointHandles = [0] * 6
+    for i in range(0,6):
+        returnCode, jointHandles[i] = vrep.simxGetObjectHandle(clientID, 'Mico_joint' + str(i+1), vrep.simx_opmode_blocking)
+        if i==0: printlog('simxGetObjectHandle', returnCode)
+    returnCode, fingersH1 = vrep.simxGetObjectHandle(clientID, 'MicoHand_fingers12_motor1', vrep.simx_opmode_blocking)
+    returnCode, fingersH2 = vrep.simxGetObjectHandle(clientID, 'MicoHand_fingers12_motor2', vrep.simx_opmode_blocking)
+    returnCode, jointsCollectionHandle = vrep.simxGetCollectionHandle(clientID, "sixJoints#", vrep.simx_opmode_blocking)
+
+    #Arm
+    pi = np.pi
+    vel = 5 # looks fast in simulation!
+
+    #some test target positions for the 6 joints
+    targetPos1 = [90*pi/180] * 6
+    targetPos2 = [90*pi/180, 135*pi/180, 225*pi/180, 180*pi/180, 180*pi/180,350*pi/180]
+    targetPos3 = [pi] * 6
+    targetPos4 = [pi, 135*pi/180, 225*pi/180, 180*pi/180, 180*pi/180, 350*pi/180]
+
+    #Hand
+    # def openHand(clientID):
+    #     closingVel = -0.04
+    #     returnCode = vrep.simxSetJointTargetVelocity(clientID, fingersH1, -closingVel, vrep.simx_opmode_oneshot)
+    #     returnCode = vrep.simxSetJointTargetVelocity(clientID, fingersH2, -closingVel, vrep.simx_opmode_oneshot)
+
+    # def closeHand(clientID):
+    #     closingVel = -0.04
+    #     returnCode = vrep.simxSetJointTargetVelocity(clientID, fingersH1, closingVel, vrep.simx_opmode_oneshot)
+    #     returnCode = vrep.simxSetJointTargetVelocity(clientID, fingersH2, closingVel, vrep.simx_opmode_oneshot)
+
+    #set joints target positions
+    # def setJointTargetPositions(clientID, targetPositions):
+    #     for i in range(6):
+    #         returnCode = vrep.simxSetJointTargetPosition(clientID, jointHandles[i], targetPositions[i], vrep.simx_opmode_oneshot)
+    #         if returnCode != vrep.simx_return_ok:
+    #             print("SetJointTargetPosition got error code: %s" % returnCode)
+
+    # Start simulation
+    returnCode = vrep.simxStartSimulation(clientID,vrep.simx_opmode_blocking)
+    printlog('simxStartSimulation', returnCode)
     
+    # check server state before loop
     while vrep.simxGetConnectionId(clientID) != -1:
-        # closeHand(clientID)
-        # setJointTargetPositions(clientID, targetPos1)
-        # errorCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[0], tVel, vrep.simx_opmode_blocking)
-        # if errorCode != vrep.simx_return_ok:
-        #     print("SetJointTargetVelocity got error code: %s" % errorCode)
-        # time.sleep(2.0) #in sec
+        #execute actions and get state here
 
-        # openHand(clientID)
-        # setJointTargetPositions(clientID, targetPos2)
-        # time.sleep(2.0) #in sec
 
-        # closeHand(clientID)
-        # setJointTargetPositions(clientID, targetPos3)
-        # time.sleep(2.0) #in sec
 
         # testing settargetvel with arrow pressing
         c = readchar.readchar()
+        print('char=',c)
         if c == 'a':    
-            errorCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], vel, vrep.simx_opmode_blocking)
-            if errorCode != vrep.simx_return_ok:
-                print("SetJointTargetPosition got error code: %s" % errorCode)
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], vel, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
         elif c == 'd':
-            errorCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], -vel, vrep.simx_opmode_blocking)
-            if errorCode != vrep.simx_return_ok:
-                print("SetJointTargetPosition got error code: %s" % errorCode)
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], -vel, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
         elif c == 's':
-            errorCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], 0, vrep.simx_opmode_blocking)
-            if errorCode != vrep.simx_return_ok:
-                print("SetJointTargetPosition got error code: %s" % errorCode)
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], 0, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
         elif c == 'q':
             break
-        print('char=',c)
-        time.sleep(0.1)
+        
 
-    errorCode = vrep.simxStopSimulation(clientID,vrep.simx_opmode_blocking)
-    if errorCode != vrep.simx_return_ok:
-        print("simxStopSimulation got error code: %s" % errorCode)
+        #testing getState
+        returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(clientID, jointsCollectionHandle, 15, vrep.simx_opmode_streaming) # or simx_opmode_blocking (not recommended)
+        jointPositions = np.array(floatData[0::2]) #take elements at odd positions (even corresponds to torques)
+        jointPositions = jointPositions % (2 * np.pi) #take values in [0, 2*pi]
+
+        #get reward (proximity sensor)
+        returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(clientID, jointsCollectionHandle, 13, vrep.simx_opmode_streaming)
+
+
+
+        time.sleep(1)
+
+        #end of execution loop
+
+    # stop simulation
+    returnCode = vrep.simxStopSimulation(clientID,vrep.simx_opmode_blocking)
+    printlog('simxStopSimulation', returnCode)
+
     running = True
     while running:
-        errorCode, ping = vrep.simxGetPingTime(clientID)
-        errorCode, serverState = vrep.simxGetInMessageInfo(clientID, vrep.simx_headeroffset_server_state)
+        returnCode, ping = vrep.simxGetPingTime(clientID)
+        returnCode, serverState = vrep.simxGetInMessageInfo(clientID, vrep.simx_headeroffset_server_state)
         running = serverState
 
-    errorCode = vrep.simxCloseScene(clientID,vrep.simx_opmode_blocking)
-    if errorCode != vrep.simx_return_ok:
-        print("simxCloseScene got error code: %s" % errorCode)
+    returnCode = vrep.simxCloseScene(clientID,vrep.simx_opmode_blocking)
+    printlog('simxCloseScene', returnCode)
 
     vrep.simxFinish(clientID)
-else:
-    print('Failed connecting to remote API server')
+
+
+#close v-rep
+# vrepProcess.terminate()
+# vrepProcess.kill()
+os.killpg(os.getpgid(vrepProcess.pid), signal.SIGTERM)
 
 print('Mico Arm Program ended')
-
-### send string signal to execute setTargetPositions in the server side
-
-# #pack lists of int lists into a single string
-# def pack2DIntArray(intLists):
-#     stringData = ""
-#     for intList in intLists:
-#         stringData += vrep.simxPackInts(intList)
-#     return stringData
-
-# #pack lists of float lists into a single string
-# def pack2DFloatArray(floatLists):
-#     stringData = ""
-#     for floatList in floatLists:
-#         stringData += vrep.simxPackInts(floatList)
-#     return stringData
-
-# intLists = jointHandles
-# floatLists = [currentVel, currentAccel, maxVel, maxAccel, maxJerk, targetPos, targetVel]
-# stringData = pack2DIntArray(intLists)+pack2DFloatArray(floatLists)
-# vrep.simxSetStringSignal(clientID, "moveToPosition", stringData, vrep.simx_opmode_oneshot_wait)
-
-# while True:
-#     returnCode, signalValue = vrep.simxGetStringSignal(clientID, "moveToPosition", vrep.simx_opmode_oneshot_wait)
-
-# explore simxCallScriptFunction to call v-rep Lua script functions?
