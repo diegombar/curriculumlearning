@@ -39,7 +39,7 @@ if clientID ==-1:
 else:
     print('Connected to remote API server')
     # load scene
-    # time.sleep(5) # to avoid errors
+    time.sleep(5) # to avoid errors
     scenePath = 'MicoRobot.ttt'
     returnCode = vrep.simxLoadScene(clientID, scenePath, 1, vrep.simx_opmode_oneshot_wait) # vrep.simx_opmode_blocking is recommended
     printlog('simxLoadScene', returnCode)
@@ -63,16 +63,23 @@ else:
     returnCode, fingersH1 = vrep.simxGetObjectHandle(clientID, 'MicoHand_fingers12_motor1', vrep.simx_opmode_blocking)
     returnCode, fingersH2 = vrep.simxGetObjectHandle(clientID, 'MicoHand_fingers12_motor2', vrep.simx_opmode_blocking)
     returnCode, jointsCollectionHandle = vrep.simxGetCollectionHandle(clientID, "sixJoints#", vrep.simx_opmode_blocking)
+    returnCode, distToGoalHandle = vrep.simxGetDistanceHandle(clientID, "distanceToGoal#", vrep.simx_opmode_blocking)
+    returnCode, distanceToGoal = vrep.simxReadDistance(clientID, distToGoalHandle, vrep.simx_opmode_streaming) #start streaming
 
+    print('jointHandles',jointHandles)
     #Arm
     pi = np.pi
-    vel = 5 # looks fast in simulation!
+    vel = 1 # looks fast in simulation!
 
     #some test target positions for the 6 joints
     targetPos1 = [90*pi/180] * 6
     targetPos2 = [90*pi/180, 135*pi/180, 225*pi/180, 180*pi/180, 180*pi/180,350*pi/180]
     targetPos3 = [pi] * 6
     targetPos4 = [pi, 135*pi/180, 225*pi/180, 180*pi/180, 180*pi/180, 350*pi/180]
+
+    #checkGoal
+    goalReached = False
+    minDistance = 0.01 #one cm from goal
 
     #Hand
     # def openHand(clientID):
@@ -100,8 +107,6 @@ else:
     while vrep.simxGetConnectionId(clientID) != -1:
         #execute actions and get state here
 
-
-
         # testing settargetvel with arrow pressing
         c = readchar.readchar()
         print('char=',c)
@@ -114,6 +119,51 @@ else:
         elif c == 's':
             returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], 0, vrep.simx_opmode_blocking)
             printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 'w':    
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[4], vel, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 'r':
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[4], -vel, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 'e':
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[4], 0, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 'f':    
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[3], vel, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 'h':
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[3], -vel, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 'g':
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[3], 0, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 't':    
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[2], vel, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 'u':
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[2], -vel, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 'y':
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[2], 0, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 'j':    
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[1], vel, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 'l':
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[1], -vel, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 'k':
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[1], 0, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 'i':    
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[0], vel, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 'p':
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[0], -vel, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 'o':
+            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[0], 0, vrep.simx_opmode_blocking)
+            printlog('simxSetJointTargetVelocity', returnCode)
         elif c == 'q':
             break
         
@@ -124,11 +174,13 @@ else:
         jointPositions = jointPositions % (2 * np.pi) #take values in [0, 2*pi]
 
         #get reward (proximity sensor)
-        returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(clientID, jointsCollectionHandle, 13, vrep.simx_opmode_streaming)
+        returnCode, distanceToGoal = vrep.simxReadDistance(clientID, distToGoalHandle, vrep.simx_opmode_buffer)
+        print("distance to goal:", distanceToGoal)
 
+        #checkGoalReached
+        if distanceToGoal < minDistance: goalReached = True
 
-
-        time.sleep(1)
+        time.sleep(0.1)
 
         #end of execution loop
 
