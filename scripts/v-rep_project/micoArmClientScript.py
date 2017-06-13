@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 print('Mico Arm Program started')
 
-# launch v-rep
 import os
 import signal
 import subprocess
-vrepPath = "/home/diego/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
-vrepProcess = subprocess.Popen(vrepPath, shell=True, stdout=subprocess.PIPE, preexec_fn=os.setsid)
+import sys
+import time
+import readchar
+import numpy as np
 
 try:
     import vrep
@@ -18,16 +19,16 @@ except:
     print ('or appropriately adjust the file "vrep.py"')
     print ('--------------------------------------------------------------')
     print ('')
-import sys
-import time
-import readchar
-import numpy as np
 
 def printlog(functionName, returnCode):
     if returnCode == vrep.simx_return_ok:
         print("{} successful".format(functionName))
     else:
         print("{} got error code: {}".format(functionName, returnCode))
+
+# launch v-rep
+vrepPath = "/home/diego/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
+vrepProcess = subprocess.Popen(vrepPath, shell=True, stdout=subprocess.PIPE, preexec_fn=os.setsid)
 
 # connect to V-Rep Remote Api Server
 vrep.simxFinish(-1)# close all opened connections
@@ -164,6 +165,19 @@ else:
         elif c == 'o':
             returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[0], 0, vrep.simx_opmode_blocking)
             printlog('simxSetJointTargetVelocity', returnCode)
+        elif c == 'z':
+            # stop simulation
+            returnCode = vrep.simxStopSimulation(clientID,vrep.simx_opmode_blocking)
+            printlog('simxStopSimulation', returnCode)
+            running = True
+            while running:
+                returnCode, ping = vrep.simxGetPingTime(clientID)
+                returnCode, serverState = vrep.simxGetInMessageInfo(clientID, vrep.simx_headeroffset_server_state)
+                running = serverState
+            # Start simulation
+            returnCode = vrep.simxStartSimulation(clientID,vrep.simx_opmode_blocking)
+            printlog('simxStartSimulation', returnCode)
+
         elif c == 'q':
             break
         
@@ -176,10 +190,10 @@ else:
         #get reward (proximity sensor)
         returnCode, distanceToGoal = vrep.simxReadDistance(clientID, distToGoalHandle, vrep.simx_opmode_buffer)
         print("distance to goal:", distanceToGoal)
+        # reward = 
 
         #checkGoalReached
         if distanceToGoal < minDistance: goalReached = True
-
         time.sleep(0.1)
 
         #end of execution loop
@@ -198,7 +212,6 @@ else:
     printlog('simxCloseScene', returnCode)
 
     vrep.simxFinish(clientID)
-
 
 #close v-rep
 # vrepProcess.terminate()
