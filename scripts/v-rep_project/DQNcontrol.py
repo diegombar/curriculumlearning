@@ -1,129 +1,165 @@
 # coding: utf-8
-
-from __future__ import division
-
-# import gym
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 import numpy as np
 import random
 import tensorflow as tf
-import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
+import readchar
+import time
+
 
 # Load environment
-from gridworld import gameEnv
-env = gameEnv(partial=False,size=4)
+from robotenv import RobotEnv
 
-# network
-tf.reset_default_graph()
-# feed-forward part to choose actions 
-inputs1 = tf.placeholder(shape=[1,16],dtype=tf.float32)
-W = tf.Variable(tf.random_uniform([16,4],0,0.01))
-Qout = tf.matmul(inputs1,W)
-predict = tf.argmax(Qout,1)
+def weight_variable(shape):
+  initial = tf.truncated_normal(shape, stddev=0.1)
+  return tf.Variable(initial)
 
-# loss by taking the sum of squares difference between the target and prediction Q values.
-nextQ = tf.placeholder(shape=[1,4],dtype=tf.float32)
-loss = tf.reduce_sum(tf.square(nextQ - Qout))
-trainer = tf.train.GradientDescentOptimizer(learning_rate=0.1)
-updateModel = trainer.minimize(loss)
+def bias_variable(shape):
+  initial = tf.constant(0.1, shape=shape)
+  return tf.Variable(initial)
 
+with RobotEnv() as env:
+    # network
+    tf.reset_default_graph()
+    # feed-forward part to choose actions
+    stateSize = env.observation_space_size
+    nActions = env.action_space_size
+    nhidden = 256
+    lrate = 1E-4 #try 6E-6 
+    inState = tf.placeholder(shape=[1,stateSize], dtype=tf.float32)
 
-# Training
+    # initialize params
+    W0 = weight_variable([stateSize, nhidden])
+    W1 = weight_variable([nhidden, nhidden])
+    W2 = weight_variable([nhidden, nActions])
+    b0 = bias_variable([1])
+    b1 = bias_variable([1])
+    b2 = bias_variable([1])
 
-init = tf.global_variables_initializer()
+    # layers
+    hidden1 = tf.nn.relu(tf.matmul(inState, W0) + b0)
+    hidden2 = tf.nn.relu(tf.matmul(hidden1, W1) + b1)
+    outQvalues = tf.matmul(hidden2, W2) + b2 # Q values for all actions given inState
+    bestAction = tf.argmax(outQvalues, 1) # action with highest Q given inState
 
-# Set learning parameters
-y = .99 #gamma
-e = 0.1 #epsilon
-num_episodes = 2000
-#create lists to contain total rewards and steps per episode
-jList = []
-rList = []
-message = "episode: {} steps: {} total reward: {} done: {}"
-with tf.Session() as sess:
-    sess.run(init)
-    for i in range(num_episodes):
-        #Reset environment and get first new observation
-        _, s = env.reset()
-        rAll = 0
-        d = False
-        j = 0
-        #The Q-Network
-        while j < 99:
-            j+=1
-            #Pick an action from the Q-network (e-greedy) 
-            a,allQ = sess.run([predict,Qout],feed_dict={inputs1:np.identity(16)[s:s+1]})
-            if np.random.rand(1) < e:
-                a[0] = np.random.randint(0,3)
-            #Get new state and reward from environment
-            s1,r,d,_ = env.step(a[0])
-            #Obtain the Q' values by feeding the new state through our network
-            Q1 = sess.run(Qout,feed_dict={inputs1:np.identity(16)[s1:s1+1]})
-            #Obtain maxQ' and set our target value for chosen action.
-            maxQ1 = np.max(Q1)
-            targetQ = allQ
-            targetQ[0,a[0]] = r + y*maxQ1
-            #Train our network using target and predicted Q values
-            _,W1 = sess.run([updateModel,W],feed_dict={inputs1:np.identity(16)[s:s+1],nextQ:targetQ})
-            rAll += r
-            s = s1
+    # loss by taking the sum of squares difference between the target and prediction Q values.
+    Qtargets = tf.placeholder(shape=[1,nActions], dtype=tf.float32)
+    loss = tf.reduce_sum(tf.square(Qtargets - outQvalues))
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate=lrate) #try Adam? 
+    updateModel = optimizer.minimize(loss)
 
-            if d == True:
-                #Reduce epsilon value as we train the model.
-                e = 1./((i/50) + 10)
+    # Training
+    init = tf.global_variables_initializer()
+
+    # Set learning parameters
+    y = 0.99 # discount factor
+    
+    num_episodes = 20 # number of runs
+
+    max_steps_per_episode = 500 # max number of actions per episode
+    e_max = 1.0 # initial epsilon
+    e_min = 0.01 # final epsilon
+    num_e_updates = 10 # times e is decreased
+    e_update_period = num_episodes // num_e_updates # num of episodes between e updates
+
+    #create lists to contain total rewards and steps per episode
+    jList = []
+    rList = []
+    message = "\nepisode: {} steps: {} total reward: {} done: {}"
+    with tf.Session() as sess:
+        start_time = time.time()
+        sess.run(init)
+        for i in range(num_episodes):
+            # reset environment and get first new observation
+            initialState = env.reset()
+            rAll = 0
+            done = False
+            j = 0
+            #The Q-Network
+            while j < max_steps_per_episode:
+                j+=1
+                # pick action from the DQN, epsilon greedy
+                chosenAction, allQvalues = sess.run([bestAction,outQvalues], feed_dict={inState:initialState})
+                if np.random.rand(1) < e: chosenAction[0] = np.random.randint(0, nActions-1)
+
+                # perform action and get new state and reward
+                newState, r, done = env.step(chosenAction[0])
+
+                # get Q values for new state 
+                allNewQvalues = sess.run(outQvalues,feed_dict={inState:newState})
+                # get max for Q target
+                maxQ = np.max(allNewQvalues)
+                targetQ = allQvalues # dont update Q values corresponding for actions not performed
+                targetQ[0, chosenAction[0]] = r + y * maxQ #only update Q value for action performed
+                #Train our network using target and predicted Q values
+                sess.run([updateModel], feed_dict={inState:initialState, Qtargets:targetQ})
+                rAll += r
+                initialState = newState
+
+                if done == True:
+                    break
+
+            if i % e_update_period ==0:
+                # decrease epsilon
+                e = e - (e_max - e_min)/num_e_updates
+                print('\nepsilon:', e)
+                    
+            if i % 10 == 0:
+                # training progres log
+                logMessage = message.format(i,j,rAll,done)
+                print(logMessage)
+            jList.append(j)
+            rList.append(rAll)
+        
+        
+        end_time = time.time()
+        print("Percent of succesful episodes: " + str(sum(rList)/num_episodes) + "%")
+
+        print("press 'v' to start policy test visualization")
+        while True:
+            c = readchar.readchar()
+            print('char=',c)
+            if c == 'v':
                 break
-                
-        if i%100 == 0:
-            logMessage = message.format(i,j,rAll,d)
-            print(logMessage)
-        jList.append(j)
-        rList.append(rAll)
-    
-    print("Percent of succesful episodes: " + str(sum(rList)/num_episodes) + "%")
-    
-    #Visualization of learned policy
-    grid, s = env.reset()
-    rAll = 0
-    d = False
-    j = 0
-    plt.figure()
-    plt.imshow(grid,interpolation="nearest")
-    while j < 99:
-        j+=1
-        #Pick an action 
-        a,allQ = sess.run([predict,Qout],feed_dict={inputs1:np.identity(16)[s:s+1]})
-        #Get new state and reward from environment
-        s1,r,d, grid = env.step(a[0])
-        plt.figure()
-        plt.imshow(grid,interpolation="nearest")
-        #Obtain the Q' values by feeding the new state through our network
-        Q1 = sess.run(Qout,feed_dict={inputs1:np.identity(16)[s1:s1+1]})
-        #Obtain maxQ' and set our target value for chosen action.
-        maxQ1 = np.max(Q1)
-        targetQ = allQ
-        targetQ[0,a[0]] = r + y*maxQ1
-        #Train our network using target and predicted Q values
-        _,W1 = sess.run([updateModel,W],feed_dict={inputs1:np.identity(16)[s:s+1],nextQ:targetQ})
-        rAll += r
-        s = s1
-        if d == True:
-            #Reduce epsilon value as we train the model.
-            e = 1./((i/50) + 10)
-            break
-    
+
+        #Visualization of learned policy
+        #alternatively, save the weights W0, W1, W2
+        initialState = env.reset()
+        rAll = 0
+        done = False
+        j = 0
+        while j < max_steps_per_episode:
+            j+=1
+            chosenAction = sess.run(bestAction,feed_dict={inState:initialState})
+            newState, r, done = env.step(chosenAction[0])
+            rAll += r
+            initialState = newState
+            if done == True:
+                break
+        print('\nsteps:', j)
+        print('\nreturn:', rAll)     
 
 
-# ### Some statistics on network performance
+# statistics
 
-# We can see that the network beings to consistly reach the goal around the 750 episode mark.
-
-# In[6]:
-
-plt.plot(rList)
+# time
+elapsed_time = end_time - start_time #in seconds
+print('\nTotal training time:', elapsed_time)
 
 
-# It also begins to progress through the environment for longer than chance aroudn the 750 mark as well.
+# total return observed in each episode
+plt.figure()
+plt.plot(rList, 'o')
+plt.ylabel('return obtained')
+plt.xlabel('episode number')
 
-# In[7]:
+# steps performed in each episode
+plt.figure()
+plt.plot(jList, 'o')
+plt.ylabel('number of steps performed')
+plt.xlabel('episode number')
 
-plt.plot(jList)
+plt.show()
 

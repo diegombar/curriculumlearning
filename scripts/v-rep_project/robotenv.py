@@ -32,6 +32,7 @@ class RobotEnv():
     portNb = 19998 # must match the portNb on server side specified in remoteApiConnections.txt
     vrepPath = "/home/diego/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
     scenePath = 'MicoRobot.ttt'
+
     # initialize the environment
     def __init__(self):
         #actions/states/reward/done
@@ -39,7 +40,7 @@ class RobotEnv():
         self.observation_space_size = 6
         self.action_space = range(0,self.action_space_size)
         self.observation_space = np.zeros((1,self.observation_space_size))
-        self.state = None
+        self.state = np.zeros((1,self.observation_space_size))
         self.reward = None
         self.goalReached = False
         self.minDistance = 0.01
@@ -53,10 +54,20 @@ class RobotEnv():
         self.jointsCollectionHandle = None
         self.distToGoalHandle = None
         self.distanceToGoal = None
+        self.goal_reward = 100
 
-    #   needs with statement (used to exit the v-rep simulation properly)
+    # enter and exit methods: needs with statement (used to exit the v-rep simulation properly)
     def __enter__(self):
-        print('Creating environment...')
+        print('Starting environment...')
+        self.action_space_size = 3 * 6 # (+Vel, -Vel, 0) for 6 joints
+        self.observation_space_size = 6
+        self.action_space = range(0,self.action_space_size)
+        self.observation_space = np.zeros((1,self.observation_space_size))
+        self.state = np.zeros((1,self.observation_space_size))
+        self.goalReached = False
+        self.minDistance = 0.01 #one cm from goal
+        self.goal_reward = 100 #reward given at goal
+        self.jointVel = 0.5
         # launch v-rep
         self.vrepProcess = subprocess.Popen(self.vrepPath, shell=True, stdout=subprocess.PIPE, preexec_fn=os.setsid)
         # connect to V-Rep Remote Api Server
@@ -71,14 +82,6 @@ class RobotEnv():
             time.sleep(5) # to avoid errors
             returnCode = vrep.simxLoadScene(self.clientID, self.scenePath, 1, vrep.simx_opmode_oneshot_wait) # vrep.simx_opmode_blocking is recommended
             printlog('simxLoadScene', returnCode)
-
-            # args
-            self.action_space_size = 3 * 6 # (+Vel, -Vel, 0) for 6 joints
-            self.observation_space_size = 6
-            self.action_space = range(0,self.action_space_size)
-            self.observation_space = np.zeros((1,self.observation_space_size))
-            self.goalReached = False
-            self.minDistance = 0.01 #one cm from goal
 
             # Start simulation
             returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
@@ -95,15 +98,18 @@ class RobotEnv():
             returnCode, self.distToGoalHandle = vrep.simxGetDistanceHandle(self.clientID, "distanceToGoal#", vrep.simx_opmode_blocking)
             returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_streaming) #start streaming
             returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_streaming) #start streaming
-            # get first state
-            self.updateState()
-            
+
+            # get first valid state
+            while True:
+                self.updateState()
+                if self.state.shape == (1,self.observation_space_size): break
+
+            print('Environment succesfully initialised, ready for simulations')
             # # check server state before loop
             # while vrep.simxGetConnectionId(self.clientID) != -1:  
             #     ##########################EXECUTE ACTIONS AND UPDATE STATE HERE #################################
             #     time.sleep(0.1)
-            #     #end of execution loop
-            print('Environment succesfully initialised, ready for simulations')
+            #     #end of execution loop  
             return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -128,19 +134,25 @@ class RobotEnv():
     # reset the state for each new episode
     def reset(self):
         if vrep.simxGetConnectionId(self.clientID) != -1:
-            # reset robot position in V-REP, i.e. reset simulation
             # stop simulation
             returnCode = vrep.simxStopSimulation(self.clientID,vrep.simx_opmode_blocking)
-            printlog('simxStopSimulation', returnCode)
+            # printlog('simxStopSimulation', returnCode)
+
+            # Wait for server and start simulation
             running = True
             while running:
                 returnCode, ping = vrep.simxGetPingTime(self.clientID)
                 returnCode, serverState = vrep.simxGetInMessageInfo(self.clientID, vrep.simx_headeroffset_server_state)
                 running = serverState
-            # Start simulation
             returnCode = vrep.simxStartSimulation(self.clientID,vrep.simx_opmode_blocking)
-            printlog('simxStartSimulation', returnCode)
-            self.updateState()
+            # printlog('simxStartSimulation', returnCode)
+            # get new measurements
+            self.goalReached = False
+            while True:
+                self.updateState()
+                # wait for a state
+                if self.state.shape == (1,self.observation_space_size): break
+
             return self.state
 
     #update the state
@@ -150,25 +162,30 @@ class RobotEnv():
             returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_buffer) # or simx_opmode_blocking (not recommended)
             jointPositions = np.array(floatData[0::2]) #take elements at odd positions (even corresponds to torques)
             jointPositions = jointPositions % (2 * np.pi) #take values in [0, 2*pi[
-            self.state = [angle if angle <= np.pi else angle - 2 * np.pi for angle in jointPositions] #take values in ]-pi, +pi]
+            newState = [angle if angle <= np.pi else angle - 2 * np.pi for angle in jointPositions] #take values in ]-pi, +pi]
+            state1 = np.array(newState)
+            try: 
+                self.state = state1.reshape((1,6)) #reshape (for tensorflow)
+            except:
+                pass
             # get reward from distance reading and check goal
             returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_buffer) #dist in metres        
             if self.distanceToGoal < self.minDistance:
                 self.goalReached = True
-                self.reward = 10
+                self.reward = self.goal_reward
             else:
-                self.goalReached = False
+                # self.goalReached = False
                 self.reward = -self.distanceToGoal
 
     # execute action
     def step(self, action):
         if vrep.simxGetConnectionId(self.clientID) != -1:
             # 6 * 3 = 18 actions -> action is in [0,17]
-            Vel = 1
             jointNumber = action // 3
             velMode = action % 3 - 1 # speed to apply -1->-Vel;  0->zero;  +1->+Vel
-            returnCode = vrep.simxSetJointTargetVelocity(self.clientID, self.jointHandles[jointNumber], velMode * Vel, vrep.simx_opmode_blocking)
-            printlog('simxSetJointTargetVelocity', returnCode)
+            returnCode = vrep.simxSetJointTargetVelocity(self.clientID, self.jointHandles[jointNumber], velMode * self.jointVel, vrep.simx_opmode_blocking)
+            # printlog('simxSetJointTargetVelocity', returnCode)
+
             ## hand acitons
             # def openHand(self.clientID):
             #     closingVel = -0.04
