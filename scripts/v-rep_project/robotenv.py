@@ -34,7 +34,7 @@ class RobotEnv():
     scenePath = 'MicoRobot.ttt'
 
     # initialize the environment
-    def __init__(self):
+    def __init__(self, showGUI=None):
         #actions/states/reward/done
         self.action_space_size = 3 * 6 # (+Vel, -Vel, 0) for 6 joints
         self.observation_space_size = 6
@@ -57,7 +57,7 @@ class RobotEnv():
         self.goal_reward = 100
 
     # enter and exit methods: needs with statement (used to exit the v-rep simulation properly)
-    def __enter__(self):
+    def __enter__(self, showGUI=None):
         print('Starting environment...')
         self.action_space_size = 3 * 6 # (+Vel, -Vel, 0) for 6 joints
         self.observation_space_size = 6
@@ -69,7 +69,11 @@ class RobotEnv():
         self.goal_reward = 100 #reward given at goal
         self.jointVel = 0.5
         # launch v-rep
-        self.vrepProcess = subprocess.Popen(self.vrepPath, shell=True, stdout=subprocess.PIPE, preexec_fn=os.setsid)
+        if showGUI is None:
+            vrep_cmd = [self.vrepPath,'-h', self.scenePath] #headless mode
+        elif showGUI:
+            vrep_cmd = [self.vrepPath, self.scenePath]
+        self.vrepProcess = subprocess.Popen(vrep_cmd, shell=False, stdout=subprocess.PIPE, preexec_fn=os.setsid)
         # connect to V-Rep Remote Api Server
         vrep.simxFinish(-1)# close all opened connections
         self.clientID = vrep.simxStart('127.0.0.1', self.portNb, True, False, 5000, 5) # Connect to V-REP
@@ -79,9 +83,9 @@ class RobotEnv():
         else:
             print('Connected to remote API server')
             # load scene
-            time.sleep(5) # to avoid errors
-            returnCode = vrep.simxLoadScene(self.clientID, self.scenePath, 1, vrep.simx_opmode_oneshot_wait) # vrep.simx_opmode_blocking is recommended
-            printlog('simxLoadScene', returnCode)
+            # time.sleep(5) # to avoid errors
+            # returnCode = vrep.simxLoadScene(self.clientID, self.scenePath, 1, vrep.simx_opmode_oneshot_wait) # vrep.simx_opmode_blocking is recommended
+            # printlog('simxLoadScene', returnCode)
 
             # Start simulation
             returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
@@ -118,13 +122,13 @@ class RobotEnv():
         returnCode = vrep.simxStopSimulation(self.clientID,vrep.simx_opmode_blocking)
         printlog('simxStopSimulation', returnCode)
         # close the scene
-        running = True
-        while running:
-            returnCode, ping = vrep.simxGetPingTime(self.clientID)
-            returnCode, serverState = vrep.simxGetInMessageInfo(self.clientID, vrep.simx_headeroffset_server_state)
-            running = serverState
-        returnCode = vrep.simxCloseScene(self.clientID,vrep.simx_opmode_blocking)
-        printlog('simxCloseScene', returnCode)
+        # running = True
+        # while running:
+        #     returnCode, ping = vrep.simxGetPingTime(self.clientID)
+        #     returnCode, serverState = vrep.simxGetInMessageInfo(self.clientID, vrep.simx_headeroffset_server_state)
+        #     running = serverState
+        # returnCode = vrep.simxCloseScene(self.clientID,vrep.simx_opmode_blocking)
+        # printlog('simxCloseScene', returnCode)
         #close v-rep
         vrep.simxFinish(self.clientID)
         os.killpg(os.getpgid(self.vrepProcess.pid), signal.SIGTERM)
@@ -139,13 +143,17 @@ class RobotEnv():
             # printlog('simxStopSimulation', returnCode)
 
             # Wait for server and start simulation
-            running = True
-            while running:
-                returnCode, ping = vrep.simxGetPingTime(self.clientID)
-                returnCode, serverState = vrep.simxGetInMessageInfo(self.clientID, vrep.simx_headeroffset_server_state)
-                running = serverState
+            # running = True
+            # while running:
+            #     # returnCode, ping = vrep.simxGetPingTime(self.clientID)
+            #     returnCode, value = vrep.simxGetIntegerSignal(self.clientID,'dummy',vrep.simx_opmode_blocking)
+            #     printlog('simxGetIntegerSignal', returnCode)
+            #     returnCode, serverState = vrep.simxGetInMessageInfo(self.clientID, vrep.simx_headeroffset_server_state)
+            #     printlog('simxGetInMessageInfo', returnCode)
+            #     running = serverState
+
             returnCode = vrep.simxStartSimulation(self.clientID,vrep.simx_opmode_blocking)
-            # printlog('simxStartSimulation', returnCode)
+            if returnCode != vrep.simx_return_ok: print("simxStartSimulation failed")
             # get new measurements
             self.goalReached = False
             while True:
