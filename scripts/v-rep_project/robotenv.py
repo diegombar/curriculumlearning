@@ -41,7 +41,7 @@ class RobotEnv():
         self.action_space = range(0,self.action_space_size)
         self.observation_space = np.zeros((1,self.observation_space_size))
         self.state = np.zeros((1,self.observation_space_size))
-        self.reward = None
+        self.reward = 0
         self.goalReached = False
         self.minDistance = 0.01
         #v-rep
@@ -56,6 +56,8 @@ class RobotEnv():
         self.distanceToGoal = None
         self.goal_reward = 100
 
+        self.jointVel = 0.5
+
     # enter and exit methods: needs with statement (used to exit the v-rep simulation properly)
     def __enter__(self, showGUI=None):
         print('Starting environment...')
@@ -64,13 +66,26 @@ class RobotEnv():
         self.action_space = range(0,self.action_space_size)
         self.observation_space = np.zeros((1,self.observation_space_size))
         self.state = np.zeros((1,self.observation_space_size))
+        self.reward = 0
         self.goalReached = False
         self.minDistance = 0.01 #one cm from goal
+        #v-rep
+        self.vrepProcess = None
+        self.clientID = None
+        #handles
+        self.jointHandles = None
+        self.fingersH1 = None
+        self.fingersH2 = None
+        self.jointsCollectionHandle = None
+        self.distToGoalHandle = None
+        self.distanceToGoal = None
         self.goal_reward = 100 #reward given at goal
+
         self.jointVel = 0.5
+
         # launch v-rep
         if showGUI is None:
-            vrep_cmd = [self.vrepPath,'-h', self.scenePath] #headless mode
+            vrep_cmd = [self.vrepPath, '-h', self.scenePath] #  headless mode
         elif showGUI:
             vrep_cmd = [self.vrepPath, self.scenePath]
         self.vrepProcess = subprocess.Popen(vrep_cmd, shell=False, stdout=subprocess.PIPE, preexec_fn=os.setsid)
@@ -100,13 +115,15 @@ class RobotEnv():
             returnCode, self.fingersH2 = vrep.simxGetObjectHandle(self.clientID, 'MicoHand_fingers12_motor2', vrep.simx_opmode_blocking)
             returnCode, self.jointsCollectionHandle = vrep.simxGetCollectionHandle(self.clientID, "sixJoints#", vrep.simx_opmode_blocking)
             returnCode, self.distToGoalHandle = vrep.simxGetDistanceHandle(self.clientID, "distanceToGoal#", vrep.simx_opmode_blocking)
-            returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_streaming) #start streaming
-            returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_streaming) #start streaming
+            # returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_streaming) #start streaming
+            # returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_streaming) #start streaming
 
             # get first valid state
             while True:
                 self.updateState()
-                if self.state.shape == (1,self.observation_space_size): break
+                if (self.state.shape == (1,self.observation_space_size) and abs(self.reward) < 1E+5):
+                    print("sent reward1=", self.reward)
+                    break
 
             print('Environment succesfully initialised, ready for simulations')
             # # check server state before loop
@@ -138,11 +155,12 @@ class RobotEnv():
     # reset the state for each new episode
     def reset(self):
         if vrep.simxGetConnectionId(self.clientID) != -1:
+            print("############Restarting simulation...############")
             # stop simulation
             returnCode = vrep.simxStopSimulation(self.clientID,vrep.simx_opmode_blocking)
             # printlog('simxStopSimulation', returnCode)
 
-            # Wait for server and start simulation
+            # Wait for server and start simulation (doesnt work in headless mode -h)
             # running = True
             # while running:
             #     # returnCode, ping = vrep.simxGetPingTime(self.clientID)
@@ -152,14 +170,25 @@ class RobotEnv():
             #     printlog('simxGetInMessageInfo', returnCode)
             #     running = serverState
 
+            # temporary solution for headless mode 
+            time.sleep(1.0)
+
             returnCode = vrep.simxStartSimulation(self.clientID,vrep.simx_opmode_blocking)
             if returnCode != vrep.simx_return_ok: print("simxStartSimulation failed")
+
+            # returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_streaming) #start streaming
+            # returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_streaming) #start streaming
+            
             # get new measurements
             self.goalReached = False
-            while True:
-                self.updateState()
-                # wait for a state
-                if self.state.shape == (1,self.observation_space_size): break
+            self.updateState()
+            print("sent reward2=", self.reward)
+            # while True:
+            #     self.updateState()
+            #     # wait for a state
+            #     if (self.state.shape == (1,self.observation_space_size) and abs(self.reward) < 1E+5):
+            #         print("sent reward2=", self.reward)
+            #         break
 
             return self.state
 
@@ -167,17 +196,21 @@ class RobotEnv():
     def updateState(self):
         if vrep.simxGetConnectionId(self.clientID) != -1:
             # update joint angles
-            returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_buffer) # or simx_opmode_blocking (not recommended)
-            jointPositions = np.array(floatData[0::2]) #take elements at odd positions (even corresponds to torques)
+            print("Getting state...")
+            returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_blocking) # or simx_opmode_blocking (not recommended)
+            jointPositions = np.array(floatData[0::2]) #take elements at odd positions (even correspond to torques)
             jointPositions = jointPositions % (2 * np.pi) #take values in [0, 2*pi[
             newState = [angle if angle <= np.pi else angle - 2 * np.pi for angle in jointPositions] #take values in ]-pi, +pi]
             state1 = np.array(newState)
+            print("New state received")
             try: 
                 self.state = state1.reshape((1,6)) #reshape (for tensorflow)
             except:
                 pass
             # get reward from distance reading and check goal
-            returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_buffer) #dist in metres        
+            print("Reading distance...")
+            returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking) #dist in metres #vrep.simx_opmode_buffer after streaming start
+            print("Distance received")
             if self.distanceToGoal < self.minDistance:
                 self.goalReached = True
                 self.reward = self.goal_reward
@@ -212,6 +245,12 @@ class RobotEnv():
             #         if returnCode != vrep.simx_return_ok:
             #             print("SetJointTargetPosition got error code: %s" % returnCode)
             self.updateState()
+            # while True:
+            #     self.updateState()
+            #     # wait for a state
+            #     if (self.state.shape == (1,self.observation_space_size) and abs(self.reward) < 1E+5):
+            #         print("sent reward3=", self.reward)
+            #         break
             return self.state, self.reward, self.goalReached
 
 
