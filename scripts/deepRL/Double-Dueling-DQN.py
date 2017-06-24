@@ -213,7 +213,7 @@ with tf.Session() as sess:
                     doubleQ = Q2[range(batch_size),Q1]
                     targetQ = trainBatch[:,2] + (y*doubleQ * end_multiplier)
                     #Update the network with our target values.
-                    _ = sess.run(mainQN.updateModel,                         feed_dict={mainQN.scalarInput:np.vstack(trainBatch[:,0]),mainQN.targetQ:targetQ, mainQN.actions:trainBatch[:,1]})
+                    _ = sess.run(mainQN.updateModel, feed_dict={mainQN.scalarInput:np.vstack(trainBatch[:,0]),mainQN.targetQ:targetQ, mainQN.actions:trainBatch[:,1]})
                     
                     updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
             rAll += r
