@@ -196,21 +196,21 @@ class RobotEnv():
     def updateState(self):
         if vrep.simxGetConnectionId(self.clientID) != -1:
             # update joint angles
-            print("Getting state...")
+            # print("Getting state...")
             returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_blocking) # or simx_opmode_blocking (not recommended)
             jointPositions = np.array(floatData[0::2]) #take elements at odd positions (even correspond to torques)
             jointPositions = jointPositions % (2 * np.pi) #take values in [0, 2*pi[
             newState = [angle if angle <= np.pi else angle - 2 * np.pi for angle in jointPositions] #take values in ]-pi, +pi]
             state1 = np.array(newState)
-            print("New state received")
+            # print("New state received")
             try: 
                 self.state = state1.reshape((1,6)) #reshape (for tensorflow)
             except:
                 pass
             # get reward from distance reading and check goal
-            print("Reading distance...")
+            # print("Reading distance...")
             returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking) #dist in metres #vrep.simx_opmode_buffer after streaming start
-            print("Distance received")
+            # print("Distance received")
             if self.distanceToGoal < self.minDistance:
                 self.goalReached = True
                 self.reward = self.goal_reward

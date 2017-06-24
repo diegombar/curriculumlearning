@@ -8,12 +8,11 @@ from matplotlib import pyplot as plt
 # import readchar
 import time
 import random
-
+import os.path
+import json
 
 # Load environment
 from robotenv import RobotEnv
-
-
 
 def weight_variable(shape):
   initial = tf.truncated_normal(shape, stddev=0.1)
@@ -44,19 +43,25 @@ class experience_dataset():
 #     def __init__(self, h_size)
 
 
+# create folder to save results
+current_dir_path = os.path.dirname(os.path.realpath(__file__))
+all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
+timestr = time.strftime("%Y-%b-%d_%H-%M-%S",time.gmtime()) #or time.localtime()
+current_model_dir_path = os.path.join(all_models_dir_path, "model_and_results_" + timestr)
+plots_dir_path = os.path.join(current_model_dir_path, "results")
+checkpoints_dir_path = os.path.join(current_model_dir_path, "saved_checkpoints")
+trained_model_dir_path = os.path.join(current_model_dir_path, "trained_model")
 
+for new_directory in [plots_dir_path, checkpoints_dir_path, trained_model_dir_path]:
+    os.makedirs(new_directory, exist_ok=True)
 
+checkpoint_model_file_path = os.path.join(checkpoints_dir_path, "checkpoint_model")
+trained_model_file_path = os.path.join(trained_model_dir_path, "final_model")
+
+#params to save in txt file:
+params = {}
 
 with RobotEnv() as env:
-    path_to_saves_folder = "trained_models_and_results/"
-    model_folder_name = "TestingSavePlots/"
-    path_to_model_file = path_to_saves_folder + model_folder_name + "model"
-    path_to_trained_model_file = path_to_saves_folder + model_folder_name + "trained_model"
-    path_to_img_folder = path_to_saves_folder + model_folder_name
-
-    #params to save in txt file:
-    params = {}
-
     # network
     tf.reset_default_graph()
     # feed-forward part to choose actions
@@ -69,8 +74,6 @@ with RobotEnv() as env:
     params['neurons_per_hidden_layer'] = nHidden
     params['number_of_actions'] = nActions
     params['learning_rate'] = lrate
-
-
 
     # initialize params
     W0 = weight_variable([stateSize, nHidden])
@@ -101,12 +104,12 @@ with RobotEnv() as env:
     params['discount_factor'] = y
     num_episodes = 10 #500 # number of runs#########################################TO SET
     params['num_episodes'] = lrate
-    max_steps_per_episode = 500 #500 # max number of actions per episode#############TO SET
+    max_steps_per_episode = 100 #500 # max number of actions per episode#############TO SET
     params['max_steps_per_episode'] = max_steps_per_episode
 
     e_max = 1.0 # initial epsilon
     e_min = 0.01 # final epsilon
-    num_e_updates = 5 #50 # times e is decreased (has to be =< num_episodes)
+    num_e_updates = 2 #50 # times e is decreased (has to be =< num_episodes)
     e_update_period = num_episodes // num_e_updates # num of episodes between e updates
     e = e_max #initialize epsilon
     model_saving_period = 5 #50 #episodes
@@ -132,6 +135,7 @@ with RobotEnv() as env:
     pre_train_episodes = num_episodes // 10 # num of eps to fill dataset with random actions
     params['batch_size'] = batch_size
     params['train_model_steps_period'] = train_model_steps_period
+    params['pre_train_episodes'] = pre_train_episodes
 
     message = "\nepisode: {} steps: {} undiscounted return obtained: {} done: {}"
     with tf.Session() as sess:
@@ -196,7 +200,7 @@ with RobotEnv() as env:
 
             #save the model
             if i % model_saving_period ==0:
-                save_path = saver.save(sess, path_to_model_file, global_step=i)
+                save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
 
             # log training progress
             if i % 10 == 0: print(message.format(i, j, sum_of_r, done))
@@ -213,7 +217,7 @@ with RobotEnv() as env:
         print("Training ended")
 
         #save the trained model
-        save_path = saver.save(sess, path_to_trained_model_file, global_step=num_episodes)
+        save_path = saver.save(sess, trained_model_file_path, global_step=num_episodes)
         print("Trained model saved in file: %s" % save_path)
 
         # #Visualization of learned policy
@@ -239,13 +243,19 @@ with RobotEnv() as env:
         # print('\nsteps:', j)
         # print('\nreturn:', rAll)     
 
-
 # statistics
 # print("Percent of succesful episodes: " + str(sum(undisc_return_per_ep)/num_episodes) + "%")
 
 # time
 total_training_time = end_time - start_time #in seconds
 print('\nTotal training time:', total_training_time)
+params["total_training_time"] = total_training_time
+
+# save txt file with current parameters
+params_file_path = os.path.join(current_model_dir_path, "params.txt")
+params_file = open(params_file_path, "w")
+json.dump(params, params_file, sort_keys=True, indent=4)
+params_file.close()
 
 ## save plots separately
 
@@ -254,7 +264,8 @@ plt.plot(undisc_return_per_ep)
 plt.ylabel('return')
 plt.xlabel('episode')
 plt.title('Undiscounted return obtained')
-fig1.savefig(path_to_img_folder + "returns.svg", bbox_inches='tight')
+returns_file = os.path.join(plots_dir_path, "returns.svg")
+fig1.savefig(returns_file, bbox_inches='tight')
 
 # steps performed in each episode
 fig2 = plt.figure(2)
@@ -262,14 +273,16 @@ plt.plot(num_steps_per_ep)
 plt.ylabel('steps')
 plt.xlabel('episode')
 plt.title('Steps performed per episode')
-fig2.savefig(path_to_img_folder + "steps.svg", bbox_inches='tight')
+steps_file = os.path.join(plots_dir_path, "steps.svg")
+fig2.savefig(steps_file, bbox_inches='tight')
 # percentage of success so far, for each episode
 fig3 = plt.figure(3)
 plt.plot(successes)
 plt.ylabel('successes')
 plt.xlabel('episode')
 plt.title('Number of successes')
-fig3.savefig(path_to_img_folder + "successes.svg", bbox_inches='tight')
+successes_file = os.path.join(plots_dir_path, "successes.svg")
+fig3.savefig(successes_file, bbox_inches='tight')
 
 # average (over steps, for each episode) of maxQ
 fig4 = plt.figure(4)
@@ -277,7 +290,8 @@ plt.plot(avg_maxQ_per_ep)
 plt.ylabel('average maxQ')
 plt.xlabel('episode number')
 plt.title('Average maxQ per episode')
-fig4.savefig(path_to_img_folder + "average_q.svg", bbox_inches='tight')
+average_q_file = os.path.join(plots_dir_path, "average_q.svg")
+fig4.savefig(average_q_file, bbox_inches='tight')
 
 # epsilon updates
 fig5 = plt.figure(5)
@@ -285,14 +299,11 @@ plt.plot(epsilon_per_ep)
 plt.ylabel('epsilon value')
 plt.xlabel('episode number')
 plt.title('Epsilon updates')
-fig5.savefig(path_to_img_folder + "epsilons.svg", bbox_inches='tight')
+epsilons_file = os.path.join(plots_dir_path, "epsilons.svg")
+fig5.savefig(epsilons_file, bbox_inches='tight')
+
 #save params and results in txt file
 # plt.suptitle('Total training time: %d s' % total_training_time)
 
 plt.show()
 
-# save txt file with current parameters
-
-params_file = open("params.txt", "w")
-params_file.write()
-params_file.close()

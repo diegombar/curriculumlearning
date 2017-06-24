@@ -81,9 +81,6 @@ class Qnetwork():
 # ### Experience Replay
 
 # This class allows us to store experiences and sample then randomly to train the network.
-
-# In[ ]:
-
 class experience_buffer():
     def __init__(self, buffer_size = 50000):
         self.buffer = []
@@ -99,17 +96,11 @@ class experience_buffer():
 
 
 # This is a simple function to resize our game frames.
-
-# In[ ]:
-
 def processState(states):
     return np.reshape(states,[21168])
 
 
 # These functions allow us to update the parameters of our target network with those of the primary network.
-
-# In[ ]:
-
 def updateTargetGraph(tfVars,tau):
     total_vars = len(tfVars)
     op_holder = []
@@ -125,9 +116,6 @@ def updateTarget(op_holder,sess):
 # ### Training the network
 
 # Setting all the training parameters
-
-# In[ ]:
-
 batch_size = 32 #How many experiences to use for each training step.
 update_freq = 4 #How often to perform a training step.
 y = .99 #Discount factor on the target Q-values
@@ -141,9 +129,6 @@ load_model = False #Whether to load a saved model.
 path = "./dqn" #The path to save our model to.
 h_size = 512 #The size of the final convolutional layer before splitting it into Advantage and Value streams.
 tau = 0.001 #Rate to update target network toward primary network
-
-
-# In[ ]:
 
 tf.reset_default_graph()
 mainQN = Qnetwork(h_size)
