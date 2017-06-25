@@ -113,9 +113,9 @@ h_params = {} # params to save in txt file:
 # Set learning parameters
 y = 0.99 # discount factor
 h_params['discount_factor'] = y
-num_episodes = 15 #500 # number of runs#######################################TO SET
+num_episodes = 500 #500 # number of runs#######################################TO SET
 h_params['num_episodes'] = num_episodes
-max_steps_per_episode = 250 #500 # max number of actions per episode##########TO SET
+max_steps_per_episode = 500 #500 # max number of actions per episode##########TO SET
 h_params['max_steps_per_episode'] = max_steps_per_episode
 
 e_max = 1.0 # initial epsilon

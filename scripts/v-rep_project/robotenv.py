@@ -54,7 +54,7 @@ class RobotEnv():
         self.jointsCollectionHandle = None
         self.distToGoalHandle = None
         self.distanceToGoal = None
-        self.goal_reward = 100
+        self.goal_reward = 10
         self.jointVel = 0.5
         self.showGUI = showGUI
 
@@ -79,7 +79,7 @@ class RobotEnv():
         self.jointsCollectionHandle = None
         self.distToGoalHandle = None
         self.distanceToGoal = None
-        self.goal_reward = 100 #reward given at goal
+        self.goal_reward = 10 #reward given at goal
 
         self.jointVel = 0.5
 
@@ -217,7 +217,7 @@ class RobotEnv():
                 self.reward = self.goal_reward
             else:
                 # self.goalReached = False
-                self.reward = -self.distanceToGoal
+                self.reward = -self.distanceToGoal / 500 #normalization to get a total return around 1 
 
     # execute action
     def step(self, action):

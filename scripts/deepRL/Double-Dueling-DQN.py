@@ -56,10 +56,10 @@ class Qnetwork():
         self.streamA = slim.flatten(self.streamAC)
         self.streamV = slim.flatten(self.streamVC)
         xavier_init = tf.contrib.layers.xavier_initializer()
-        self.AW = tf.Variable(xavier_init([h_size//2,env.actions]))
-        self.VW = tf.Variable(xavier_init([h_size//2,1]))
-        self.Advantage = tf.matmul(self.streamA,self.AW)
-        self.Value = tf.matmul(self.streamV,self.VW)
+        self.AW = tf.Variable(xavier_init([h_size // 2, env.actions]))
+        self.VW = tf.Variable(xavier_init([h_size // 2, 1]))
+        self.Advantage = tf.matmul(self.streamA, self.AW)
+        self.Value = tf.matmul(self.streamV, self.VW)
         
         #Then combine them together to get our final Q-values.
         self.Qout = self.Value + tf.subtract(self.Advantage,tf.reduce_mean(self.Advantage,axis=1,keep_dims=True))
