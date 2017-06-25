@@ -40,11 +40,11 @@ class experience_dataset():
         return np.reshape(sample, [sample_size,5])
 
 class DQN():
-    def __init__(self, h_size, nActions, stateSize):
+    def __init__(self, nActions, stateSize):
         # stateSize = env.observation_space_size
         # nActions = env.action_space_size
-        nHidden = 512          ##########################################TO TUNE?
-        lrate = 1E-7 #try 6E-6 ##########################################TO TUNE
+        nHidden = 512          ############################TO TUNE?
+        lrate = 1E-7 #try 6E-6 ############################TO TUNE
         h_params['neurons_per_hidden_layer'] = nHidden
         h_params['number_of_actions'] = nActions
         h_params['learning_rate'] = lrate
@@ -66,8 +66,8 @@ class DQN():
         # get batch of chosen actions a0
         self.chosenActions = tf.placeholder(shape=[None],dtype=tf.int32) #batch_size x 1
         #select Q values for chosen actions a0
-        self.batch_size = tf.shape(self.allQvalues)[0]
-        self.QChosenActions = self.allQvalues[range(self.batch_size), self.chosenActions] #batch_size x 1
+        self.chosenAs_onehot = tf.one_hot(self.chosenActions,nActions,dtype=tf.float32)
+        self.QChosenActions = tf.reduce_sum(tf.multiply(self.allQvalues, self.chosenAs_onehot), axis=1)###
 
         # action with highest Q given inState
         self.bestAction = tf.argmax(self.allQvalues, 1) #batch_size x 1
@@ -77,7 +77,7 @@ class DQN():
         self.error = tf.square(self.Qtargets - self.QChosenActions)
         self.loss = tf.reduce_mean(self.error)
         self.optimizer = tf.train.AdamOptimizer(learning_rate=lrate)
-        self.updateModel = optimizer.minimize(self.loss)
+        self.updateModel = self.optimizer.minimize(self.loss)
 
 # update target DQN weights
 def updateTargetGraph(tfTrainables,tau):
@@ -86,7 +86,7 @@ def updateTargetGraph(tfTrainables,tau):
     #first half of tfTrainables corresponds to mainQN, second half to targetDQN
     for idx,mainNetVar in enumerate(tfTrainables[0:total_vars // 2]):
         targetNetVar = tfTrainables[idx + total_vars // 2]
-        op = targetNet.assign(tau * mainNetVar.value() + (1 - tau)*targetNetVar.value())
+        op = targetNetVar.assign(tau * mainNetVar.value() + (1 - tau)*targetNetVar.value())
         op_holder.append(op)
     return op_holder
 
@@ -108,34 +108,40 @@ for new_directory in [plots_dir_path, checkpoints_dir_path, trained_model_dir_pa
 
 checkpoint_model_file_path = os.path.join(checkpoints_dir_path, "checkpoint_model")
 trained_model_file_path = os.path.join(trained_model_dir_path, "final_model")
-h_params = {} #params to save in txt file:
+h_params = {} # params to save in txt file:
 
 # Set learning parameters
 y = 0.99 # discount factor
 h_params['discount_factor'] = y
-num_episodes = 10 #500 # number of runs#######################################TO SET
+num_episodes = 15 #500 # number of runs#######################################TO SET
 h_params['num_episodes'] = num_episodes
-max_steps_per_episode = 100 #500 # max number of actions per episode##########TO SET
+max_steps_per_episode = 250 #500 # max number of actions per episode##########TO SET
 h_params['max_steps_per_episode'] = max_steps_per_episode
 
 e_max = 1.0 # initial epsilon
 e_min = 0.01 # final epsilon
-num_e_updates = 2 #50 # times e is decreased (has to be =< num_episodes)
-e_update_period = num_episodes // num_e_updates # num of episodes between e updates
+e_update_steps = (max_steps_per_episode * num_episodes) // 2  #50 # times e is decreased (has to be =< num_episodes)
+#reach e_min in num_episodes // 2
 e = e_max #initialize epsilon
 model_saving_period = 5 #50 #episodes
 h_params['e_max'] = e_max
 h_params['e_min'] = e_min
-h_params['num_e_updates'] = num_e_updates
-eDecrease = (e_max - e_min)/num_e_updates
+h_params['e_update_steps'] = e_update_steps
+eDecrease = (e_max - e_min) / e_update_steps
 exp_buffer_size = 1000
 h_params['exp_buffer_size'] = exp_buffer_size
+
+# eFactor = 1 - 1E-5
+# h_params['e_factor'] = eFactor
 
 #experience replay
 dataset = experience_dataset(exp_buffer_size)
 batch_size = 30
 train_model_steps_period = 10
-pre_train_steps = 100 # num of eps to fill dataset with random actions
+pre_train_steps = max_steps_per_episode * 2 # num of steps to fill dataset with random actions
+if pre_train_steps <= max_steps_per_episode:
+    print("WARNING: pre_train_steps must be greater than max_steps_per_episode")
+
 h_params['batch_size'] = batch_size
 h_params['train_model_steps_period'] = train_model_steps_period
 h_params['pre_train_steps'] = pre_train_steps
@@ -146,12 +152,13 @@ tau = 0.001 #Rate to update target network toward primary network
 h_params['update_target_net_rate'] = tau
 load_model = "false" # "false", "trained", "checkpoint"
 
-with RobotEnv() as env:
+#pass 0 for headless mode, 1 to showGUI
+with RobotEnv(1) as env:
     tf.reset_default_graph()
     stateSize = env.observation_space_size
     nActions = env.action_space_size
-    mainDQN = DQN(h_size, nActions, stateSize)
-    targetDQN = DQN(h_size, nActions, stateSize)
+    mainDQN = DQN(nActions, stateSize)
+    targetDQN = DQN(nActions, stateSize)
 
     # initialize and prepare model saving (every 2 hours and maximum 4 latest models)
     init = tf.global_variables_initializer()
@@ -201,7 +208,7 @@ with RobotEnv() as env:
                 total_steps += 1
 
                 # pick action from the DQN, epsilon greedy
-                chosenAction, allQvalues = sess.run([bestAction,outQvalues], feed_dict={inState:initialState})
+                chosenAction, allQvalues = sess.run([mainDQN.bestAction, mainDQN.allQvalues], feed_dict={mainDQN.inState:initialState})
                 # print("\nchosenAction:", chosenAction)
                 maxQ = np.max(allQvalues)
                 # print("\nallQvalues:", allQvalues)
@@ -211,14 +218,17 @@ with RobotEnv() as env:
                 # perform action and get new state and reward
                 newState, r, done = env.step(chosenAction[0])
                 # print("\nnewState:", newState)
-                print("\nr:", r)
                 # print("\ndone:", done)
                 transition = np.array([initialState, chosenAction[0], r, newState, done])
                 episodeBuffer.add(np.reshape(transition, [1, 5])) # add step to episode buffer
 
-                
                 if total_steps > pre_train_steps:
+                    # decrease epsilon
+                    if e > e_min:
+                        e -= eDecrease
+
                     if total_steps % train_model_steps_period == 0:
+                        # print("\nr:", r) ############ print if having problems
                         batch = dataset.sample(batch_size)
                         batchOfStates0 = np.vstack(batch[:,0])
                         batchOfActions0 = batch[:,1]
@@ -226,20 +236,17 @@ with RobotEnv() as env:
                         batchOfStates1 = np.vstack(batch[:,3])
                         batchOfDones = batch[:,4]
                         batchOfbestActions = sess.run(mainDQN.bestAction,feed_dict={mainDQN.inState:batchOfStates1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a'))
-                        batchOfQForAllActions = sess.run(targetDQN.outQvalues,feed_dict={targetDQN.inState:batchOfStates1}) #feed btach of s' and get batch of Q2(a')
+                        batchOfQForAllActions = sess.run(targetDQN.allQvalues,feed_dict={targetDQN.inState:batchOfStates1}) #feed btach of s' and get batch of Q2(a')
 
-                        
                         #get Q values of best actions
                         batchOfQForBestActions = batchOfQForAllActions[range(batch_size), batchOfbestActions]
-                        end_multiplier = -(batschOfDones - 1)
+                        end_multiplier = -(batchOfDones - 1)
                         targetQ =  batchOfRewards + y * batchOfQForBestActions * end_multiplier
 
                         #Update the network with our target values.
-                        _ = sess.run(mainQN.updateModel, feed_dict={mainQN.inState:batchOfStates0,mainQN.Qtargets:targetQ, mainQN.chosenActions:batchOfActions0})
+                        _ = sess.run(mainDQN.updateModel, feed_dict={mainDQN.inState:batchOfStates0,mainDQN.Qtargets:targetQ, mainDQN.chosenActions:batchOfActions0})
                         
                         updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
-
-
 
                         # for s,a,r,s1,d in batch: #to change: feed all at once
                         #     # get Q values for new state 
@@ -264,10 +271,6 @@ with RobotEnv() as env:
             # add current episode's list of transitions to dataset
             dataset.add(episodeBuffer.data)
 
-            # decrease epsilon and save model
-            if i % e_update_period == 0:
-                e -= eDecrease
-
             #save the model
             if i % model_saving_period ==0:
                 save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
@@ -278,7 +281,7 @@ with RobotEnv() as env:
             num_steps_per_ep.append(j)
             undisc_return_per_ep.append(sum_of_r)
             successes.append(success_count)
-            averageMaxQ = sum_of_maxQ/j
+            averageMaxQ = sum_of_maxQ / j
             print("averageMaxQ:", averageMaxQ)
             avg_maxQ_per_ep.append(averageMaxQ)
             epsilon_per_ep.append(e)
@@ -319,7 +322,7 @@ with RobotEnv() as env:
 # time
 total_training_time = end_time - start_time #in seconds
 print('\nTotal training time:', total_training_time)
-h_params["total_training_time"] = total_training_time
+h_params["total_training_time_in_secs"] = total_training_time
 
 # save txt file with current parameters
 h_params_file_path = os.path.join(current_model_dir_path, "hyper_params.txt")

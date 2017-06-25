@@ -34,7 +34,7 @@ class RobotEnv():
     scenePath = 'MicoRobot.ttt'
 
     # initialize the environment
-    def __init__(self, showGUI=None):
+    def __init__(self, showGUI):
         #actions/states/reward/done
         self.action_space_size = 3 * 6 # (+Vel, -Vel, 0) for 6 joints
         self.observation_space_size = 6
@@ -55,11 +55,11 @@ class RobotEnv():
         self.distToGoalHandle = None
         self.distanceToGoal = None
         self.goal_reward = 100
-
         self.jointVel = 0.5
+        self.showGUI = showGUI
 
     # enter and exit methods: needs with statement (used to exit the v-rep simulation properly)
-    def __enter__(self, showGUI=None):
+    def __enter__(self):
         print('Starting environment...')
         self.action_space_size = 3 * 6 # (+Vel, -Vel, 0) for 6 joints
         self.observation_space_size = 6
@@ -84,10 +84,11 @@ class RobotEnv():
         self.jointVel = 0.5
 
         # launch v-rep
-        if showGUI is None:
+        if self.showGUI == 0:
             vrep_cmd = [self.vrepPath, '-h', self.scenePath] #  headless mode
-        elif showGUI:
+        elif self.showGUI == 1:
             vrep_cmd = [self.vrepPath, self.scenePath]
+
         self.vrepProcess = subprocess.Popen(vrep_cmd, shell=False, stdout=subprocess.PIPE, preexec_fn=os.setsid)
         # connect to V-Rep Remote Api Server
         vrep.simxFinish(-1)# close all opened connections
