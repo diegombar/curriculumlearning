@@ -49,8 +49,7 @@ class DQN():
         h_params['number_of_actions'] = nActions
         h_params['learning_rate'] = lrate
 
-        self.inState = tf.placeholder(shape=[1,stateSize], dtype=tf.float32)
-
+        self.inState = tf.placeholder(shape=[None,stateSize], dtype=tf.float32) #batch_size x stateSize
         # initialize params
         self.W0 = weight_variable([stateSize, nHidden])
         self.W1 = weight_variable([nHidden, nHidden])
@@ -62,14 +61,21 @@ class DQN():
         # layers
         self.hidden1 = tf.nn.relu(tf.matmul(self.inState, self.W0) + self.b0)
         self.hidden2 = tf.nn.relu(tf.matmul(self.hidden1, self.W1) + self.b1)
-        self.outQvalues = tf.matmul(self.hidden2, self.W2) + self.b2 # Q values for all actions given inState
+        self.allQvalues = tf.matmul(self.hidden2, self.W2) + self.b2 # Q values for all actions given inState, #batch_size x nActions
+
+        # get batch of chosen actions a0
+        self.chosenActions = tf.placeholder(shape=[None],dtype=tf.int32) #batch_size x 1
+        #select Q values for chosen actions a0
+        self.batch_size = tf.shape(self.allQvalues)[0]
+        self.QChosenActions = self.allQvalues[range(self.batch_size), self.chosenActions] #batch_size x 1
 
         # action with highest Q given inState
-        self.bestAction = tf.argmax(self.outQvalues, 1) 
+        self.bestAction = tf.argmax(self.allQvalues, 1) #batch_size x 1
 
         # loss by taking the sum of squares difference between the target and prediction Q values.
-        self.Qtargets = tf.placeholder(shape=[1,nActions], dtype=tf.float32)
-        self.loss = tf.reduce_mean(tf.square(self.Qtargets - self.outQvalues))
+        self.Qtargets = tf.placeholder(shape=[None], dtype=tf.float32) #batch_size x 1
+        self.error = tf.square(self.Qtargets - self.QChosenActions)
+        self.loss = tf.reduce_mean(self.error)
         self.optimizer = tf.train.AdamOptimizer(learning_rate=lrate)
         self.updateModel = optimizer.minimize(self.loss)
 
@@ -77,8 +83,11 @@ class DQN():
 def updateTargetGraph(tfTrainables,tau):
     total_vars = len(tfTrainables)
     op_holder = []
-    for idx,var in enumerate(tfTrainables[0:total_vars//2]):
-        op_holder.append(tfTrainables[idx+total_vars//2].assign((var.value()*tau) + ((1-tau)*tfTrainables[idx+total_vars//2].value())))
+    #first half of tfTrainables corresponds to mainQN, second half to targetDQN
+    for idx,mainNetVar in enumerate(tfTrainables[0:total_vars // 2]):
+        targetNetVar = tfTrainables[idx + total_vars // 2]
+        op = targetNet.assign(tau * mainNetVar.value() + (1 - tau)*targetNetVar.value())
+        op_holder.append(op)
     return op_holder
 
 def updateTarget(op_holder,sess):
@@ -164,18 +173,18 @@ with RobotEnv() as env:
         start_time = time.time()
         sess.run(init)
 
-        #load trained model/checkpoint
-        if load_model != "false":
-            print('Loading Model...')
-            if load_model =="trained":
-                path = checkpoint_model_file_path
-            elif load_model =="checkpoint":
-                path = trained_model_file_path
-            ckpt = tf.train.get_checkpoint_state(path)
-            saver.restore(sess,ckpt.model_checkpoint_path)
-            print('Model loaded')
+        #load trained model/checkpoint, not working for the moment (timestamp in name...)
+        # if load_model != "false":
+        #     print('Loading Model...')
+        #     if load_model =="trained":
+        #         path = checkpoint_model_file_path
+        #     elif load_model =="checkpoint":
+        #         path = trained_model_file_path
+        #     ckpt = tf.train.get_checkpoint_state(path)
+        #     saver.restore(sess,ckpt.model_checkpoint_path)
+        #     print('Model loaded')
 
-        updateTarget(targetOps,sess)
+        updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
         total_steps = 0
         for i in range(1, num_episodes + 1):
             # reset environment and get first new observation
@@ -194,8 +203,10 @@ with RobotEnv() as env:
                 # pick action from the DQN, epsilon greedy
                 chosenAction, allQvalues = sess.run([bestAction,outQvalues], feed_dict={inState:initialState})
                 # print("\nchosenAction:", chosenAction)
+                maxQ = np.max(allQvalues)
                 # print("\nallQvalues:", allQvalues)
-                if np.random.rand(1) < e or total_steps <= pre_train_steps: chosenAction[0] = np.random.randint(0, nActions-1)
+                if np.random.rand(1) < e or total_steps <= pre_train_steps:
+                    chosenAction[0] = np.random.randint(0, nActions-1)
 
                 # perform action and get new state and reward
                 newState, r, done = env.step(chosenAction[0])
@@ -205,20 +216,41 @@ with RobotEnv() as env:
                 transition = np.array([initialState, chosenAction[0], r, newState, done])
                 episodeBuffer.add(np.reshape(transition, [1, 5])) # add step to episode buffer
 
-                maxQ = 0
+                
                 if total_steps > pre_train_steps:
-                    if j % train_model_steps_period == 0:
+                    if total_steps % train_model_steps_period == 0:
                         batch = dataset.sample(batch_size)
-                        for s,a,r,s1,d in batch:
-                            # get Q values for new state 
-                            allNewQvalues = sess.run(outQvalues,feed_dict={inState:s1})
-                            # get max for Q target
-                            # print("\nallNewQvalues:", allNewQvalues)
-                            maxQ = np.max(allNewQvalues)
-                            targetQ = allQvalues # dont update Q values corresponding for actions not performed
-                            targetQ[0, chosenAction[0]] = r + y * maxQ #only update Q value for action performed
-                            #Train our network using target and predicted Q values
-                            sess.run([updateModel], feed_dict={inState:s, Qtargets:targetQ})
+                        batchOfStates0 = np.vstack(batch[:,0])
+                        batchOfActions0 = batch[:,1]
+                        batchOfRewards = batch[:,2]
+                        batchOfStates1 = np.vstack(batch[:,3])
+                        batchOfDones = batch[:,4]
+                        batchOfbestActions = sess.run(mainDQN.bestAction,feed_dict={mainDQN.inState:batchOfStates1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a'))
+                        batchOfQForAllActions = sess.run(targetDQN.outQvalues,feed_dict={targetDQN.inState:batchOfStates1}) #feed btach of s' and get batch of Q2(a')
+
+                        
+                        #get Q values of best actions
+                        batchOfQForBestActions = batchOfQForAllActions[range(batch_size), batchOfbestActions]
+                        end_multiplier = -(batschOfDones - 1)
+                        targetQ =  batchOfRewards + y * batchOfQForBestActions * end_multiplier
+
+                        #Update the network with our target values.
+                        _ = sess.run(mainQN.updateModel, feed_dict={mainQN.inState:batchOfStates0,mainQN.Qtargets:targetQ, mainQN.chosenActions:batchOfActions0})
+                        
+                        updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
+
+
+
+                        # for s,a,r,s1,d in batch: #to change: feed all at once
+                        #     # get Q values for new state 
+                        #     allNewQvalues = sess.run(outQvalues,feed_dict={inState:s1})
+                        #     # get max for Q target
+                        #     # print("\nallNewQvalues:", allNewQvalues)
+                        #     maxQ = np.max(allNewQvalues)
+                        #     targetQ = allQvalues # dont update Q values corresponding for actions not performed
+                        #     targetQ[0, chosenAction[0]] = r + y * maxQ #only update Q value for action performed
+                        #     #Train our network using target and predicted Q values
+                        #     sess.run([updateModel], feed_dict={inState:s, Qtargets:targetQ})
 
                 sum_of_r += r
                 # print("\nmaxQ:", maxQ)

@@ -67,10 +67,13 @@ class Qnetwork():
         
         #Below we obtain the loss by taking the sum of squares difference between the target and prediction Q values.
         self.targetQ = tf.placeholder(shape=[None],dtype=tf.float32)
+
+        # get actions performed a0
         self.actions = tf.placeholder(shape=[None],dtype=tf.int32)####
         self.actions_onehot = tf.one_hot(self.actions,env.actions,dtype=tf.float32)####
-        
-        self.Q = tf.reduce_sum(tf.multiply(self.Qout, self.actions_onehot), axis=1)#######
+
+        #get the Q values of the actions performed a0 and sum
+        self.Q = tf.reduce_sum(tf.multiply(self.Qout, self.actions_onehot), axis=1)###
         
         self.td_error = tf.square(self.targetQ - self.Q)########
         self.loss = tf.reduce_mean(self.td_error)
