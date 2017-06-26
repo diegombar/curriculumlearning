@@ -132,7 +132,7 @@ h_params['e_max'] = e_max
 h_params['e_min'] = e_min
 h_params['e_update_steps'] = e_update_steps
 eDecrease = (e_max - e_min) / e_update_steps
-replay_memory_size = 1E5 #mnih: 1E6
+replay_memory_size = int(1E5) #mnih: 1E6
 h_params['replay_memory_size'] = replay_memory_size
 
 # eFactor = 1 - 1E-5
@@ -142,7 +142,7 @@ h_params['replay_memory_size'] = replay_memory_size
 dataset = experience_dataset(replay_memory_size)
 batch_size = 32 #mnih=32
 train_model_steps_period = 4 # mnih = 4
-replay_start_size = 5E4 # num of steps to fill dataset with random actions mnih=5E4
+replay_start_size = int(5E4) # num of steps to fill dataset with random actions mnih=5E4
 if replay_start_size <= max_steps_per_episode or replay_start_size < batch_size:
     print("WARNING: replay_start_size must be greater than max_steps_per_episode and batch_size")
 
