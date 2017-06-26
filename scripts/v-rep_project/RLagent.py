@@ -43,8 +43,8 @@ class DQN():
     def __init__(self, nActions, stateSize):
         # stateSize = env.observation_space_size
         # nActions = env.action_space_size
-        nHidden = 512          ############################TO TUNE?
-        lrate = 1E-7 #try 6E-6 ############################TO TUNE
+        nHidden = 512 #mnih: 512 for dense hidden layer
+        lrate = 1E-6 
         h_params['neurons_per_hidden_layer'] = nHidden
         h_params['number_of_actions'] = nActions
         h_params['learning_rate'] = lrate
@@ -62,6 +62,9 @@ class DQN():
         self.hidden1 = tf.nn.relu(tf.matmul(self.inState, self.W0) + self.b0)
         self.hidden2 = tf.nn.relu(tf.matmul(self.hidden1, self.W1) + self.b1)
         self.allQvalues = tf.matmul(self.hidden2, self.W2) + self.b2 # Q values for all actions given inState, #batch_size x nActions
+        h_params['num_hidden_layers_not_output'] = 2
+        h_params['non_linearity'] = "ReLU for hidden layers, none for output"
+
 
         # get batch of chosen actions a0
         self.chosenActions = tf.placeholder(shape=[None],dtype=tf.int32) #batch_size x 1
@@ -77,6 +80,7 @@ class DQN():
         self.error = tf.square(self.Qtargets - self.QChosenActions)
         self.loss = tf.reduce_mean(self.error)
         self.optimizer = tf.train.AdamOptimizer(learning_rate=lrate)
+        h_params['optimizer'] = "Adam"
         self.updateModel = self.optimizer.minimize(self.loss)
 
 # update target DQN weights
@@ -111,49 +115,49 @@ trained_model_file_path = os.path.join(trained_model_dir_path, "final_model")
 h_params = {} # params to save in txt file:
 
 # Set learning parameters
-y = 0.99 # discount factor
+y = 0.99 # discount factor mnih:0.99
 h_params['discount_factor'] = y
-num_episodes = 500 #500 # number of runs#######################################TO SET
+num_episodes = 1000 # number of runs#######################################TO SET
 h_params['num_episodes'] = num_episodes
-max_steps_per_episode = 500 #500 # max number of actions per episode##########TO SET
+max_steps_per_episode = 1000 # max number of actions per episode##########TO SET
 h_params['max_steps_per_episode'] = max_steps_per_episode
 
-e_max = 1.0 # initial epsilon
-e_min = 0.01 # final epsilon
-e_update_steps = (max_steps_per_episode * num_episodes) // 2  #50 # times e is decreased (has to be =< num_episodes)
+e_max = 1.0 # initial epsilon mnih = 1.0
+e_min = 0.01 # final epsilon mnih = 0.01
+e_update_steps = (max_steps_per_episode * num_episodes) // 3  #50 # times e is decreased (has to be =< num_episodes)
 #reach e_min in num_episodes // 2
 e = e_max #initialize epsilon
-model_saving_period = 5 #50 #episodes
+model_saving_period = 100 #episodes
 h_params['e_max'] = e_max
 h_params['e_min'] = e_min
 h_params['e_update_steps'] = e_update_steps
 eDecrease = (e_max - e_min) / e_update_steps
-exp_buffer_size = 1000
-h_params['exp_buffer_size'] = exp_buffer_size
+replay_memory_size = 1E5 #mnih: 1E6
+h_params['replay_memory_size'] = replay_memory_size
 
 # eFactor = 1 - 1E-5
 # h_params['e_factor'] = eFactor
 
 #experience replay
-dataset = experience_dataset(exp_buffer_size)
-batch_size = 30
-train_model_steps_period = 10
-pre_train_steps = max_steps_per_episode * 2 # num of steps to fill dataset with random actions
-if pre_train_steps <= max_steps_per_episode:
-    print("WARNING: pre_train_steps must be greater than max_steps_per_episode")
+dataset = experience_dataset(replay_memory_size)
+batch_size = 32 #mnih=32
+train_model_steps_period = 4 # mnih = 4
+replay_start_size = 5E4 # num of steps to fill dataset with random actions mnih=5E4
+if replay_start_size <= max_steps_per_episode or replay_start_size < batch_size:
+    print("WARNING: replay_start_size must be greater than max_steps_per_episode and batch_size")
 
 h_params['batch_size'] = batch_size
 h_params['train_model_steps_period'] = train_model_steps_period
-h_params['pre_train_steps'] = pre_train_steps
+h_params['replay_start_size'] = replay_start_size
 
 message = "\nepisode: {} steps: {} undiscounted return obtained: {} done: {}"
 
 tau = 0.001 #Rate to update target network toward primary network
-h_params['update_target_net_rate'] = tau
+h_params['update_target_net_rate_tau'] = tau
 load_model = "false" # "false", "trained", "checkpoint"
 
 #pass 0 for headless mode, 1 to showGUI
-with RobotEnv(1) as env:
+with RobotEnv(0) as env:
     tf.reset_default_graph()
     stateSize = env.observation_space_size
     nActions = env.action_space_size
@@ -169,7 +173,7 @@ with RobotEnv(1) as env:
 
     #create lists to contain total rewards and steps per episode
     num_steps_per_ep = []
-    undisc_return_per_ep = []
+    disc_return_per_ep = []
     success_count = 0
     successes = []
     avg_maxQ_per_ep = []
@@ -196,11 +200,11 @@ with RobotEnv(1) as env:
         for i in range(1, num_episodes + 1):
             # reset environment and get first new observation
             initialState = env.reset()
-            sum_of_r = 0
+            disc_return = 0
             sum_of_maxQ = 0
             done = False
             j = 0
-            episodeBuffer = experience_dataset(exp_buffer_size) # temporary buffer
+            episodeBuffer = experience_dataset(replay_memory_size) # temporary buffer
 
             while j < max_steps_per_episode:
                 # print("\nstep:", j)
@@ -212,7 +216,7 @@ with RobotEnv(1) as env:
                 # print("\nchosenAction:", chosenAction)
                 maxQ = np.max(allQvalues)
                 # print("\nallQvalues:", allQvalues)
-                if np.random.rand(1) < e or total_steps <= pre_train_steps:
+                if np.random.rand(1) < e or total_steps <= replay_start_size:
                     chosenAction[0] = np.random.randint(0, nActions-1)
 
                 # perform action and get new state and reward
@@ -222,7 +226,7 @@ with RobotEnv(1) as env:
                 transition = np.array([initialState, chosenAction[0], r, newState, done])
                 episodeBuffer.add(np.reshape(transition, [1, 5])) # add step to episode buffer
 
-                if total_steps > pre_train_steps:
+                if total_steps > replay_start_size:
                     # decrease epsilon
                     if e > e_min:
                         e -= eDecrease
@@ -259,7 +263,7 @@ with RobotEnv(1) as env:
                         #     #Train our network using target and predicted Q values
                         #     sess.run([updateModel], feed_dict={inState:s, Qtargets:targetQ})
 
-                sum_of_r += r
+                disc_return = r + y * disc_return 
                 # print("\nmaxQ:", maxQ)
                 sum_of_maxQ += maxQ
                 initialState = newState
@@ -271,15 +275,14 @@ with RobotEnv(1) as env:
             # add current episode's list of transitions to dataset
             dataset.add(episodeBuffer.data)
 
-            #save the model
+            #save the model and log training
             if i % model_saving_period ==0:
                 save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
+                print(message.format(i, j, disc_return, done))
                 print("Saved Model")
-            # log training progress
-            if i % 10 == 0: print(message.format(i, j, sum_of_r, done))
 
             num_steps_per_ep.append(j)
-            undisc_return_per_ep.append(sum_of_r)
+            disc_return_per_ep.append(disc_return)
             successes.append(success_count)
             averageMaxQ = sum_of_maxQ / j
             print("averageMaxQ:", averageMaxQ)
@@ -332,10 +335,10 @@ with open(h_params_file_path, "w") as h_params_file:
 ## save plots separately
 
 fig1 = plt.figure(1)
-plt.plot(undisc_return_per_ep)
-plt.ylabel('return')
+plt.plot(disc_return_per_ep)
+plt.ylabel('disc. return')
 plt.xlabel('episode')
-plt.title('Undiscounted return obtained')
+plt.title('Discounted return obtained')
 returns_file = os.path.join(plots_dir_path, "returns.svg")
 fig1.savefig(returns_file, bbox_inches='tight')
 

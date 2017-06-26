@@ -119,7 +119,7 @@ def updateTarget(op_holder,sess):
 # ### Training the network
 
 # Setting all the training parameters
-batch_size = 32 #How many experiences to use for each training step.
+batch_size = 32 #How many experiences to use for each training step. #mnih: 32
 update_freq = 4 #How often to perform a training step.
 y = .99 #Discount factor on the target Q-values
 startE = 1 #Starting chance of random action
