@@ -142,9 +142,9 @@ h_params = {} # params to save in txt file:
 # Set learning parameters
 y = 0.99 # discount factor mnih:0.99
 h_params['discount_factor'] = y
-num_episodes = 10 #1000 # number of runs#######################################TO SET
+num_episodes = 2000 # number of runs#######################################TO SET
 h_params['num_episodes'] = num_episodes
-max_steps_per_episode = 100 #1000 # max number of actions per episode##########TO SET
+max_steps_per_episode = 1000 # max number of actions per episode##########TO SET
 h_params['max_steps_per_episode'] = max_steps_per_episode
 
 e_max = 1.0 # initial epsilon mnih = 1.0
@@ -152,12 +152,12 @@ e_min = 0.01 # final epsilon mnih = 0.01
 e_update_steps = (max_steps_per_episode * num_episodes) // 3  #50 # times e is decreased (has to be =< num_episodes)
 #reach e_min in num_episodes // 2
 e = e_max #initialize epsilon
-model_saving_period = 1 #100 #episodes
+model_saving_period = 100 #episodes
 h_params['e_max'] = e_max
 h_params['e_min'] = e_min
 h_params['e_update_steps'] = e_update_steps
 eDecrease = (e_max - e_min) / e_update_steps
-replay_memory_size = 30 #int(1E5) #mnih: 1E6 about 100 episodes
+replay_memory_size = 100000 #mnih: 1E6 about 100 episodes
 h_params['replay_memory_size'] = replay_memory_size
 
 # eFactor = 1 - 1E-5
@@ -165,9 +165,9 @@ h_params['replay_memory_size'] = replay_memory_size
 
 #experience replay
 dataset = experience_dataset(replay_memory_size)
-batch_size = 3 #32 #mnih=32
+batch_size = 32 #mnih=32
 train_model_steps_period = 4 # mnih = 4
-replay_start_size = 110 #int(5E4) # num of steps to fill dataset with random actions mnih=5E4
+replay_start_size = 50000 # num of steps to fill dataset with random actions mnih=5E4
 # about 50 episodes
 if replay_start_size <= max_steps_per_episode or replay_start_size < batch_size:
     print("WARNING: replay_start_size must be greater than max_steps_per_episode and batch_size")
@@ -310,6 +310,8 @@ with RobotEnv(1) as env:
             if i % model_saving_period ==0:
                 print("\nr:", r) ############ print if having problems
                 save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
+                training_time = time.time() - start_time #in seconds
+                print('\nCurrent training time:', training_time)
                 print(message.format(i, j, disc_return, done))
                 print("Saved Model")
                 checkpoints_plots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
@@ -317,7 +319,7 @@ with RobotEnv(1) as env:
                 savePlots(disc_return_per_ep, num_steps_per_ep, successes, avg_maxQ_per_ep, epsilon_per_ep, checkpoints_plots_dir_path)
                 print("Saved Plots")                
 
-            if i % (model_saving_period // 1) ==0:
+            if i % (model_saving_period // 10) ==0:
                 print("episode number:", i)
 
             num_steps_per_ep.append(j)
