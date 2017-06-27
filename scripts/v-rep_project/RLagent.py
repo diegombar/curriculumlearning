@@ -22,6 +22,30 @@ def bias_variable(shape):
   initial = tf.constant(0.1, shape=shape)
   return tf.Variable(initial)
 
+def savePlot(var_value_per_ep, ylabel_str, title_str, dir_path, name):
+    fig = plt.figure()
+    plt.plot(var_value_per_ep)
+    plt.ylabel(ylabel_str)
+    plt.xlabel('episode')
+    plt.title(title_str)
+    plot_file = os.path.join(dir_path, name)
+    fig.savefig(plot_file, bbox_inches='tight')
+
+def savePlots(disc_returns, num_steps, successes, avg_maxQs, epsilons, dir_path):
+    #note: "per_ep" in variable names were omitted
+    # discounted returns for each episode
+    savePlot(disc_returns, "disc. return", "Discounted return obtained", dir_path, "disc_returns.svg")
+
+    # steps performed in each episode
+    savePlot(num_steps, "steps", "Steps performed per episode", dir_path, "steps.svg")
+
+    # number of success so far, for each episode
+    savePlot(successes, "successes", "Number of successes", dir_path, "successes.svg")
+    # average (over steps, for each episode) of maxQ
+    savePlot(avg_maxQs, "average maxQ", "Average maxQ per episode", dir_path, "average_q.svg")
+    # epsilon evolution
+    savePlot(epsilons, "epsilon value", "Epsilon updates", dir_path, "epsilons.svg")
+
 # experience replay dataset, experience = (s,a,r,s',done)
 class experience_dataset():
     def __init__(self, size):
@@ -103,11 +127,11 @@ current_dir_path = os.path.dirname(os.path.realpath(__file__))
 all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
 timestr = time.strftime("%Y-%b-%d_%H-%M-%S",time.gmtime()) #or time.localtime()
 current_model_dir_path = os.path.join(all_models_dir_path, "model_and_results_" + timestr)
-plots_dir_path = os.path.join(current_model_dir_path, "results")
+trained_model_plots_dir_path = os.path.join(current_model_dir_path, "trained_model_results")
 checkpoints_dir_path = os.path.join(current_model_dir_path, "saved_checkpoints")
 trained_model_dir_path = os.path.join(current_model_dir_path, "trained_model")
 
-for new_directory in [plots_dir_path, checkpoints_dir_path, trained_model_dir_path]:
+for new_directory in [trained_model_plots_dir_path, checkpoints_dir_path, trained_model_dir_path]:
     os.makedirs(new_directory, exist_ok=True)
 
 checkpoint_model_file_path = os.path.join(checkpoints_dir_path, "checkpoint_model")
@@ -117,9 +141,9 @@ h_params = {} # params to save in txt file:
 # Set learning parameters
 y = 0.99 # discount factor mnih:0.99
 h_params['discount_factor'] = y
-num_episodes = 1000 # number of runs#######################################TO SET
+num_episodes = 10 #1000 # number of runs#######################################TO SET
 h_params['num_episodes'] = num_episodes
-max_steps_per_episode = 1000 # max number of actions per episode##########TO SET
+max_steps_per_episode = 10 #1000 # max number of actions per episode##########TO SET
 h_params['max_steps_per_episode'] = max_steps_per_episode
 
 e_max = 1.0 # initial epsilon mnih = 1.0
@@ -127,12 +151,12 @@ e_min = 0.01 # final epsilon mnih = 0.01
 e_update_steps = (max_steps_per_episode * num_episodes) // 3  #50 # times e is decreased (has to be =< num_episodes)
 #reach e_min in num_episodes // 2
 e = e_max #initialize epsilon
-model_saving_period = 100 #episodes
+model_saving_period = 1 #100 #episodes
 h_params['e_max'] = e_max
 h_params['e_min'] = e_min
 h_params['e_update_steps'] = e_update_steps
 eDecrease = (e_max - e_min) / e_update_steps
-replay_memory_size = int(1E5) #mnih: 1E6
+replay_memory_size = 30 #int(1E5) #mnih: 1E6 about 100 episodes
 h_params['replay_memory_size'] = replay_memory_size
 
 # eFactor = 1 - 1E-5
@@ -140,9 +164,10 @@ h_params['replay_memory_size'] = replay_memory_size
 
 #experience replay
 dataset = experience_dataset(replay_memory_size)
-batch_size = 32 #mnih=32
+batch_size = 3 #32 #mnih=32
 train_model_steps_period = 4 # mnih = 4
-replay_start_size = int(5E4) # num of steps to fill dataset with random actions mnih=5E4
+replay_start_size = 21 #int(5E4) # num of steps to fill dataset with random actions mnih=5E4
+# about 50 episodes
 if replay_start_size <= max_steps_per_episode or replay_start_size < batch_size:
     print("WARNING: replay_start_size must be greater than max_steps_per_episode and batch_size")
 
@@ -156,8 +181,13 @@ tau = 0.001 #Rate to update target network toward primary network
 h_params['update_target_net_rate_tau'] = tau
 load_model = "false" # "false", "trained", "checkpoint"
 
+# save txt file with current parameters
+h_params_file_path = os.path.join(current_model_dir_path, "hyper_params.txt")
+with open(h_params_file_path, "w") as h_params_file:
+    json.dump(h_params, h_params_file, sort_keys=True, indent=4)
+
 #pass 0 for headless mode, 1 to showGUI
-with RobotEnv(0) as env:
+with RobotEnv(1) as env:
     tf.reset_default_graph()
     stateSize = env.observation_space_size
     nActions = env.action_space_size
@@ -280,6 +310,13 @@ with RobotEnv(0) as env:
                 save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
                 print(message.format(i, j, disc_return, done))
                 print("Saved Model")
+                checkpoints_plots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
+                os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
+                savePlots(disc_return_per_ep, num_steps_per_ep, successes, avg_maxQ_per_ep, epsilon_per_ep, checkpoints_plots_dir_path)
+                print("Saved Plots")                
+
+            if i % (model_saving_period // 10) ==0:
+                print("episode number:", i)
 
             num_steps_per_ep.append(j)
             disc_return_per_ep.append(disc_return)
@@ -325,57 +362,17 @@ with RobotEnv(0) as env:
 # time
 total_training_time = end_time - start_time #in seconds
 print('\nTotal training time:', total_training_time)
-h_params["total_training_time_in_secs"] = total_training_time
+time_dict = {"total_training_time_in_secs":total_training_time}
 
 # save txt file with current parameters
-h_params_file_path = os.path.join(current_model_dir_path, "hyper_params.txt")
-with open(h_params_file_path, "w") as h_params_file:
-    json.dump(h_params, h_params_file, sort_keys=True, indent=4)
+total_time_file_path = os.path.join(current_model_dir_path, "total_time.txt")
+with open(total_time_file_path, "w") as total_time_file:
+    json.dump(time_dict, total_time_file, sort_keys=True, indent=4)
+
+#save txt file with total time
 
 ## save plots separately
+savePlots(disc_return_per_ep, num_steps_per_ep, successes, avg_maxQ_per_ep, epsilon_per_ep, trained_model_plots_dir_path)
 
-fig1 = plt.figure(1)
-plt.plot(disc_return_per_ep)
-plt.ylabel('disc. return')
-plt.xlabel('episode')
-plt.title('Discounted return obtained')
-returns_file = os.path.join(plots_dir_path, "returns.svg")
-fig1.savefig(returns_file, bbox_inches='tight')
-
-# steps performed in each episode
-fig2 = plt.figure(2)
-plt.plot(num_steps_per_ep)
-plt.ylabel('steps')
-plt.xlabel('episode')
-plt.title('Steps performed per episode')
-steps_file = os.path.join(plots_dir_path, "steps.svg")
-fig2.savefig(steps_file, bbox_inches='tight')
-# percentage of success so far, for each episode
-fig3 = plt.figure(3)
-plt.plot(successes)
-plt.ylabel('successes')
-plt.xlabel('episode')
-plt.title('Number of successes')
-successes_file = os.path.join(plots_dir_path, "successes.svg")
-fig3.savefig(successes_file, bbox_inches='tight')
-
-# average (over steps, for each episode) of maxQ
-fig4 = plt.figure(4)
-plt.plot(avg_maxQ_per_ep)
-plt.ylabel('average maxQ')
-plt.xlabel('episode number')
-plt.title('Average maxQ per episode')
-average_q_file = os.path.join(plots_dir_path, "average_q.svg")
-fig4.savefig(average_q_file, bbox_inches='tight')
-
-# epsilon updates
-fig5 = plt.figure(5)
-plt.plot(epsilon_per_ep)
-plt.ylabel('epsilon value')
-plt.xlabel('episode number')
-plt.title('Epsilon updates')
-epsilons_file = os.path.join(plots_dir_path, "epsilons.svg")
-fig5.savefig(epsilons_file, bbox_inches='tight')
-
-plt.show()
+#plt.show() #optional
 
