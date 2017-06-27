@@ -152,7 +152,7 @@ e_min = 0.01 # final epsilon mnih = 0.01
 e_update_steps = (max_steps_per_episode * num_episodes) // 3  #50 # times e is decreased (has to be =< num_episodes)
 #reach e_min in num_episodes // 2
 e = e_max #initialize epsilon
-model_saving_period = 10 #100 #episodes
+model_saving_period = 1 #100 #episodes
 h_params['e_max'] = e_max
 h_params['e_min'] = e_min
 h_params['e_update_steps'] = e_update_steps
@@ -263,7 +263,7 @@ with RobotEnv(1) as env:
                         e -= eDecrease
 
                     if total_steps % train_model_steps_period == 0:
-                        # print("\nr:", r) ############ print if having problems
+                        
                         batch = dataset.sample(batch_size)
                         batchOfStates0 = np.vstack(batch[:,0])
                         batchOfActions0 = batch[:,1]
@@ -296,7 +296,6 @@ with RobotEnv(1) as env:
 
                 disc_return = r + y * disc_return 
                 # print("\nmaxQ:", maxQ)
-                print("\nmaxQ: ", maxQ)
                 sum_of_maxQ += maxQ
                 initialState = newState
 
@@ -309,6 +308,7 @@ with RobotEnv(1) as env:
 
             #save the model and log training
             if i % model_saving_period ==0:
+                print("\nr:", r) ############ print if having problems
                 save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
                 print(message.format(i, j, disc_return, done))
                 print("Saved Model")
@@ -317,7 +317,7 @@ with RobotEnv(1) as env:
                 savePlots(disc_return_per_ep, num_steps_per_ep, successes, avg_maxQ_per_ep, epsilon_per_ep, checkpoints_plots_dir_path)
                 print("Saved Plots")                
 
-            if i % (model_saving_period // 10) ==0:
+            if i % (model_saving_period // 1) ==0:
                 print("episode number:", i)
 
             num_steps_per_ep.append(j)

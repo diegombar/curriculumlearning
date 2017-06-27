@@ -167,8 +167,22 @@ class RobotEnv():
             # wait 
             if self.showGUI == 0:
                 # temporary solution for headless mode 
-                time.sleep(1.0)
+                # time.sleep(1.0)
                 print("in headless mode")
+                #Wait for server and start simulation (doesnt work in headless mode -h)
+                print('Waiting for server to restart simulation...')
+                not_stopped = True
+                while not_stopped:
+                    # returnCode, ping = vrep.simxGetPingTime(self.clientID)
+                    returnCode, value = vrep.simxGetIntegerSignal(self.clientID,'dummy',vrep.simx_opmode_blocking)
+                    printlog('\nsimxGetIntegerSignal', returnCode)
+                    returnCode, serverState = vrep.simxGetInMessageInfo(self.clientID, vrep.simx_headeroffset_server_state)
+                    printlog('\nsimxGetInMessageInfo', returnCode)
+                    print('\nserver_state:', serverState)
+                    not_stopped = serverState & 1
+                    print('\nsimulation_not_stopped:', not_stopped)
+
+                    
             elif self.showGUI == 1:
                 #Wait for server and start simulation (doesnt work in headless mode -h)
                 print('Waiting for server to restart simulation...')
