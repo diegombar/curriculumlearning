@@ -30,6 +30,7 @@ def savePlot(var_value_per_ep, ylabel_str, title_str, dir_path, name):
     plt.title(title_str)
     plot_file = os.path.join(dir_path, name)
     fig.savefig(plot_file, bbox_inches='tight')
+    plt.close()
 
 def savePlots(disc_returns, num_steps, successes, avg_maxQs, epsilons, dir_path):
     #note: "per_ep" in variable names were omitted
@@ -143,7 +144,7 @@ y = 0.99 # discount factor mnih:0.99
 h_params['discount_factor'] = y
 num_episodes = 10 #1000 # number of runs#######################################TO SET
 h_params['num_episodes'] = num_episodes
-max_steps_per_episode = 10 #1000 # max number of actions per episode##########TO SET
+max_steps_per_episode = 100 #1000 # max number of actions per episode##########TO SET
 h_params['max_steps_per_episode'] = max_steps_per_episode
 
 e_max = 1.0 # initial epsilon mnih = 1.0
@@ -151,7 +152,7 @@ e_min = 0.01 # final epsilon mnih = 0.01
 e_update_steps = (max_steps_per_episode * num_episodes) // 3  #50 # times e is decreased (has to be =< num_episodes)
 #reach e_min in num_episodes // 2
 e = e_max #initialize epsilon
-model_saving_period = 1 #100 #episodes
+model_saving_period = 10 #100 #episodes
 h_params['e_max'] = e_max
 h_params['e_min'] = e_min
 h_params['e_update_steps'] = e_update_steps
@@ -166,7 +167,7 @@ h_params['replay_memory_size'] = replay_memory_size
 dataset = experience_dataset(replay_memory_size)
 batch_size = 3 #32 #mnih=32
 train_model_steps_period = 4 # mnih = 4
-replay_start_size = 21 #int(5E4) # num of steps to fill dataset with random actions mnih=5E4
+replay_start_size = 110 #int(5E4) # num of steps to fill dataset with random actions mnih=5E4
 # about 50 episodes
 if replay_start_size <= max_steps_per_episode or replay_start_size < batch_size:
     print("WARNING: replay_start_size must be greater than max_steps_per_episode and batch_size")
@@ -295,6 +296,7 @@ with RobotEnv(1) as env:
 
                 disc_return = r + y * disc_return 
                 # print("\nmaxQ:", maxQ)
+                print("\nmaxQ: ", maxQ)
                 sum_of_maxQ += maxQ
                 initialState = newState
 

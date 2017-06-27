@@ -92,7 +92,7 @@ class RobotEnv():
         self.vrepProcess = subprocess.Popen(vrep_cmd, shell=False, stdout=subprocess.PIPE, preexec_fn=os.setsid)
         # connect to V-Rep Remote Api Server
         vrep.simxFinish(-1)# close all opened connections
-        self.clientID = vrep.simxStart('127.0.0.1', self.portNb, True, False, 10000, 5) # Connect to V-REP
+        self.clientID = vrep.simxStart('127.0.0.1', self.portNb, True, False, 5000, 5) # Connect to V-REP
 
         if self.clientID == -1:
             print('Failed connecting to remote API server')
@@ -168,10 +168,11 @@ class RobotEnv():
             if self.showGUI == 0:
                 # temporary solution for headless mode 
                 time.sleep(1.0)
+                print("in headless mode")
             elif self.showGUI == 1:
                 #Wait for server and start simulation (doesnt work in headless mode -h)
-                running = True
                 print('Waiting for server to restart simulation...')
+                not_stopped = True
                 while not_stopped:
                     # returnCode, ping = vrep.simxGetPingTime(self.clientID)
                     returnCode, value = vrep.simxGetIntegerSignal(self.clientID,'dummy',vrep.simx_opmode_blocking)
