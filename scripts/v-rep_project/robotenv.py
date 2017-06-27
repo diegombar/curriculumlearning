@@ -165,54 +165,50 @@ class RobotEnv():
             if returnCode != vrep.simx_return_ok:
                 print("simxStopSimulation failed, error code:", returnCode)
             # wait 
-            if self.showGUI == 0:
-                # temporary solution for headless mode 
-                # time.sleep(1.0)
-                print("in headless mode")
-                #Wait for server and start simulation (doesnt work in headless mode -h)
-                print('Waiting for server to restart simulation...')
-                not_stopped = True
-                while not_stopped:
-                    # returnCode, ping = vrep.simxGetPingTime(self.clientID)
-                    returnCode, value = vrep.simxGetIntegerSignal(self.clientID,'dummy',vrep.simx_opmode_blocking)
-                    printlog('\nsimxGetIntegerSignal', returnCode)
-                    returnCode, serverState = vrep.simxGetInMessageInfo(self.clientID, vrep.simx_headeroffset_server_state)
-                    printlog('\nsimxGetInMessageInfo', returnCode)
-                    print('\nserver_state:', serverState)
-                    not_stopped = serverState & 1
-                    print('\nsimulation_not_stopped:', not_stopped)
+            # if self.showGUI == 0:
+            #     # temporary solution for headless mode
+            #     # time.sleep(1.0)
+            # elif self.showGUI ==1: 
+            #     print('Waiting for server to restart simulation...')
+            #     not_stopped = True
+            #     while not_stopped:
+            #         # returnCode, ping = vrep.simxGetPingTime(self.clientID)
+            #         returnCode, value = vrep.simxGetIntegerSignal(self.clientID,'dummy',vrep.simx_opmode_blocking)
+            #         printlog('\nsimxGetIntegerSignal', returnCode)
+            #         returnCode, serverState = vrep.simxGetInMessageInfo(self.clientID, vrep.simx_headeroffset_server_state)
+            #         printlog('\nsimxGetInMessageInfo', returnCode)
+            #         print('\nserver_state:', serverState)
+            #         not_stopped = serverState & 1
+            #         print('\nsimulation_not_stopped:', not_stopped)
+            #Wait for server and start simulation (doesnt work in headless mode -h)
+            print('Waiting for server to restart simulation...')
+            not_stopped = True
+            while not_stopped:
+                # returnCode, ping = vrep.simxGetPingTime(self.clientID)
+                returnCode, value = vrep.simxGetIntegerSignal(self.clientID,'dummy',vrep.simx_opmode_blocking)
+                printlog('\nsimxGetIntegerSignal', returnCode)
+                returnCode, serverState = vrep.simxGetInMessageInfo(self.clientID, vrep.simx_headeroffset_server_state)
+                printlog('\nsimxGetInMessageInfo', returnCode)
+                print('\nserver_state:', serverState)
+                not_stopped = serverState & 1
+                print('\nsimulation_not_stopped:', not_stopped)
 
-                    
-            elif self.showGUI == 1:
-                #Wait for server and start simulation (doesnt work in headless mode -h)
-                print('Waiting for server to restart simulation...')
-                not_stopped = True
-                while not_stopped:
-                    # returnCode, ping = vrep.simxGetPingTime(self.clientID)
-                    returnCode, value = vrep.simxGetIntegerSignal(self.clientID,'dummy',vrep.simx_opmode_blocking)
-                    printlog('\nsimxGetIntegerSignal', returnCode)
-                    returnCode, serverState = vrep.simxGetInMessageInfo(self.clientID, vrep.simx_headeroffset_server_state)
-                    printlog('\nsimxGetInMessageInfo', returnCode)
-                    print('\nserverState:', serverState)
+            #######################
+            #for synchronous mode, from http://www.forum.coppeliarobotics.com/viewtopic.php?f=5&t=6603&sid=7939343e5e04b699af2d46f8d6efe7ba
 
-                    not_stopped = serverState & 1
+            # while True:
+            # # poll the useless signal (to receive a message from server)
+            # vrep.simxGetIntegerSignal(clientID,'dummy',vrep.simx_opmode_blocking)
 
-                #######################
-                #for synchronous mode, from http://www.forum.coppeliarobotics.com/viewtopic.php?f=5&t=6603&sid=7939343e5e04b699af2d46f8d6efe7ba
+            # # check server state (within the received message)
+            # e = vrep.simxGetInMessageInfo(clientID,vrep.simx_headeroffset_server_state)
 
-                # while True:
-                # # poll the useless signal (to receive a message from server)
-                # vrep.simxGetIntegerSignal(clientID,'dummy',vrep.simx_opmode_blocking)
-
-                # # check server state (within the received message)
-                # e = vrep.simxGetInMessageInfo(clientID,vrep.simx_headeroffset_server_state)
-
-                # # check bit0 (lowest bit)
-                # not_stopped = e[1] & 1
-                # if not not_stopped:
-                #     break
-                # else:
-                #     print('not_stopped')
+            # # check bit0 (lowest bit)
+            # not_stopped = e[1] & 1
+            # if not not_stopped:
+            #     break
+            # else:
+            #     print('not_stopped')
 
             # vrep.simxSynchronous(self.clientID,True) #
             ###############

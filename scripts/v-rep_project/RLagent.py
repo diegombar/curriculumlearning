@@ -56,7 +56,9 @@ class experience_dataset():
     #add experience = list of transitions, freeing space if needed
     def add(self, experience):
         excess = len(self.data) + len(experience) - self.size
-        if excess > 0: self.data[0:excess] = []
+        if excess > 0:
+            print("replay_memory_size reached")
+            self.data[0:excess] = []
         self.data.extend(experience) 
 
     # randomly sample an array of transitions (s,a,r,s',done)
@@ -256,6 +258,10 @@ with RobotEnv(1) as env:
                 # print("\ndone:", done)
                 transition = np.array([initialState, chosenAction[0], r, newState, done])
                 episodeBuffer.add(np.reshape(transition, [1, 5])) # add step to episode buffer
+
+                if total_steps == replay_start_size:
+                    print("replay_start_size reached")
+
 
                 if total_steps > replay_start_size:
                     # decrease epsilon
