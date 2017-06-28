@@ -4,7 +4,6 @@ import signal
 import subprocess
 import sys
 import time
-import readchar
 import numpy as np
 
 try:
@@ -31,7 +30,9 @@ def printlog(functionName, returnCode):
 
 class RobotEnv():
     portNb = 19998 # must match the portNb on server side specified in remoteApiConnections.txt
-    vrepPath = "/home/diego/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
+    vrepPath = "/homes/dam416/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
+    #blade "/home/diego/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
+    #doc lab : "/homes/dam416/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
     scenePath = 'MicoRobot.ttt'
 
     # initialize the environment
