@@ -144,9 +144,9 @@ h_params = {} # params to save in txt file:
 # Set learning parameters
 y = 0.99 # discount factor mnih:0.99
 h_params['discount_factor'] = y
-num_episodes = 2000 # number of runs#######################################TO SET
+num_episodes = 4000 # number of runs#######################################TO SET
 h_params['num_episodes'] = num_episodes
-max_steps_per_episode = 1000 # max number of actions per episode##########TO SET
+max_steps_per_episode = 500 # max number of actions per episode##########TO SET
 h_params['max_steps_per_episode'] = max_steps_per_episode
 
 e_max = 1.0 # initial epsilon mnih = 1.0
@@ -183,6 +183,9 @@ message = "\nepisode: {} steps: {} undiscounted return obtained: {} done: {}"
 tau = 0.001 #Rate to update target network toward primary network
 h_params['update_target_net_rate_tau'] = tau
 load_model = "false" # "false", "trained", "checkpoint"
+
+h_params['notes'] = "goal_reward = 1, exponential decay reward"
+
 
 # save txt file with current parameters
 h_params_file_path = os.path.join(current_model_dir_path, "hyper_params.txt")
@@ -231,8 +234,8 @@ with RobotEnv(1) as env:
         updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
         total_steps = 0
         for i in range(1, num_episodes + 1):
-            # if i % (model_saving_period // 10) ==0:
-            print("episode number:", i)
+            if i % (model_saving_period // 10) ==0:
+                print("episode number:", i)
             # reset environment and get first new observation
             initialState = env.reset()
             disc_return = 0
