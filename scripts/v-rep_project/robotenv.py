@@ -4,8 +4,8 @@ import signal
 import subprocess
 import sys
 import time
-import readchar
 import numpy as np
+import os.path
 
 try:
     import vrep
@@ -31,7 +31,9 @@ def printlog(functionName, returnCode):
 
 class RobotEnv():
     portNb = 19998 # must match the portNb on server side specified in remoteApiConnections.txt
-    vrepPath = "/home/diego/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
+    vrepPath = "/homes/dam416/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
+    #blade "/home/diego/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
+    #doc lab : "/homes/dam416/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
     scenePath = 'MicoRobot.ttt'
 
     # initialize the environment
@@ -55,9 +57,11 @@ class RobotEnv():
         self.jointsCollectionHandle = None
         self.distToGoalHandle = None
         self.distanceToGoal = None
-        self.goal_reward = 10
+        self.goal_reward = 1
         self.jointVel = 0.5
         self.showGUI = showGUI
+        self.distance_decay_rate = 1.0 / 0.3
+        self.reward_normalizer = 1.0 / 500.0
 
     # enter and exit methods: needs with statement (used to exit the v-rep simulation properly)
     def __enter__(self):
@@ -80,7 +84,9 @@ class RobotEnv():
         self.jointsCollectionHandle = None
         self.distToGoalHandle = None
         self.distanceToGoal = None
-        self.goal_reward = 10 #reward given at goal
+        self.goal_reward = 1 #reward given at goal
+        self.distance_decay_rate = 1.0 / 0.3
+        self.reward_normalizer = 1.0 / 500.0
 
         self.jointVel = 0.5
 
@@ -88,7 +94,11 @@ class RobotEnv():
         if self.showGUI == 0:
             vrep_cmd = [self.vrepPath, '-h', self.scenePath] #  headless mode
         elif self.showGUI == 1:
-            vrep_cmd = [self.vrepPath, self.scenePath]
+            vrep_cmd = [self.vrepPath, self.scenePath] #GUI mode
+        # elif self.showGUI == 2: #headless mode via ssh
+        #     vrep_cmd = "xvfb-run --auto-servernum --server-num=1 /homes/dam416/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh -h -s -q MicoRobot.ttt"
+            # vrep_cmd = ['xvfb-run', '--auto-servernum', '--server-num=1', self.vrepPath, '-h', '-s', '-q', self.scenePath]
+            # vrep_cmd = ['xvfb-run', '--auto-servernum', '--server-num=1', self.vrepPath, '-h', self.scenePath]
 
         # NOTE: do not use "stdout=subprocess.PIPE" below to buffer logs, causes deaedlock at episode 464! (flushing the buffer may work... but buffering is not needed)
         self.vrepProcess = subprocess.Popen(vrep_cmd, shell=False, preexec_fn=os.setsid)
@@ -164,14 +174,14 @@ class RobotEnv():
     # reset the state for each new episode
     def reset(self):
         if vrep.simxGetConnectionId(self.clientID) != -1:
-            print("############Restarting simulation...############")
+            # print("############Restarting simulation...############")
             # stop simulation
             returnCode = vrep.simxStopSimulation(self.clientID,vrep.simx_opmode_blocking)
             # printlog('simxStopSimulation', returnCode)
             if returnCode != vrep.simx_return_ok:
                 print("simxStopSimulation failed, error code:", returnCode)
 
-            print('Waiting for server to restart simulation...')
+            # print('Waiting for server to restart simulation...')
 
             while True:
                 returnCode, ping = vrep.simxGetPingTime(self.clientID)
@@ -182,7 +192,7 @@ class RobotEnv():
                 print('\nServer state: ', serverState)
                 stopped = not (serverState & 1)
                 if stopped:
-                    print("\nSimulation stopped.")
+                    # print("\nSimulation stopped.")
                     break
             #NOTE: if synchronous mode is needed, check http://www.forum.coppeliarobotics.com/viewtopic.php?f=5&t=6603&sid=7939343e5e04b699af2d46f8d6efe7ba
 
@@ -231,7 +241,7 @@ class RobotEnv():
                 self.reward = self.goal_reward
             else:
                 # self.goalReached = False
-                self.reward = -self.distanceToGoal / 500 #normalization to get a total return around 1 
+                self.reward = self.reward_normalizer * np.exp(-self.distance_decay_rate * self.distanceToGoal)
 
     # execute action
     def step(self, action):
@@ -242,7 +252,7 @@ class RobotEnv():
             returnCode = vrep.simxSetJointTargetVelocity(self.clientID, self.jointHandles[jointNumber], velMode * self.jointVel, vrep.simx_opmode_blocking)
             # printlog('simxSetJointTargetVelocity', returnCode)
 
-            ## hand acitons
+            ## hand actions
             # def openHand(self.clientID):
             #     closingVel = -0.04
             #     returnCode = vrep.simxSetJointTargetVelocity(self.clientID, fingersH1, -closingVel, vrep.simx_opmode_oneshot)
