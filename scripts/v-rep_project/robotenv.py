@@ -29,12 +29,15 @@ def printlog(functionName, returnCode):
 # with robotEnv() as robotenv1:
 #     ###use robotenv1 here###
 
+home_path = os.path.expanduser('~')
+
 class RobotEnv():
     portNb = 19998 # must match the portNb on server side specified in remoteApiConnections.txt
-    vrepPath = "/homes/dam416/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
+    vrepPath = os.path.join(home_path, "V-REP_PRO_EDU_V3_4_0_Linux", "vrep.sh")
     #blade "/home/diego/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
     #doc lab : "/homes/dam416/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
-    scenePath = 'MicoRobot.ttt'
+    current_dir_path = os.path.dirname(os.path.realpath(__file__)) # directory of this .py file
+    scenePath = os.path.join(current_dir_path, "MicoRobot.ttt")
 
     # initialize the environment
     def __init__(self, showGUI):

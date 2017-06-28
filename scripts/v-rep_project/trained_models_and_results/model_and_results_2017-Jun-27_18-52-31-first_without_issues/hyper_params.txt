@@ -9,6 +9,12 @@
     "replay_memory_size": 100000,
     "replay_start_size": 50000,
     "train_model_steps_period": 4,
-    "update_target_net_rate_tau": 0.001
-    "notes":"negative normalized distance reward (/500), goal_reward=10"
+    "update_target_net_rate_tau": 0.001,
+    "notes":"negative normalized distance reward (/500), goal_reward=10",
+    "neurons_per_hidden_layer": 512,
+    "number_of_actions": ,
+    "learning_rate": 1E-6,
+    "num_hidden_layers_not_output": 2,
+    "non_linearity": "ReLU",
+    "optimizer": "Adam"
 }

@@ -14,6 +14,8 @@ import json
 # Load environment
 from robotenv import RobotEnv
 
+h_params = {} # params to save in txt file:
+
 def weight_variable(shape):
   initial = tf.truncated_normal(shape, stddev=0.1)
   return tf.Variable(initial)
@@ -24,7 +26,7 @@ def bias_variable(shape):
 
 def savePlot(var_value_per_ep, ylabel_str, title_str, dir_path, name):
     fig = plt.figure()
-    plt.plot(var_value_per_ep)
+    plt.plot(var_value_per_ep, linewidth=0.5)
     plt.ylabel(ylabel_str)
     plt.xlabel('episode')
     plt.title(title_str)
@@ -57,7 +59,6 @@ class experience_dataset():
     def add(self, experience):
         excess = len(self.data) + len(experience) - self.size
         if excess > 0:
-            print("replay_memory_size reached")
             self.data[0:excess] = []
         self.data.extend(experience) 
 
@@ -67,15 +68,9 @@ class experience_dataset():
         return np.reshape(sample, [sample_size,5])
 
 class DQN():
-    def __init__(self, nActions, stateSize):
+    def __init__(self, nActions, stateSize, nHidden, lrate):
         # stateSize = env.observation_space_size
         # nActions = env.action_space_size
-        nHidden = 512 #mnih: 512 for dense hidden layer
-        lrate = 1E-6 
-        h_params['neurons_per_hidden_layer'] = nHidden
-        h_params['number_of_actions'] = nActions
-        h_params['learning_rate'] = lrate
-
         self.inState = tf.placeholder(shape=[None,stateSize], dtype=tf.float32) #batch_size x stateSize
         # initialize params
         self.W0 = weight_variable([stateSize, nHidden])
@@ -89,9 +84,6 @@ class DQN():
         self.hidden1 = tf.nn.relu(tf.matmul(self.inState, self.W0) + self.b0)
         self.hidden2 = tf.nn.relu(tf.matmul(self.hidden1, self.W1) + self.b1)
         self.allQvalues = tf.matmul(self.hidden2, self.W2) + self.b2 # Q values for all actions given inState, #batch_size x nActions
-        h_params['num_hidden_layers_not_output'] = 2
-        h_params['non_linearity'] = "ReLU for hidden layers, none for output"
-
 
         # get batch of chosen actions a0
         self.chosenActions = tf.placeholder(shape=[None],dtype=tf.int32) #batch_size x 1
@@ -107,7 +99,6 @@ class DQN():
         self.error = tf.square(self.Qtargets - self.QChosenActions)
         self.loss = tf.reduce_mean(self.error)
         self.optimizer = tf.train.AdamOptimizer(learning_rate=lrate)
-        h_params['optimizer'] = "Adam"
         self.updateModel = self.optimizer.minimize(self.loss)
 
 # update target DQN weights
@@ -126,7 +117,7 @@ def updateTarget(op_holder,sess):
         sess.run(op)
 
 ### create folders to save results ###
-current_dir_path = os.path.dirname(os.path.realpath(__file__))
+current_dir_path = os.path.dirname(os.path.realpath(__file__)) # directory of this .py file
 all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
 timestr = time.strftime("%Y-%b-%d_%H-%M-%S",time.gmtime()) #or time.localtime()
 current_model_dir_path = os.path.join(all_models_dir_path, "model_and_results_" + timestr)
@@ -139,14 +130,13 @@ for new_directory in [trained_model_plots_dir_path, checkpoints_dir_path, traine
 
 checkpoint_model_file_path = os.path.join(checkpoints_dir_path, "checkpoint_model")
 trained_model_file_path = os.path.join(trained_model_dir_path, "final_model")
-h_params = {} # params to save in txt file:
 
 # Set learning parameters
 y = 0.99 # discount factor mnih:0.99
 h_params['discount_factor'] = y
-num_episodes = 4000 # number of runs#######################################TO SET
+num_episodes = 100 #4000 # number of runs#######################################TO SET
 h_params['num_episodes'] = num_episodes
-max_steps_per_episode = 500 # max number of actions per episode##########TO SET
+max_steps_per_episode = 1 #500 # max number of actions per episode##########TO SET
 h_params['max_steps_per_episode'] = max_steps_per_episode
 
 e_max = 1.0 # initial epsilon mnih = 1.0
@@ -154,12 +144,12 @@ e_min = 0.01 # final epsilon mnih = 0.01
 e_update_steps = (max_steps_per_episode * num_episodes) // 3  #50 # times e is decreased (has to be =< num_episodes)
 #reach e_min in num_episodes // 2
 e = e_max #initialize epsilon
-model_saving_period = 100 #episodes
+model_saving_period = 3#100 #episodes
 h_params['e_max'] = e_max
 h_params['e_min'] = e_min
 h_params['e_update_steps'] = e_update_steps
 eDecrease = (e_max - e_min) / e_update_steps
-replay_memory_size = 100000 #mnih: 1E6 about 100 episodes
+replay_memory_size = 20 #100000 #mnih: 1E6 about 100 episodes
 h_params['replay_memory_size'] = replay_memory_size
 
 # eFactor = 1 - 1E-5
@@ -167,9 +157,9 @@ h_params['replay_memory_size'] = replay_memory_size
 
 #experience replay
 dataset = experience_dataset(replay_memory_size)
-batch_size = 32 #mnih=32
+batch_size = 2 #32 #mnih=32
 train_model_steps_period = 4 # mnih = 4
-replay_start_size = 50000 # num of steps to fill dataset with random actions mnih=5E4
+replay_start_size = 5 #50000 # num of steps to fill dataset with random actions mnih=5E4
 # about 50 episodes
 if replay_start_size <= max_steps_per_episode or replay_start_size < batch_size:
     print("WARNING: replay_start_size must be greater than max_steps_per_episode and batch_size")
@@ -186,19 +176,29 @@ load_model = "false" # "false", "trained", "checkpoint"
 
 h_params['notes'] = "goal_reward = 1, exponential decay reward"
 
-
-# save txt file with current parameters
-h_params_file_path = os.path.join(current_model_dir_path, "hyper_params.txt")
-with open(h_params_file_path, "w") as h_params_file:
-    json.dump(h_params, h_params_file, sort_keys=True, indent=4)
+nHidden = 512 #mnih: 512 for dense hidden layer
+lrate = 1E-6
+h_params['neurons_per_hidden_layer'] = nHidden
+h_params['learning_rate'] = lrate
 
 #pass 0 for headless mode, 1 to showGUI
 with RobotEnv(1) as env:
     tf.reset_default_graph()
     stateSize = env.observation_space_size
     nActions = env.action_space_size
-    mainDQN = DQN(nActions, stateSize)
-    targetDQN = DQN(nActions, stateSize)
+    h_params['state_size'] = stateSize
+    h_params['number_of_actions'] = nActions
+    mainDQN = DQN(nActions, stateSize, nHidden, lrate)
+    targetDQN = DQN(nActions, stateSize, nHidden, lrate)
+
+    h_params['num_hidden_layers_not_output'] = 2
+    h_params['non_linearity'] = "ReLU for hidden layers, none for output"
+    h_params['optimizer'] = "Adam"
+
+    # save txt file with current parameters
+    h_params_file_path = os.path.join(current_model_dir_path, "hyper_params.txt")
+    with open(h_params_file_path, "w") as h_params_file:
+        json.dump(h_params, h_params_file, sort_keys=True, indent=4)
 
     # initialize and prepare model saving (every 2 hours and maximum 4 latest models)
     init = tf.global_variables_initializer()
@@ -234,8 +234,8 @@ with RobotEnv(1) as env:
         updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
         total_steps = 0
         for i in range(1, num_episodes + 1):
-            if i % (model_saving_period // 10) ==0:
-                print("episode number:", i)
+            # if i % (model_saving_period // 10) ==0:
+            print("episode number:", i)
             # reset environment and get first new observation
             initialState = env.reset()
             disc_return = 0
@@ -263,10 +263,6 @@ with RobotEnv(1) as env:
                 # print("\ndone:", done)
                 transition = np.array([initialState, chosenAction[0], r, newState, done])
                 episodeBuffer.add(np.reshape(transition, [1, 5])) # add step to episode buffer
-
-                if total_steps == replay_start_size:
-                    print("replay_start_size reached")
-
 
                 if total_steps > replay_start_size:
                     # decrease epsilon
