@@ -181,7 +181,7 @@ h_params['e_max'] = e_max
 h_params['e_min'] = e_min
 h_params['e_update_steps'] = e_update_steps
 eDecrease = (e_max - e_min) / e_update_steps
-replay_memory_size = 100000 #mnih: 1E6 about 100 episodes
+replay_memory_size = 100000 #last 200 episodes #mnih: 1E6 about 100 episodes
 h_params['replay_memory_size'] = replay_memory_size
 
 # eFactor = 1 - 1E-5
@@ -192,7 +192,7 @@ dataset = experience_dataset(replay_memory_size)
 
 batch_size = 32 #mnih=32
 train_model_steps_period = 4 # mnih = 4
-replay_start_size = 50000 # num of steps to fill dataset with random actions mnih=5E4
+replay_start_size = 50000 # 100 episodes #num of steps to fill dataset with random actions mnih=5E4
 # about 50 episodes
 if replay_start_size <= max_steps_per_episode or replay_start_size < batch_size:
     print("WARNING: replay_start_size must be greater than max_steps_per_episode and batch_size")
@@ -274,8 +274,8 @@ with RobotEnv(1) as env:
         updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
         total_steps = 0
         for i in range(1, num_episodes + 1):
-            # if i % (model_saving_period // 10) ==0:
-            print("episode number:", i)
+            if i % model_saving_period ==0:
+                print("episode number:", i)
             # reset environment and get first new observation
             initialState = env.reset()
             disc_return = 0
@@ -290,7 +290,7 @@ with RobotEnv(1) as env:
             episodeBuffer = experience_dataset(replay_memory_size) # temporary buffer
 
             while j < max_steps_per_episode:
-                print("\nstep:", j)
+                # print("\nstep:", j)
                 j += 1
                 total_steps += 1
 
@@ -304,25 +304,14 @@ with RobotEnv(1) as env:
                 maxQ4 = np.max(j4Qvalues)
                 maxQ5 = np.max(j5Qvalues)
                 maxQ6 = np.max(j6Qvalues)
-                # print("chosenActions1", chosenActions)
+
                 chosenActions = np.reshape(np.array(chosenActions), nJoints)
-                # print("chosenActions2", chosenActions)
-                # print("\nallJointsQvalues:", allJointsQvalues)
                 if total_steps <= replay_start_size:
                     chosenActions = np.random.randint(0, nActionsPerJoint, nJoints)
-                    # print("chosenActions3", chosenActions)
                 else:
-
                     indices = np.random.rand(6) < e
-
-                    # print("indices:", indices)
-                    # print("chosenActionsIndices",chosenActions[indices])
-                    # print("len:", len(indices))
-                    # print("values:", np.random.randint(0, nActionsPerJoint-1, size=len(indices)))
                     chosenActions[indices] = np.random.randint(0, nActionsPerJoint, sum(indices))
-                    # print("chosenActions4", chosenActions)
 
-                # print("\nActions", chosenActions)
                 # perform action and get new state and reward
                 newState, r, done = env.step(chosenActions)
                 # print("\nnewState:", newState)
