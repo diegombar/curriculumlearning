@@ -143,79 +143,79 @@ def updateTarget(op_holder,sess):
     for op in op_holder:
         sess.run(op)
 
-### create folders to save results ###
-
-current_dir_path = os.path.dirname(os.path.realpath(__file__)) # directory of this .py file
-all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
-timestr = time.strftime("%Y-%b-%d_%H-%M-%S",time.gmtime()) #or time.localtime()
-current_model_dir_path = os.path.join(all_models_dir_path, "model_and_results_" + timestr)
-trained_model_plots_dir_path = os.path.join(current_model_dir_path, "trained_model_results")
-checkpoints_dir_path = os.path.join(current_model_dir_path, "saved_checkpoints")
-trained_model_dir_path = os.path.join(current_model_dir_path, "trained_model")
-
-for new_directory in [trained_model_plots_dir_path, checkpoints_dir_path, trained_model_dir_path]:
-    os.makedirs(new_directory, exist_ok=True)
-
-checkpoint_model_file_path = os.path.join(checkpoints_dir_path, "checkpoint_model")
-trained_model_file_path = os.path.join(trained_model_dir_path, "final_model")
-
-
-
-# Set learning hyper parameters and save them 
-git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
-h_params["_commit_hash"] = git_hash.decode("utf-8").strip()
-y = 0.99 # discount factor mnih:0.99
-h_params['discount_factor'] = y
-num_episodes = 4000 # number of runs#######################################TO SET
-h_params['num_episodes'] = num_episodes
-max_steps_per_episode = 500 # max number of actions per episode##########TO SET
-h_params['max_steps_per_episode'] = max_steps_per_episode
-
-e_max = 1.0 # initial epsilon mnih = 1.0
-e_min = 0.01 # final epsilon mnih = 0.01
-e_update_steps = (max_steps_per_episode * num_episodes) // 3  #50 # times e is decreased (has to be =< num_episodes)
-#reach e_min in num_episodes // 2
-e = e_max #initialize epsilon
-model_saving_period = 100 #episodes
-h_params['e_max'] = e_max
-h_params['e_min'] = e_min
-h_params['e_update_steps'] = e_update_steps
-eDecrease = (e_max - e_min) / e_update_steps
-replay_memory_size = 100000 #last 200 episodes #mnih: 1E6 about 100 episodes
-h_params['replay_memory_size'] = replay_memory_size
-
-# eFactor = 1 - 1E-5
-# h_params['e_factor'] = eFactor
-
-#experience replay
-dataset = experience_dataset(replay_memory_size)
-
-batch_size = 32 #mnih=32
-train_model_steps_period = 4 # mnih = 4
-replay_start_size = 50000 # 100 episodes #num of steps to fill dataset with random actions mnih=5E4
-# about 50 episodes
-if replay_start_size <= max_steps_per_episode or replay_start_size < batch_size:
-    print("WARNING: replay_start_size must be greater than max_steps_per_episode and batch_size")
-
-h_params['batch_size'] = batch_size
-h_params['train_model_steps_period'] = train_model_steps_period
-h_params['replay_start_size'] = replay_start_size
-
-message = "\nepisode: {} steps: {} undiscounted return obtained: {} done: {}"
-
-tau = 0.001 #Rate to update target network toward primary network
-h_params['update_target_net_rate_tau'] = tau
-load_model = "false" # "false", "trained", "checkpoint"
-
-h_params['notes'] = "goal_reward = 1, exponential decay reward, normalized angles"
-
-nHidden = 512 #mnih: 512 for dense hidden layer
-lrate = 1E-6
-h_params['neurons_per_hidden_layer'] = nHidden
-h_params['learning_rate'] = lrate
-
-#pass 0 for headless mode, 1 to showGUI
 with RobotEnv(1) as env:
+    ### create folders to save results ###
+    current_dir_path = os.path.dirname(os.path.realpath(__file__)) # directory of this .py file
+    all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
+    timestr = time.strftime("%Y-%b-%d_%H-%M-%S",time.gmtime()) #or time.localtime()
+    current_model_dir_path = os.path.join(all_models_dir_path, "model_and_results_" + timestr)
+    trained_model_plots_dir_path = os.path.join(current_model_dir_path, "trained_model_results")
+    checkpoints_dir_path = os.path.join(current_model_dir_path, "saved_checkpoints")
+    trained_model_dir_path = os.path.join(current_model_dir_path, "trained_model")
+
+    for new_directory in [trained_model_plots_dir_path, checkpoints_dir_path, trained_model_dir_path]:
+        os.makedirs(new_directory, exist_ok=True)
+
+    checkpoint_model_file_path = os.path.join(checkpoints_dir_path, "checkpoint_model")
+    trained_model_file_path = os.path.join(trained_model_dir_path, "final_model")
+
+
+
+    # Set learning hyper parameters and save them
+    git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+    h_params["_commit_hash"] = git_hash.decode("utf-8").strip()
+    y = 0.99 # discount factor mnih:0.99
+    h_params['discount_factor'] = y
+    num_episodes = 4000 # number of runs#######################################TO SET
+    h_params['num_episodes'] = num_episodes
+    max_steps_per_episode = 500 # max number of actions per episode##########TO SET
+    h_params['max_steps_per_episode'] = max_steps_per_episode
+
+    e_max = 1.0 # initial epsilon mnih = 1.0
+    e_min = 0.01 # final epsilon mnih = 0.01
+    e_update_steps = (max_steps_per_episode * num_episodes) // 3  #50 # times e is decreased (has to be =< num_episodes)
+    #reach e_min in num_episodes // 2
+    e = e_max #initialize epsilon
+    model_saving_period = 100 #episodes
+    h_params['e_max'] = e_max
+    h_params['e_min'] = e_min
+    h_params['e_update_steps'] = e_update_steps
+    eDecrease = (e_max - e_min) / e_update_steps
+    replay_memory_size = 100000 #last 200 episodes #mnih: 1E6 about 100 episodes
+    h_params['replay_memory_size'] = replay_memory_size
+
+    # eFactor = 1 - 1E-5
+    # h_params['e_factor'] = eFactor
+
+    #experience replay
+    dataset = experience_dataset(replay_memory_size)
+
+    batch_size = 32 #mnih=32
+    train_model_steps_period = 4 # mnih = 4
+    replay_start_size = 50000 # 100 episodes #num of steps to fill dataset with random actions mnih=5E4
+    # about 50 episodes
+    if replay_start_size <= max_steps_per_episode or replay_start_size < batch_size:
+        print("WARNING: replay_start_size must be greater than max_steps_per_episode and batch_size")
+
+    h_params['batch_size'] = batch_size
+    h_params['train_model_steps_period'] = train_model_steps_period
+    h_params['replay_start_size'] = replay_start_size
+
+    message = "\nepisode: {} steps: {} undiscounted return obtained: {} done: {}"
+
+    tau = 0.001 #Rate to update target network toward primary network
+    h_params['update_target_net_rate_tau'] = tau
+    load_model = "false" # "false", "trained", "checkpoint"
+
+    h_params['notes'] = "goal_reward = 1, exponential decay reward, normalized angles"
+
+    nHidden = 512 #mnih: 512 for dense hidden layer
+    lrate = 1E-6
+    h_params['neurons_per_hidden_layer'] = nHidden
+    h_params['learning_rate'] = lrate
+
+    #pass 0 for headless mode, 1 to showGUI
+    # with RobotEnv(1) as env:
     tf.reset_default_graph()
     stateSize = env.observation_space_size
     nActions = env.action_space_size
