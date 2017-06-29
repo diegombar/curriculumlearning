@@ -61,7 +61,7 @@ class RobotEnv():
         self.distToGoalHandle = None
         self.distanceToGoal = None
         self.goal_reward = 1
-        self.jointVel = 0.5
+        self.jointVel = 0.3
         self.showGUI = showGUI
         self.distance_decay_rate = 1.0 / 0.3
         self.reward_normalizer = 1.0 / 500.0
@@ -91,7 +91,7 @@ class RobotEnv():
         self.distance_decay_rate = 1.0 / 0.3
         self.reward_normalizer = 1.0 / 500.0
 
-        self.jointVel = 0.5
+        self.jointVel = 0.3
 
         # launch v-rep
         if self.showGUI == 0:

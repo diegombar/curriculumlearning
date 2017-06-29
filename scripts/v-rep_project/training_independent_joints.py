@@ -18,7 +18,7 @@ from robotenv import RobotEnv
 h_params = {} # params to save in txt file:
 
 def weight_variable(shape):
-  initial = tf.truncated_normal(shape, stddev=0.1)
+  initial = tf.truncated_normal(shape, mean=0.0, stddev=0.1)
   return tf.Variable(initial)
 
 def bias_variable(shape):
@@ -85,7 +85,7 @@ class DQN():
         # initialize params
         self.W0 = weight_variable([stateSize, nHidden])
         self.W1 = weight_variable([nHidden, nHidden])
-        self.W2 =weight_variable([nHidden, nHidden])
+        self.W2 = weight_variable([nHidden, nHidden])
         self.W3 = weight_variable([nHidden, nHidden])
         self.W4 = weight_variable([nHidden, nActions])
 
@@ -145,8 +145,6 @@ def updateTarget(op_holder,sess):
 
 ### create folders to save results ###
 
-
-
 current_dir_path = os.path.dirname(os.path.realpath(__file__)) # directory of this .py file
 all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
 timestr = time.strftime("%Y-%b-%d_%H-%M-%S",time.gmtime()) #or time.localtime()
@@ -164,8 +162,8 @@ trained_model_file_path = os.path.join(trained_model_dir_path, "final_model")
 
 
 # Set learning hyper parameters and save them 
-git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
-h_params["_commit_hash"] = git_hash
+# git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']) #issues
+# h_params["_commit_hash"] = git_hash
 y = 0.99 # discount factor mnih:0.99
 h_params['discount_factor'] = y
 num_episodes = 4000 # number of runs#######################################TO SET
@@ -276,8 +274,8 @@ with RobotEnv(1) as env:
         updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
         total_steps = 0
         for i in range(1, num_episodes + 1):
-            if i % (model_saving_period // 10) ==0:
-                print("episode number:", i)
+            # if i % (model_saving_period // 10) ==0:
+            print("episode number:", i)
             # reset environment and get first new observation
             initialState = env.reset()
             disc_return = 0
@@ -292,7 +290,7 @@ with RobotEnv(1) as env:
             episodeBuffer = experience_dataset(replay_memory_size) # temporary buffer
 
             while j < max_steps_per_episode:
-                # print("\nstep:", j)
+                print("\nstep:", j)
                 j += 1
                 total_steps += 1
 
@@ -311,7 +309,7 @@ with RobotEnv(1) as env:
                 # print("chosenActions2", chosenActions)
                 # print("\nallJointsQvalues:", allJointsQvalues)
                 if total_steps <= replay_start_size:
-                    chosenActions = np.random.randint(0, nActionsPerJoint-1, nJoints)
+                    chosenActions = np.random.randint(0, nActionsPerJoint, nJoints)
                     # print("chosenActions3", chosenActions)
                 else:
 
@@ -321,9 +319,10 @@ with RobotEnv(1) as env:
                     # print("chosenActionsIndices",chosenActions[indices])
                     # print("len:", len(indices))
                     # print("values:", np.random.randint(0, nActionsPerJoint-1, size=len(indices)))
-                    chosenActions[indices] = np.random.randint(0, nActionsPerJoint-1, sum(indices))
+                    chosenActions[indices] = np.random.randint(0, nActionsPerJoint, sum(indices))
                     # print("chosenActions4", chosenActions)
 
+                # print("\nActions", chosenActions)
                 # perform action and get new state and reward
                 newState, r, done = env.step(chosenActions)
                 # print("\nnewState:", newState)
