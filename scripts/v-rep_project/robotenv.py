@@ -192,10 +192,10 @@ class RobotEnv():
                 # printlog('\nsimxGetPingTime', returnCode)
                 returnCode, serverState = vrep.simxGetInMessageInfo(self.clientID, vrep.simx_headeroffset_server_state)
                 # printlog('\nsimxGetInMessageInfo', returnCode)
-                print('\nServer state: ', serverState)
+                # print('\nServer state: ', serverState)
                 stopped = not (serverState & 1)
                 if stopped:
-                    # print("\nSimulation stopped.")
+                    print("\nSimulation stopped.")
                     break
             #NOTE: if synchronous mode is needed, check http://www.forum.coppeliarobotics.com/viewtopic.php?f=5&t=6603&sid=7939343e5e04b699af2d46f8d6efe7ba
 
@@ -227,9 +227,10 @@ class RobotEnv():
             # print("Getting state...")
             returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_blocking) # or simx_opmode_blocking (not recommended)
             jointPositions = np.array(floatData[0::2]) #take elements at odd positions (even correspond to torques)
-            jointPositions = jointPositions % (2 * np.pi) #take values in [0, 2*pi[
-            newState = [angle if angle <= np.pi else angle - 2 * np.pi for angle in jointPositions] #take values in ]-pi, +pi]
-            state1 = np.array(newState)
+            jointPositions = jointPositions % (2 * np.pi) #convert values to [0, 2*pi[
+            newState = [angle if angle <= np.pi else angle - 2 * np.pi for angle in jointPositions] #convert values to ]-pi, +pi]
+            unNormalizedState1 = np.array(newState)
+            state1 = unNormalizedState1 / np.pi
             # print("New state received")
             try: 
                 self.state = state1.reshape((1,6)) #reshape (for tensorflow)
@@ -247,12 +248,16 @@ class RobotEnv():
                 self.reward = self.reward_normalizer * np.exp(-self.distance_decay_rate * self.distanceToGoal)
 
     # execute action
-    def step(self, action):
+    def step(self, actions):
         if vrep.simxGetConnectionId(self.clientID) != -1:
             # 6 * 3 = 18 actions -> action is in [0,17]
-            jointNumber = action // 3
-            velMode = action % 3 - 1 # speed to apply -1->-Vel;  0->zero;  +1->+Vel
-            returnCode = vrep.simxSetJointTargetVelocity(self.clientID, self.jointHandles[jointNumber], velMode * self.jointVel, vrep.simx_opmode_blocking)
+            # print("actions", actions)
+            # jointNumber = action // 3
+            velMode = actions % 3 - 1 # speed to apply -1->-Vel;  0->zero;  +1->+Vel
+            # print("velMode", velMode)
+            for i in range(0,6):
+                returnCode = vrep.simxSetJointTargetVelocity(self.clientID, self.jointHandles[i], velMode[i] * self.jointVel, vrep.simx_opmode_blocking)
+
             # printlog('simxSetJointTargetVelocity', returnCode)
 
             ## hand actions

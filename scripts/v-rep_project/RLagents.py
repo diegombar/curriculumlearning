@@ -14,6 +14,8 @@ import json
 # Load environment
 from robotenv import RobotEnv
 
+h_params = {} # params to save in txt file:
+
 def weight_variable(shape):
   initial = tf.truncated_normal(shape, stddev=0.1)
   return tf.Variable(initial)
@@ -24,7 +26,7 @@ def bias_variable(shape):
 
 def savePlot(var_value_per_ep, ylabel_str, title_str, dir_path, name):
     fig = plt.figure()
-    plt.plot(var_value_per_ep)
+    plt.plot(var_value_per_ep, linewidth=0.5)
     plt.ylabel(ylabel_str)
     plt.xlabel('episode')
     plt.title(title_str)
@@ -32,7 +34,7 @@ def savePlot(var_value_per_ep, ylabel_str, title_str, dir_path, name):
     fig.savefig(plot_file, bbox_inches='tight')
     plt.close()
 
-def savePlots(disc_returns, num_steps, successes, avg_maxQs, epsilons, dir_path):
+def savePlots(dir_path, disc_returns, num_steps, successes, epsilons, avg_maxQ1s, avg_maxQ2s, avg_maxQ3s, avg_maxQ4s, avg_maxQ5s, avg_maxQ6s):
     #note: "per_ep" in variable names were omitted
     # discounted returns for each episode
     savePlot(disc_returns, "disc. return", "Discounted return obtained", dir_path, "disc_returns.svg")
@@ -42,10 +44,17 @@ def savePlots(disc_returns, num_steps, successes, avg_maxQs, epsilons, dir_path)
 
     # number of success so far, for each episode
     savePlot(successes, "successes", "Number of successes", dir_path, "successes.svg")
-    # average (over steps, for each episode) of maxQ
-    savePlot(avg_maxQs, "average maxQ", "Average maxQ per episode", dir_path, "average_q.svg")
+    
     # epsilon evolution
     savePlot(epsilons, "epsilon value", "Epsilon updates", dir_path, "epsilons.svg")
+
+    # average (over steps, for each episode) of maxQ
+    savePlot(avg_maxQ1s, "average maxQ", "Average maxQ per episode, joint 1", dir_path, "average_q1.svg")
+    savePlot(avg_maxQ2s, "average maxQ", "Average maxQ per episode, joint 2", dir_path, "average_q2.svg")
+    savePlot(avg_maxQ3s, "average maxQ", "Average maxQ per episode, joint 3", dir_path, "average_q3.svg")
+    savePlot(avg_maxQ4s, "average maxQ", "Average maxQ per episode, joint 4", dir_path, "average_q4.svg")
+    savePlot(avg_maxQ5s, "average maxQ", "Average maxQ per episode, joint 5", dir_path, "average_q5.svg")
+    savePlot(avg_maxQ6s, "average maxQ", "Average maxQ per episode, joint 6", dir_path, "average_q6.svg")
 
 # experience replay dataset, experience = (s,a,r,s',done)
 class experience_dataset():
@@ -57,7 +66,6 @@ class experience_dataset():
     def add(self, experience):
         excess = len(self.data) + len(experience) - self.size
         if excess > 0:
-            print("replay_memory_size reached")
             self.data[0:excess] = []
         self.data.extend(experience) 
 
@@ -67,46 +75,56 @@ class experience_dataset():
         return np.reshape(sample, [sample_size,5])
 
 class DQN():
-    def __init__(self, nActions, stateSize):
+    def __init__(self, nActions, stateSize, nHidden, lrate):
         # stateSize = env.observation_space_size
         # nActions = env.action_space_size
-        nHidden = 512 #mnih: 512 for dense hidden layer
-        lrate = 1E-6 
-        h_params['neurons_per_hidden_layer'] = nHidden
-        h_params['number_of_actions'] = nActions #actually, num of neurons in output layer, i.e. nJoints x nActionsPerJoint = 6 x 3 = 18
-        h_params['learning_rate'] = lrate
-
+        self.nJoints = 6
         self.inState = tf.placeholder(shape=[None,stateSize], dtype=tf.float32) #batch_size x stateSize
+        self.nActionsPerJoint = nActions // self.nJoints
         # initialize params
         self.W0 = weight_variable([stateSize, nHidden])
         self.W1 = weight_variable([nHidden, nHidden])
-        self.W2 = weight_variable([nHidden, nActions])
+        self.W2 =weight_variable([nHidden, nHidden])
+        self.W3 = weight_variable([nHidden, nHidden])
+        self.W4 = weight_variable([nHidden, nActions])
+
         self.b0 = bias_variable([1])
         self.b1 = bias_variable([1])
         self.b2 = bias_variable([1])
+        self.b3 = bias_variable([1])
+        self.b4 = bias_variable([1])
 
         # layers
         self.hidden1 = tf.nn.relu(tf.matmul(self.inState, self.W0) + self.b0)
         self.hidden2 = tf.nn.relu(tf.matmul(self.hidden1, self.W1) + self.b1)
-        self.outputLayer = tf.matmul(self.hidden2, self.W2) + self.b2 # Q values for all actions given inState, #batch_size x nActions
-        h_params['num_hidden_layers_not_output'] = 2
-        h_params['non_linearity'] = "ReLU for hidden layers, none for output"
+        self.hidden3 = tf.nn.relu(tf.matmul(self.hidden2, self.W2) + self.b2)
+        self.hidden4 = tf.nn.relu(tf.matmul(self.hidden3, self.W3) + self.b3)
+        self.allJointsQvalues = tf.matmul(self.hidden4, self.W4) + self.b4 # Q values for all actions given inState, #batch_size x nActions
+
+        self.j1Qvalues, self.j2Qvalues, self.j3Qvalues, self.j4Qvalues, self.j5Qvalues, self.j6Qvalues = tf.split(self.allJointsQvalues, self.nJoints, axis=1) #each one batch_size x 3
+
+        self.allQvalues3D = tf.reshape(self.allJointsQvalues, [-1, self.nJoints, self.nActionsPerJoint]) #could use this to compute jQvalues, etc.
 
         # get batch of chosen actions a0
-        self.chosenActions = tf.placeholder(shape=[None],dtype=tf.int32) #batch_size x 1
-        # select Q values for chosen actions a0
-        self.chosenAs_onehot = tf.one_hot(self.chosenActions,nActions,dtype=tf.float32)
-        self.QChosenActions = tf.reduce_sum(tf.multiply(self.outputLayer, self.chosenAs_onehot), axis=1)###
+        self.chosenActions = tf.placeholder(shape=[None, self.nJoints],dtype=tf.int32) #batch_size x nJoints
+        #select Q values for chosen actions a0
+        self.chosenAs_onehot = tf.one_hot(self.chosenActions, self.nActionsPerJoint, dtype=tf.float32) #batch_size x nJoints x nActionsPerJoint
+
+        self.chosenActionsQvalues = tf.reduce_sum(tf.multiply(self.allQvalues3D, self.chosenAs_onehot), axis=2) #element-wise multiplication
 
         # action with highest Q given inState
-        self.bestAction = tf.argmax(self.outputLayer, 1) #batch_size x 1
+        self.bestActionj1 = tf.argmax(self.j1Qvalues, axis=1) #batch_size x 1
+        self.bestActionj2 = tf.argmax(self.j2Qvalues, axis=1) #batch_size x 1
+        self.bestActionj3 = tf.argmax(self.j3Qvalues, axis=1) #batch_size x 1
+        self.bestActionj4 = tf.argmax(self.j4Qvalues, axis=1) #batch_size x 1
+        self.bestActionj5 = tf.argmax(self.j5Qvalues, axis=1) #batch_size x 1
+        self.bestActionj6 = tf.argmax(self.j6Qvalues, axis=1) #batch_size x 1
 
         # loss by taking the sum of squares difference between the target and prediction Q values.
-        self.Qtargets = tf.placeholder(shape=[None], dtype=tf.float32) #batch_size x 1
-        self.error = tf.square(self.Qtargets - self.QChosenActions)
+        self.Qtargets = tf.placeholder(shape=[None, self.nJoints], dtype=tf.float32) #batch_size x nJoints
+        self.error = tf.square(self.Qtargets - self.chosenActionsQvalues) #element-wise
         self.loss = tf.reduce_mean(self.error)
         self.optimizer = tf.train.AdamOptimizer(learning_rate=lrate)
-        h_params['optimizer'] = "Adam"
         self.updateModel = self.optimizer.minimize(self.loss)
 
 # update target DQN weights
@@ -125,7 +143,7 @@ def updateTarget(op_holder,sess):
         sess.run(op)
 
 ### create folders to save results ###
-current_dir_path = os.path.dirname(os.path.realpath(__file__))
+current_dir_path = os.path.dirname(os.path.realpath(__file__)) # directory of this .py file
 all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
 timestr = time.strftime("%Y-%b-%d_%H-%M-%S",time.gmtime()) #or time.localtime()
 current_model_dir_path = os.path.join(all_models_dir_path, "model_and_results_" + timestr)
@@ -138,14 +156,13 @@ for new_directory in [trained_model_plots_dir_path, checkpoints_dir_path, traine
 
 checkpoint_model_file_path = os.path.join(checkpoints_dir_path, "checkpoint_model")
 trained_model_file_path = os.path.join(trained_model_dir_path, "final_model")
-h_params = {} # params to save in txt file:
 
 # Set learning parameters
 y = 0.99 # discount factor mnih:0.99
 h_params['discount_factor'] = y
-num_episodes = 2000 # number of runs#######################################TO SET
+num_episodes = 4000 # number of runs#######################################TO SET
 h_params['num_episodes'] = num_episodes
-max_steps_per_episode = 1000 # max number of actions per episode##########TO SET
+max_steps_per_episode = 500 # max number of actions per episode##########TO SET
 h_params['max_steps_per_episode'] = max_steps_per_episode
 
 e_max = 1.0 # initial epsilon mnih = 1.0
@@ -166,6 +183,7 @@ h_params['replay_memory_size'] = replay_memory_size
 
 #experience replay
 dataset = experience_dataset(replay_memory_size)
+
 batch_size = 32 #mnih=32
 train_model_steps_period = 4 # mnih = 4
 replay_start_size = 50000 # num of steps to fill dataset with random actions mnih=5E4
@@ -183,18 +201,33 @@ tau = 0.001 #Rate to update target network toward primary network
 h_params['update_target_net_rate_tau'] = tau
 load_model = "false" # "false", "trained", "checkpoint"
 
-# save txt file with current parameters
-h_params_file_path = os.path.join(current_model_dir_path, "hyper_params.txt")
-with open(h_params_file_path, "w") as h_params_file:
-    json.dump(h_params, h_params_file, sort_keys=True, indent=4)
+h_params['notes'] = "goal_reward = 1, exponential decay reward, normalized angles"
+
+nHidden = 512 #mnih: 512 for dense hidden layer
+lrate = 1E-6
+h_params['neurons_per_hidden_layer'] = nHidden
+h_params['learning_rate'] = lrate
 
 #pass 0 for headless mode, 1 to showGUI
 with RobotEnv(1) as env:
     tf.reset_default_graph()
     stateSize = env.observation_space_size
     nActions = env.action_space_size
-    mainDQN = DQN(nActions, stateSize)
-    targetDQN = DQN(nActions, stateSize)
+    nJoints = 6
+    nActionsPerJoint = nActions / nJoints
+    h_params['state_size'] = stateSize
+    h_params['number_of_actions'] = nActions
+    mainDQN = DQN(nActions, stateSize, nHidden, lrate)
+    targetDQN = DQN(nActions, stateSize, nHidden, lrate)
+
+    h_params['num_hidden_layers_not_output'] = 2
+    h_params['non_linearity'] = "ReLU for hidden layers, none for output"
+    h_params['optimizer'] = "Adam"
+
+    # save txt file with current parameters
+    h_params_file_path = os.path.join(current_model_dir_path, "hyper_params.txt")
+    with open(h_params_file_path, "w") as h_params_file:
+        json.dump(h_params, h_params_file, sort_keys=True, indent=4)
 
     # initialize and prepare model saving (every 2 hours and maximum 4 latest models)
     init = tf.global_variables_initializer()
@@ -208,8 +241,13 @@ with RobotEnv(1) as env:
     disc_return_per_ep = []
     success_count = 0
     successes = []
-    avg_maxQ_per_ep = []
     epsilon_per_ep = []
+    avg_maxQ1_per_ep = []
+    avg_maxQ2_per_ep = []
+    avg_maxQ3_per_ep = []
+    avg_maxQ4_per_ep = []
+    avg_maxQ5_per_ep = []
+    avg_maxQ6_per_ep = []
 
     with tf.Session() as sess:
         print("Starting training...")
@@ -230,12 +268,17 @@ with RobotEnv(1) as env:
         updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
         total_steps = 0
         for i in range(1, num_episodes + 1):
-            # if i % (model_saving_period // 10) ==0:
-            print("episode number:", i)
+            if i % (model_saving_period // 10) ==0:
+                print("episode number:", i)
             # reset environment and get first new observation
             initialState = env.reset()
             disc_return = 0
-            sum_of_maxQ = 0
+            sum_of_maxQ1 = 0
+            sum_of_maxQ2 = 0
+            sum_of_maxQ3 = 0
+            sum_of_maxQ4 = 0
+            sum_of_maxQ5 = 0
+            sum_of_maxQ6 = 0
             done = False
             j = 0
             episodeBuffer = experience_dataset(replay_memory_size) # temporary buffer
@@ -246,24 +289,40 @@ with RobotEnv(1) as env:
                 total_steps += 1
 
                 # pick action from the DQN, epsilon greedy
-                chosenAction, outputLayer = sess.run([mainDQN.bestAction, mainDQN.outputLayer], feed_dict={mainDQN.inState:initialState})
-                for 
+                # chosenAction, allJointsQvalues = sess.run([mainDQN.bestAction, mainDQN.allJointsQvalues], feed_dict={mainDQN.inState:initialState})
+                chosenActions, j1Qvalues, j2Qvalues, j3Qvalues, j4Qvalues, j5Qvalues, j6Qvalues = sess.run([[mainDQN.bestActionj1, mainDQN.bestActionj2, mainDQN.bestActionj3, mainDQN.bestActionj4, mainDQN.bestActionj5, mainDQN.bestActionj6], mainDQN.j1Qvalues, mainDQN.j2Qvalues, mainDQN.j3Qvalues, mainDQN.j4Qvalues, mainDQN.j5Qvalues, mainDQN.j6Qvalues], feed_dict={mainDQN.inState:initialState})
                 # print("\nchosenAction:", chosenAction)
-                maxQ = np.max(outputLayer)
-                # print("\noutputLayer:", outputLayer)
-                if np.random.rand(1) < e or total_steps <= replay_start_size:
-                    chosenAction[0] = np.random.randint(0, nActions-1)
+                maxQ1 = np.max(j1Qvalues)
+                maxQ2 = np.max(j2Qvalues)
+                maxQ3 = np.max(j3Qvalues)
+                maxQ4 = np.max(j4Qvalues)
+                maxQ5 = np.max(j5Qvalues)
+                maxQ6 = np.max(j6Qvalues)
+                # print("chosenActions1", chosenActions)
+                chosenActions = np.reshape(np.array(chosenActions), nJoints)
+                # print("chosenActions2", chosenActions)
+                # print("\nallJointsQvalues:", allJointsQvalues)
+                if total_steps <= replay_start_size:
+                    chosenActions = np.random.randint(0, nActionsPerJoint-1, nJoints)
+                    # print("chosenActions3", chosenActions)
+                else:
+
+                    indices = np.random.rand(6) < e
+
+                    # print("indices:", indices)
+                    # print("chosenActionsIndices",chosenActions[indices])
+                    # print("len:", len(indices))
+                    # print("values:", np.random.randint(0, nActionsPerJoint-1, size=len(indices)))
+                    chosenActions[indices] = np.random.randint(0, nActionsPerJoint-1, sum(indices))
+                    # print("chosenActions4", chosenActions)
 
                 # perform action and get new state and reward
-                newState, r, done = env.step(chosenAction[0])
+                newState, r, done = env.step(chosenActions)
                 # print("\nnewState:", newState)
                 # print("\ndone:", done)
-                transition = np.array([initialState, chosenAction[0], r, newState, done])
+                transition = np.array([initialState, chosenActions, r, newState, done])
+
                 episodeBuffer.add(np.reshape(transition, [1, 5])) # add step to episode buffer
-
-                if total_steps == replay_start_size:
-                    print("replay_start_size reached")
-
 
                 if total_steps > replay_start_size:
                     # decrease epsilon
@@ -273,21 +332,46 @@ with RobotEnv(1) as env:
                     if total_steps % train_model_steps_period == 0:
                         
                         batch = dataset.sample(batch_size)
-                        batchOfStates0 = np.vstack(batch[:,0])
-                        batchOfActions0 = batch[:,1]
-                        batchOfRewards = batch[:,2]
-                        batchOfStates1 = np.vstack(batch[:,3])
-                        batchOfDones = batch[:,4]
-                        batchOfbestActions = sess.run(mainDQN.bestAction,feed_dict={mainDQN.inState:batchOfStates1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a'))
-                        batchOfQForAllActions = sess.run(targetDQN.outputLayer,feed_dict={targetDQN.inState:batchOfStates1}) #feed btach of s' and get batch of Q2(a')
+
+                        states0, actions0, rewards, states1, dones = batch.T
+                        # print(states0)
+                        # print(actions0)
+                        # print(rewards)
+                        # print(states1)
+                        # print(dones)
+                        states0 = np.vstack(states0)
+                        actions0 = np.vstack(actions0)
+                        states1 = np.vstack(states1)
+
+                        bestActionsj1, bestActionsj2, bestActionsj3, bestActionsj4, bestActionsj5, bestActionsj6 = sess.run([mainDQN.bestActionj1, mainDQN.bestActionj2, mainDQN.bestActionj3, mainDQN.bestActionj4, mainDQN.bestActionj5, mainDQN.bestActionj6], feed_dict={mainDQN.inState:states1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a')) #batch_size x 1
+
+                        allQj1, allQj2, allQj3, allQj4, allQj5, allQj6 = sess.run([targetDQN.j1Qvalues, targetDQN.j2Qvalues, targetDQN.j3Qvalues, targetDQN.j4Qvalues, targetDQN.j5Qvalues, targetDQN.j6Qvalues], feed_dict={targetDQN.inState:states1}) #feed btach of s' and get batch of Q2(a') # batch_size x 3
 
                         #get Q values of best actions
-                        batchOfQForBestActions = batchOfQForAllActions[range(batch_size), batchOfbestActions]
-                        end_multiplier = -(batchOfDones - 1)
-                        targetQ =  batchOfRewards + y * batchOfQForBestActions * end_multiplier
+                        bestActionsQValuesj1 = allQj1[range(batch_size), bestActionsj1] # batch_size x 1
+                        bestActionsQValuesj2 = allQj2[range(batch_size), bestActionsj2]
+                        bestActionsQValuesj3 = allQj3[range(batch_size), bestActionsj3]
+                        bestActionsQValuesj4 = allQj4[range(batch_size), bestActionsj4]
+                        bestActionsQValuesj5 = allQj5[range(batch_size), bestActionsj5]
+                        bestActionsQValuesj6 = allQj6[range(batch_size), bestActionsj6]
+
+                        end_multiplier = -(dones - 1) # batch_size x 1
+
+                        targetQj1 =  np.reshape(rewards + y * bestActionsQValuesj1 * end_multiplier, (-1,1)) # batch_size x 1
+                        targetQj2 =  np.reshape(rewards + y * bestActionsQValuesj2 * end_multiplier, (-1,1))
+                        targetQj3 =  np.reshape(rewards + y * bestActionsQValuesj3 * end_multiplier, (-1,1))
+                        targetQj4 =  np.reshape(rewards + y * bestActionsQValuesj4 * end_multiplier, (-1,1))
+                        targetQj5 =  np.reshape(rewards + y * bestActionsQValuesj5 * end_multiplier, (-1,1))
+                        targetQj6 =  np.reshape(rewards + y * bestActionsQValuesj6 * end_multiplier, (-1,1))
+
+
+                        targetQ = np.concatenate((targetQj1, targetQj2, targetQj3, targetQj4, targetQj5, targetQj6), axis=1) # batch_size x nJoints
 
                         #Update the network with our target values.
-                        _ = sess.run(mainDQN.updateModel, feed_dict={mainDQN.inState:batchOfStates0,mainDQN.Qtargets:targetQ, mainDQN.chosenActions:batchOfActions0})
+                        # print("states0:", states0)
+                        # print("targetQ:", targetQ)
+                        # print("actions0:", actions0)
+                        _ = sess.run(mainDQN.updateModel, feed_dict={mainDQN.inState:states0,mainDQN.Qtargets:targetQ, mainDQN.chosenActions:actions0})
                         
                         updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
 
@@ -297,14 +381,20 @@ with RobotEnv(1) as env:
                         #     # get max for Q target
                         #     # print("\nallNewQvalues:", allNewQvalues)
                         #     maxQ = np.max(allNewQvalues)
-                        #     targetQ = outputLayer # dont update Q values corresponding for actions not performed
+                        #     targetQ = allJointsQvalues # dont update Q values corresponding for actions not performed
                         #     targetQ[0, chosenAction[0]] = r + y * maxQ #only update Q value for action performed
                         #     #Train our network using target and predicted Q values
                         #     sess.run([updateModel], feed_dict={inState:s, Qtargets:targetQ})
 
                 disc_return = r + y * disc_return 
                 # print("\nmaxQ:", maxQ)
-                sum_of_maxQ += maxQ
+                sum_of_maxQ1 += maxQ1
+                sum_of_maxQ2 += maxQ2
+                sum_of_maxQ3 += maxQ3
+                sum_of_maxQ4 += maxQ4
+                sum_of_maxQ5 += maxQ5
+                sum_of_maxQ6 += maxQ6
+
                 initialState = newState
 
                 if done == True:
@@ -314,29 +404,42 @@ with RobotEnv(1) as env:
             # add current episode's list of transitions to dataset
             dataset.add(episodeBuffer.data)
 
-            #save the model and log training
-            if i % model_saving_period ==0:
-                print("\nr:", r) ############ print if having problems
-                save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
-                training_time = time.time() - start_time #in seconds
-                print('\nCurrent training time:', training_time)
-                print(message.format(i, j, disc_return, done))
-                print("Saved Model")
-                checkpoints_plots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
-                os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
-                savePlots(disc_return_per_ep, num_steps_per_ep, successes, avg_maxQ_per_ep, epsilon_per_ep, checkpoints_plots_dir_path)
-                print("Saved Plots")                
-
-            
-
             num_steps_per_ep.append(j)
             disc_return_per_ep.append(disc_return)
             successes.append(success_count)
-            averageMaxQ = sum_of_maxQ / j
-            print("averageMaxQ:", averageMaxQ)
-            avg_maxQ_per_ep.append(averageMaxQ)
             epsilon_per_ep.append(e)
-        
+
+            averageMaxQ1 = sum_of_maxQ1 / j
+            # print("averageMaxQ1:", averageMaxQ1)
+            avg_maxQ1_per_ep.append(averageMaxQ1)
+            averageMaxQ2 = sum_of_maxQ2 / j
+            # print("averageMaxQ2:", averageMaxQ2)
+            avg_maxQ2_per_ep.append(averageMaxQ2)
+            averageMaxQ3 = sum_of_maxQ3 / j
+            # print("averageMaxQ3:", averageMaxQ3)
+            avg_maxQ3_per_ep.append(averageMaxQ3)
+            averageMaxQ4 = sum_of_maxQ4 /j
+            # print("averageMaxQ4:", averageMaxQ4)
+            avg_maxQ4_per_ep.append(averageMaxQ4)
+            averageMaxQ5 = sum_of_maxQ5 / j
+            # print("averageMaxQ5:", averageMaxQ5)
+            avg_maxQ5_per_ep.append(averageMaxQ5)
+            averageMaxQ6 = sum_of_maxQ6 / j
+            # print("averageMaxQ6:", averageMaxQ6)
+            avg_maxQ6_per_ep.append(averageMaxQ6)
+            print("averageMaxQ for each joint: ", averageMaxQ1, averageMaxQ2, averageMaxQ3, averageMaxQ4, averageMaxQ5, averageMaxQ6)
+            
+            #save the model and log training
+            if i % model_saving_period ==0:
+                # print("\nr:", r) ############ print if having problems
+                save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
+                print(message.format(i, j, disc_return, done))
+                # print("Saved Model")
+                checkpoints_plots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
+                os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
+                savePlots(checkpoints_plots_dir_path, disc_return_per_ep, num_steps_per_ep, successes, epsilon_per_ep, avg_maxQ1_per_ep, avg_maxQ2_per_ep, avg_maxQ3_per_ep, avg_maxQ4_per_ep, avg_maxQ5_per_ep, avg_maxQ6_per_ep)
+                # print("Saved Plots")        
+
         end_time = time.time()
         print("Training ended")
 
@@ -367,23 +470,17 @@ with RobotEnv(1) as env:
         # print('\nsteps:', j)
         # print('\nreturn:', rAll)     
 
-# statistics
-# print("Percent of succesful episodes: " + str(sum(undisc_return_per_ep)/num_episodes) + "%")
-
 # time
 total_training_time = end_time - start_time #in seconds
 print('\nTotal training time:', total_training_time)
 time_dict = {"total_training_time_in_secs":total_training_time}
 
-# save txt file with current parameters
+# save txt file with total time
 total_time_file_path = os.path.join(current_model_dir_path, "total_time.txt")
 with open(total_time_file_path, "w") as total_time_file:
     json.dump(time_dict, total_time_file, sort_keys=True, indent=4)
 
-#save txt file with total time
-
 ## save plots separately
-savePlots(disc_return_per_ep, num_steps_per_ep, successes, avg_maxQ_per_ep, epsilon_per_ep, trained_model_plots_dir_path)
-
+savePlots(trained_model_plots_dir_path, disc_return_per_ep, num_steps_per_ep, successes, epsilon_per_ep, avg_maxQ1_per_ep, avg_maxQ2_per_ep, avg_maxQ3_per_ep, avg_maxQ4_per_ep, avg_maxQ5_per_ep, avg_maxQ6_per_ep)
 #plt.show() #optional
 

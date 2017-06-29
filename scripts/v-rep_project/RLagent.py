@@ -134,9 +134,9 @@ trained_model_file_path = os.path.join(trained_model_dir_path, "final_model")
 # Set learning parameters
 y = 0.99 # discount factor mnih:0.99
 h_params['discount_factor'] = y
-num_episodes = 100 #4000 # number of runs#######################################TO SET
+num_episodes = 4000 #number of runs#######################################TO SET
 h_params['num_episodes'] = num_episodes
-max_steps_per_episode = 1 #500 # max number of actions per episode##########TO SET
+max_steps_per_episode = 500 # max number of actions per episode##########TO SET
 h_params['max_steps_per_episode'] = max_steps_per_episode
 
 e_max = 1.0 # initial epsilon mnih = 1.0
@@ -144,12 +144,12 @@ e_min = 0.01 # final epsilon mnih = 0.01
 e_update_steps = (max_steps_per_episode * num_episodes) // 3  #50 # times e is decreased (has to be =< num_episodes)
 #reach e_min in num_episodes // 2
 e = e_max #initialize epsilon
-model_saving_period = 3#100 #episodes
+model_saving_period = 100 #episodes
 h_params['e_max'] = e_max
 h_params['e_min'] = e_min
 h_params['e_update_steps'] = e_update_steps
 eDecrease = (e_max - e_min) / e_update_steps
-replay_memory_size = 20 #100000 #mnih: 1E6 about 100 episodes
+replay_memory_size = 100000 #mnih: 1E6 about 100 episodes
 h_params['replay_memory_size'] = replay_memory_size
 
 # eFactor = 1 - 1E-5
@@ -157,9 +157,9 @@ h_params['replay_memory_size'] = replay_memory_size
 
 #experience replay
 dataset = experience_dataset(replay_memory_size)
-batch_size = 2 #32 #mnih=32
+batch_size = 32 #mnih=32
 train_model_steps_period = 4 # mnih = 4
-replay_start_size = 5 #50000 # num of steps to fill dataset with random actions mnih=5E4
+replay_start_size = 50000 # num of steps to fill dataset with random actions mnih=5E4
 # about 50 episodes
 if replay_start_size <= max_steps_per_episode or replay_start_size < batch_size:
     print("WARNING: replay_start_size must be greater than max_steps_per_episode and batch_size")
@@ -234,8 +234,8 @@ with RobotEnv(1) as env:
         updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
         total_steps = 0
         for i in range(1, num_episodes + 1):
-            # if i % (model_saving_period // 10) ==0:
-            print("episode number:", i)
+            if i % (model_saving_period // 10) ==0:
+                print("episode number:", i)
             # reset environment and get first new observation
             initialState = env.reset()
             disc_return = 0
@@ -281,9 +281,9 @@ with RobotEnv(1) as env:
                         batchOfQForAllActions = sess.run(targetDQN.allQvalues,feed_dict={targetDQN.inState:batchOfStates1}) #feed btach of s' and get batch of Q2(a')
 
                         #get Q values of best actions
-                        batchOfQForBestActions = batchOfQForAllActions[range(batch_size), batchOfbestActions]
-                        end_multiplier = -(batchOfDones - 1)
-                        targetQ =  batchOfRewards + y * batchOfQForBestActions * end_multiplier
+                        batchOfQForBestActions = batchOfQForAllActions[range(batch_size), batchOfbestActions] # batch_size x 1
+                        end_multiplier = -(batchOfDones - 1) # batch_size x 1
+                        targetQ =  batchOfRewards + y * batchOfQForBestActions * end_multiplier # batch_size x 1
 
                         #Update the network with our target values.
                         _ = sess.run(mainDQN.updateModel, feed_dict={mainDQN.inState:batchOfStates0,mainDQN.Qtargets:targetQ, mainDQN.chosenActions:batchOfActions0})
@@ -326,8 +326,6 @@ with RobotEnv(1) as env:
                 savePlots(disc_return_per_ep, num_steps_per_ep, successes, avg_maxQ_per_ep, epsilon_per_ep, checkpoints_plots_dir_path)
                 print("Saved Plots")                
 
-            
-
             num_steps_per_ep.append(j)
             disc_return_per_ep.append(disc_return)
             successes.append(success_count)
@@ -366,20 +364,15 @@ with RobotEnv(1) as env:
         # print('\nsteps:', j)
         # print('\nreturn:', rAll)     
 
-# statistics
-# print("Percent of succesful episodes: " + str(sum(undisc_return_per_ep)/num_episodes) + "%")
-
 # time
 total_training_time = end_time - start_time #in seconds
 print('\nTotal training time:', total_training_time)
 time_dict = {"total_training_time_in_secs":total_training_time}
 
-# save txt file with current parameters
+# save txt file with total time
 total_time_file_path = os.path.join(current_model_dir_path, "total_time.txt")
 with open(total_time_file_path, "w") as total_time_file:
     json.dump(time_dict, total_time_file, sort_keys=True, indent=4)
-
-#save txt file with total time
 
 ## save plots separately
 savePlots(disc_return_per_ep, num_steps_per_ep, successes, avg_maxQ_per_ep, epsilon_per_ep, trained_model_plots_dir_path)
