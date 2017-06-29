@@ -162,8 +162,8 @@ trained_model_file_path = os.path.join(trained_model_dir_path, "final_model")
 
 
 # Set learning hyper parameters and save them 
-# git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']) #issues
-# h_params["_commit_hash"] = git_hash
+git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+h_params["_commit_hash"] = git_hash.decode("utf-8").strip()
 y = 0.99 # discount factor mnih:0.99
 h_params['discount_factor'] = y
 num_episodes = 4000 # number of runs#######################################TO SET
