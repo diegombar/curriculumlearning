@@ -65,11 +65,10 @@ class RobotEnv():
     def __enter__(self):
         print('Starting environment...')
 
+        # launch v-rep
         vrep_cmd = [self.vrepPath, '-gREMOTEAPISERVERSERVICE_' + self.portNb + '_FALSE_FALSE']
-
         if self.showGUI == 0:
             vrep_cmd.append('-h') #headless mode
-
         vrep_cmd.append(self.scenePath)
 
 
@@ -84,7 +83,7 @@ class RobotEnv():
         vrep.simxFinish(-1) # close all opened connections
         # Connect to V-REP
         counter = 0
-        while True
+        while True:
             self.clientID = vrep.simxStart('127.0.0.1', self.portNb, True, False, 5000, 0)
             if self.clientID != -1:
                 break
