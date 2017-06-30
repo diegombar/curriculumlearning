@@ -313,7 +313,6 @@ with RobotEnv(1) as env:
                     chosenActions[indices] = np.random.randint(0, nActionsPerJoint, sum(indices))
 
                 # perform action and get new state and reward
-                print('Actions:', chosenActions)
                 newState, r, done = env.step(chosenActions)
                 # print("\nnewState:", newState)
                 # print("\ndone:", done)
