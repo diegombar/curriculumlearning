@@ -90,7 +90,7 @@ class RobotEnv():
             else:
                 print("connection failed, retrying")
                 counter += 1
-                if counter =10:
+                if counter == 10:
                     raise RuntimeError('Connection to V-REP failed.')
 
 
