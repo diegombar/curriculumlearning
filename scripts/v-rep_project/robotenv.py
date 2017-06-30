@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
-import os
-import signal
-import subprocess
-import sys
-import time
+import os,signal,subprocess,time
 import numpy as np
-import os.path
 
 try:
     import vrep
@@ -70,12 +65,15 @@ class RobotEnv():
     def __enter__(self):
         print('Starting environment...')
 
-        # launch v-rep
+        vrep_cmd = [self.vrepPath, '-gREMOTEAPISERVERSERVICE_' + self.portNb + '_FALSE_FALSE']
+
         if self.showGUI == 0:
-            vrep_cmd = [self.vrepPath, '-h', self.scenePath] #  headless mode
-        elif self.showGUI == 1:
-            vrep_cmd = [self.vrepPath, self.scenePath] #GUI mode
-        # elif self.showGUI == 2: #headless mode via ssh
+            vrep_cmd.append('-h') #headless mode
+
+        vrep_cmd.append(self.scenePath)
+
+
+        #headless mode via ssh
         #     vrep_cmd = "xvfb-run --auto-servernum --server-num=1 /homes/dam416/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh -h -s -q MicoRobot.ttt"
             # vrep_cmd = ['xvfb-run', '--auto-servernum', '--server-num=1', self.vrepPath, '-h', '-s', '-q', self.scenePath]
             # vrep_cmd = ['xvfb-run', '--auto-servernum', '--server-num=1', self.vrepPath, '-h', self.scenePath]
@@ -84,7 +82,19 @@ class RobotEnv():
         self.vrepProcess = subprocess.Popen(vrep_cmd, shell=False, preexec_fn=os.setsid)
         # connect to V-Rep Remote Api Server
         vrep.simxFinish(-1) # close all opened connections
-        self.clientID = vrep.simxStart('127.0.0.1', self.portNb, True, False, 10000, 5) # Connect to V-REP
+        # Connect to V-REP
+        counter = 0
+        while True
+            self.clientID = vrep.simxStart('127.0.0.1', self.portNb, True, False, 5000, 0)
+            if self.clientID != -1:
+                break
+            else
+                print("connection failed, retrying")
+                counter += 1
+                if counter =10:
+                    raise RuntimeError('Connection to V-REP failed.')
+
+
 
         if self.clientID == -1:
             print('Failed connecting to remote API server')
@@ -247,18 +257,18 @@ class RobotEnv():
             ## hand actions
             # def openHand(self.clientID):
             #     closingVel = -0.04
-            #     returnCode = vrep.simxSetJointTargetVelocity(self.clientID, fingersH1, -closingVel, vrep.simx_opmode_oneshot)
-            #     returnCode = vrep.simxSetJointTargetVelocity(self.clientID, fingersH2, -closingVel, vrep.simx_opmode_oneshot)
+            #     returnCode = vrep.simxSetJointTargetVelocity(self.clientID, fingersH1, -closingVel, vrep.simx_opmode_blocking)
+            #     returnCode = vrep.simxSetJointTargetVelocity(self.clientID, fingersH2, -closingVel, vrep.simx_opmode_blocking)
 
             # def closeHand(self.clientID):
             #     closingVel = -0.04
-            #     returnCode = vrep.simxSetJointTargetVelocity(self.clientID, fingersH1, closingVel, vrep.simx_opmode_oneshot)
-            #     returnCode = vrep.simxSetJointTargetVelocity(self.clientID, fingersH2, closingVel, vrep.simx_opmode_oneshot)
+            #     returnCode = vrep.simxSetJointTargetVelocity(self.clientID, fingersH1, closingVel, vrep.simx_opmode_blocking)
+            #     returnCode = vrep.simxSetJointTargetVelocity(self.clientID, fingersH2, closingVel, vrep.simx_opmode_blocking)
 
             ##set joints target positions
             # def setJointTargetPositions(self.clientID, targetPositions):
             #     for i in range(6):
-            #         returnCode = vrep.simxSetJointTargetPosition(self.clientID, jointHandles[i], targetPositions[i], vrep.simx_opmode_oneshot)
+            #         returnCode = vrep.simxSetJointTargetPosition(self.clientID, jointHandles[i], targetPositions[i], vrep.simx_opmode_blocking)
             #         if returnCode != vrep.simx_return_ok:
             #             print("SetJointTargetPosition got error code: %s" % returnCode)
             self.updateState()
