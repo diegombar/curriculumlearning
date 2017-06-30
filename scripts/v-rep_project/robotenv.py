@@ -70,17 +70,17 @@ class RobotEnv():
             vrep_cmd.append('-h') #headless mode
         vrep_cmd.append(self.scenePath)
 
-
         #headless mode via ssh
         #     vrep_cmd = "xvfb-run --auto-servernum --server-num=1 /homes/dam416/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh -h -s -q MicoRobot.ttt"
             # vrep_cmd = ['xvfb-run', '--auto-servernum', '--server-num=1', self.vrepPath, '-h', '-s', '-q', self.scenePath]
             # vrep_cmd = ['xvfb-run', '--auto-servernum', '--server-num=1', self.vrepPath, '-h', self.scenePath]
-
+        print('Launching V-REP...')
         # NOTE: do not use "stdout=subprocess.PIPE" below to buffer logs, causes deadlock at episode 464! (flushing the buffer may work... but buffering is not needed)
         self.vrepProcess = subprocess.Popen(vrep_cmd, shell=False, preexec_fn=os.setsid)
         # connect to V-Rep Remote Api Server
         vrep.simxFinish(-1) # close all opened connections
         # Connect to V-REP
+        print('Connecting to V-REP...')
         counter = 0
         while True:
             self.clientID = vrep.simxStart('127.0.0.1', self.portNb, True, False, 5000, 0)
@@ -220,8 +220,9 @@ class RobotEnv():
             jointPositions = np.array(floatData[0::2]) #take elements at odd positions (even correspond to torques)
             jointPositions = jointPositions % (2 * np.pi) #convert values to [0, 2*pi[
             newState = [angle if angle <= np.pi else angle - 2 * np.pi for angle in jointPositions] # convert values to ]-pi, +pi]
+            newState = np.array(newState)
             newState = newState + np.pi # convert values to ]0, +2*pi]
-            state1 = np.array(newState) / np.pi # convert to ]0, 1]
+            state1 = newState / np.pi # convert to ]0, 1]
             try: 
                 self.state = state1.reshape((1,6)) #reshape (for tensorflow)
             except:

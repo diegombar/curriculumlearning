@@ -86,7 +86,7 @@ class DQN():
         # initialize params
         self.W0 = weight_variable([stateSize, nHidden])
         self.W1 = weight_variable([nHidden, nHidden])
-        self.W2 = weight_variable([nHidden, nHidden])
+        self.W2 = weight_variable([nHidden, nActions])
 
         self.b0 = bias_variable([1])
         self.b1 = bias_variable([1])
@@ -161,36 +161,39 @@ with RobotEnv(1, 0.3) as env:
     h_params["_commit_hash"] = git_hash.decode("utf-8").strip()
     y = 0.99 # discount factor mnih:0.99
     h_params['discount_factor'] = y
-    num_episodes = 100 #3000 # number of runs#######################################TO SET
+    num_episodes = 3000 # number of runs#######################################TO SET
     h_params['num_episodes'] = num_episodes
-    max_steps_per_episode = 1 #500 # max number of actions per episode##########TO SET
+    max_steps_per_episode = 500 # max number of actions per episode##########TO SET
     h_params['max_steps_per_episode'] = max_steps_per_episode
 
     e_max = 1.0 # initial epsilon mnih = 1.0
     e_min = 0.1 # final epsilon mnih = 0.01
-    addETau = 400 # time constant in episodes, close to final value at 5 eTau
-    addEFactor = 1.0 - 1.0 / eTau
+    e_tau = 400 # time constant in episodes, close to final value at 5 eTau
+    addEFactor = 1.0 - (1.0 / e_tau)
 
     # e_update_steps = (max_steps_per_episode * num_episodes) // 3  #50 # times e is decreased (has to be =< num_episodes)
     #reach e_min in num_episodes // 2
 
-    model_saving_period =    #episodes
+    model_saving_period = 100  #episodes
     h_params['e_max'] = e_max
     h_params['e_min'] = e_min
-    h_params['e_update_steps'] = e_update_steps
-    eDecrease = (e_max - e_min) / e_update_steps
+    h_params['e_tau'] = e_tau
+    # h_params['e_update_steps'] = e_update_steps
+    # eDecrease = (e_max - e_min) / e_update_steps
 
     # eFactor = 1 - 1E-5
     # h_params['e_factor'] = eFactor
 
+
+
+    batch_size = 32 #mnih=32
+    train_model_steps_period = 4 # mnih = 4
+    replay_start_size = 50000 # 100 episodes #num of steps to fill dataset with random actions mnih=5E4
+    replay_memory_size = 100000 #steps #200 ep #mnih: 1E6 about 100 episodes
+    
     #experience replay
     dataset = experience_dataset(replay_memory_size)
 
-    batch_size = 2 #32 #mnih=32
-    train_model_steps_period = 4 # mnih = 4
-    replay_start_size = 2 #50000 # 100 episodes #num of steps to fill dataset with random actions mnih=5E4
-    replay_memory_size = 5 #500000 #steps #1000 ep #mnih: 1E6 about 100 episodes
-    
     # about 50 episodes
     if replay_start_size <= max_steps_per_episode or replay_start_size < batch_size:
         print("WARNING: replay_start_size must be greater than max_steps_per_episode and batch_size")
@@ -312,7 +315,7 @@ with RobotEnv(1, 0.3) as env:
                 if total_steps <= replay_start_size:
                     chosenActions = np.random.randint(0, nActionsPerJoint, nJoints)
                 else:
-                    indices = np.random.rand(6) < epsilon:
+                    indices = np.random.rand(6) < epsilon
                     chosenActions[indices] = np.random.randint(0, nActionsPerJoint, sum(indices))
 
                 # perform action and get new state and reward
