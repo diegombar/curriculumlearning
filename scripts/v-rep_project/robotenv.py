@@ -35,7 +35,7 @@ class RobotEnv():
     scenePath = os.path.join(current_dir_path, "MicoRobot.ttt")
 
     # initialize the environment
-    def __init__(self, showGUI):
+    def __init__(self, showGUI, velocity):
         #actions/states/reward/done
         self.action_space_size = 3 * 6 # (+Vel, -Vel, 0) for 6 joints
         self.observation_space_size = 6
@@ -44,7 +44,7 @@ class RobotEnv():
         self.state = np.zeros((1,self.observation_space_size))
         self.reward = 0
         self.goalReached = False
-        self.minDistance = 0.01
+        self.minDistance = 0.01 #1 cm
         #v-rep
         self.vrepProcess = None
         self.clientID = None
@@ -55,12 +55,11 @@ class RobotEnv():
         self.jointsCollectionHandle = 0
         self.distToGoalHandle = 0
         self.distanceToGoal = None
-        self.goal_reward = 1 #reward given at goal
-        self.jointVel = 0.3
+        # self.goal_reward = 1 #reward given at goal
+        self.jointVel = velocity
         self.showGUI = showGUI
-        self.distance_decay_rate = 1.0 / 0.3
-        self.reward_normalizer = 1.0 / 500.0
-
+        self.distance_decay_rate = 3 #=1/0.3, so that the reward is close to zero for 5 x 0.3 = 1.5 m
+        self.reward_normalizer = 0.1
     # enter and exit methods: needs with statement (used to exit the v-rep simulation properly)
     def __enter__(self):
         print('Starting environment...')
@@ -216,15 +215,13 @@ class RobotEnv():
     #update the state
     def updateState(self):
         if vrep.simxGetConnectionId(self.clientID) != -1:
-            # update joint angles
-            # print("Getting state...")
+            # update joint angles, normalize to ]0,1]
             returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_blocking) # or simx_opmode_blocking (not recommended)
             jointPositions = np.array(floatData[0::2]) #take elements at odd positions (even correspond to torques)
             jointPositions = jointPositions % (2 * np.pi) #convert values to [0, 2*pi[
-            newState = [angle if angle <= np.pi else angle - 2 * np.pi for angle in jointPositions] #convert values to ]-pi, +pi]
-            unNormalizedState1 = np.array(newState)
-            state1 = unNormalizedState1 / np.pi
-            # print("New state received")
+            newState = [angle if angle <= np.pi else angle - 2 * np.pi for angle in jointPositions] # convert values to ]-pi, +pi]
+            newState = newState + np.pi # convert values to ]0, +2*pi]
+            state1 = np.array(newState) / np.pi # convert to ]0, 1]
             try: 
                 self.state = state1.reshape((1,6)) #reshape (for tensorflow)
             except:
@@ -233,12 +230,10 @@ class RobotEnv():
             # print("Reading distance...")
             returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking) #dist in metres #vrep.simx_opmode_buffer after streaming start
             # print("Distance received")
+            self.reward = self.reward_normalizer * np.exp(-self.distance_decay_rate * self.distanceToGoal)
             if self.distanceToGoal < self.minDistance:
-                self.goalReached = True
                 self.reward = self.goal_reward
-            else:
-                # self.goalReached = False
-                self.reward = self.reward_normalizer * np.exp(-self.distance_decay_rate * self.distanceToGoal)
+
 
     # execute action
     def step(self, actions):

@@ -35,10 +35,10 @@ def savePlot(var_value_per_ep, ylabel_str, title_str, dir_path, name):
     fig.savefig(plot_file, bbox_inches='tight')
     plt.close()
 
-def savePlots(dir_path, disc_returns, num_steps, successes, epsilons, avg_maxQ1s, avg_maxQ2s, avg_maxQ3s, avg_maxQ4s, avg_maxQ5s, avg_maxQ6s):
+def savePlots(dir_path, undisc_returns, num_steps, successes, epsilons, avg_maxQ1s, avg_maxQ2s, avg_maxQ3s, avg_maxQ4s, avg_maxQ5s, avg_maxQ6s):
     #note: "per_ep" in variable names were omitted
     # discounted returns for each episode
-    savePlot(disc_returns, "disc. return", "Discounted return obtained", dir_path, "disc_returns.svg")
+    savePlot(undisc_returns, "undisc. return", "Undiscounted return obtained", dir_path, "undisc_returns.svg")
 
     # steps performed in each episode
     savePlot(num_steps, "steps", "Steps performed per episode", dir_path, "steps.svg")
@@ -82,25 +82,20 @@ class DQN():
         self.nJoints = 6
         self.inState = tf.placeholder(shape=[None,stateSize], dtype=tf.float32) #batch_size x stateSize
         self.nActionsPerJoint = nActions // self.nJoints
+
         # initialize params
         self.W0 = weight_variable([stateSize, nHidden])
         self.W1 = weight_variable([nHidden, nHidden])
         self.W2 = weight_variable([nHidden, nHidden])
-        self.W3 = weight_variable([nHidden, nHidden])
-        self.W4 = weight_variable([nHidden, nActions])
 
         self.b0 = bias_variable([1])
         self.b1 = bias_variable([1])
         self.b2 = bias_variable([1])
-        self.b3 = bias_variable([1])
-        self.b4 = bias_variable([1])
 
         # layers
         self.hidden1 = tf.nn.relu(tf.matmul(self.inState, self.W0) + self.b0)
         self.hidden2 = tf.nn.relu(tf.matmul(self.hidden1, self.W1) + self.b1)
-        self.hidden3 = tf.nn.relu(tf.matmul(self.hidden2, self.W2) + self.b2)
-        self.hidden4 = tf.nn.relu(tf.matmul(self.hidden3, self.W3) + self.b3)
-        self.allJointsQvalues = tf.matmul(self.hidden4, self.W4) + self.b4 # Q values for all actions given inState, #batch_size x nActions
+        self.allJointsQvalues = tf.matmul(self.hidden2, self.W2) + self.b2 # Q values for all actions given inState, #batch_size x nActions
 
         self.j1Qvalues, self.j2Qvalues, self.j3Qvalues, self.j4Qvalues, self.j5Qvalues, self.j6Qvalues = tf.split(self.allJointsQvalues, self.nJoints, axis=1) #each one batch_size x 3
 
@@ -143,7 +138,7 @@ def updateTarget(op_holder,sess):
     for op in op_holder:
         sess.run(op)
 
-with RobotEnv(1) as env:
+with RobotEnv(1, 0.3) as env:
     ### create folders to save results ###
     current_dir_path = os.path.dirname(os.path.realpath(__file__)) # directory of this .py file
     all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
@@ -166,23 +161,24 @@ with RobotEnv(1) as env:
     h_params["_commit_hash"] = git_hash.decode("utf-8").strip()
     y = 0.99 # discount factor mnih:0.99
     h_params['discount_factor'] = y
-    num_episodes = 4000 # number of runs#######################################TO SET
+    num_episodes = 100 #3000 # number of runs#######################################TO SET
     h_params['num_episodes'] = num_episodes
-    max_steps_per_episode = 500 # max number of actions per episode##########TO SET
+    max_steps_per_episode = 1 #500 # max number of actions per episode##########TO SET
     h_params['max_steps_per_episode'] = max_steps_per_episode
 
     e_max = 1.0 # initial epsilon mnih = 1.0
-    e_min = 0.01 # final epsilon mnih = 0.01
-    e_update_steps = (max_steps_per_episode * num_episodes) // 3  #50 # times e is decreased (has to be =< num_episodes)
+    e_min = 0.1 # final epsilon mnih = 0.01
+    addETau = 400 # time constant in episodes, close to final value at 5 eTau
+    addEFactor = 1.0 - 1.0 / eTau
+
+    # e_update_steps = (max_steps_per_episode * num_episodes) // 3  #50 # times e is decreased (has to be =< num_episodes)
     #reach e_min in num_episodes // 2
-    e = e_max #initialize epsilon
-    model_saving_period = 100 #episodes
+
+    model_saving_period =    #episodes
     h_params['e_max'] = e_max
     h_params['e_min'] = e_min
     h_params['e_update_steps'] = e_update_steps
     eDecrease = (e_max - e_min) / e_update_steps
-    replay_memory_size = 100000 #last 200 episodes #mnih: 1E6 about 100 episodes
-    h_params['replay_memory_size'] = replay_memory_size
 
     # eFactor = 1 - 1E-5
     # h_params['e_factor'] = eFactor
@@ -190,9 +186,11 @@ with RobotEnv(1) as env:
     #experience replay
     dataset = experience_dataset(replay_memory_size)
 
-    batch_size = 32 #mnih=32
+    batch_size = 2 #32 #mnih=32
     train_model_steps_period = 4 # mnih = 4
-    replay_start_size = 50000 # 100 episodes #num of steps to fill dataset with random actions mnih=5E4
+    replay_start_size = 2 #50000 # 100 episodes #num of steps to fill dataset with random actions mnih=5E4
+    replay_memory_size = 5 #500000 #steps #1000 ep #mnih: 1E6 about 100 episodes
+    
     # about 50 episodes
     if replay_start_size <= max_steps_per_episode or replay_start_size < batch_size:
         print("WARNING: replay_start_size must be greater than max_steps_per_episode and batch_size")
@@ -200,6 +198,7 @@ with RobotEnv(1) as env:
     h_params['batch_size'] = batch_size
     h_params['train_model_steps_period'] = train_model_steps_period
     h_params['replay_start_size'] = replay_start_size
+    h_params['replay_memory_size'] = replay_memory_size
 
     message = "\nepisode: {} steps: {} undiscounted return obtained: {} done: {}"
 
@@ -209,7 +208,7 @@ with RobotEnv(1) as env:
 
     h_params['notes'] = "goal_reward = 1, exponential decay reward, normalized angles"
 
-    nHidden = 512 #mnih: 512 for dense hidden layer
+    nHidden = 50 #mnih: 512 for dense hidden layer
     lrate = 1E-6
     h_params['neurons_per_hidden_layer'] = nHidden
     h_params['learning_rate'] = lrate
@@ -244,7 +243,7 @@ with RobotEnv(1) as env:
 
     #create lists to contain total rewards and steps per episode
     num_steps_per_ep = []
-    disc_return_per_ep = []
+    undisc_return_per_ep = []
     success_count = 0
     successes = []
     epsilon_per_ep = []
@@ -254,6 +253,10 @@ with RobotEnv(1) as env:
     avg_maxQ4_per_ep = []
     avg_maxQ5_per_ep = []
     avg_maxQ6_per_ep = []
+
+    #initialize epsilon
+    addE = e_max - e_min
+    epsilon = e_min + addE
 
     with tf.Session() as sess:
         print("Starting training...")
@@ -278,7 +281,7 @@ with RobotEnv(1) as env:
                 print("episode number:", i)
             # reset environment and get first new observation
             initialState = env.reset()
-            disc_return = 0
+            undisc_return = 0
             sum_of_maxQ1 = 0
             sum_of_maxQ2 = 0
             sum_of_maxQ3 = 0
@@ -309,7 +312,7 @@ with RobotEnv(1) as env:
                 if total_steps <= replay_start_size:
                     chosenActions = np.random.randint(0, nActionsPerJoint, nJoints)
                 else:
-                    indices = np.random.rand(6) < e
+                    indices = np.random.rand(6) < epsilon:
                     chosenActions[indices] = np.random.randint(0, nActionsPerJoint, sum(indices))
 
                 # perform action and get new state and reward
@@ -322,8 +325,10 @@ with RobotEnv(1) as env:
 
                 if total_steps > replay_start_size:
                     # decrease epsilon
-                    if e > e_min:
-                        e -= eDecrease
+                    # if e > e_min:
+                    #     e -= eDecrease
+                    addE *= addEFactor
+                    epsilon = e_min + addE
 
                     if total_steps % train_model_steps_period == 0:
                         
@@ -382,7 +387,7 @@ with RobotEnv(1) as env:
                         #     #Train our network using target and predicted Q values
                         #     sess.run([updateModel], feed_dict={inState:s, Qtargets:targetQ})
 
-                disc_return = r + y * disc_return 
+                undisc_return += r
                 # print("\nmaxQ:", maxQ)
                 sum_of_maxQ1 += maxQ1
                 sum_of_maxQ2 += maxQ2
@@ -401,9 +406,9 @@ with RobotEnv(1) as env:
             dataset.add(episodeBuffer.data)
 
             num_steps_per_ep.append(j)
-            disc_return_per_ep.append(disc_return)
+            undisc_return_per_ep.append(undisc_return)
             successes.append(success_count)
-            epsilon_per_ep.append(e)
+            epsilon_per_ep.append(epsilon)
 
             averageMaxQ1 = sum_of_maxQ1 / j
             # print("averageMaxQ1:", averageMaxQ1)
@@ -429,11 +434,11 @@ with RobotEnv(1) as env:
             if i % model_saving_period ==0:
                 # print("\nr:", r) ############ print if having problems
                 save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
-                print(message.format(i, j, disc_return, done))
+                print(message.format(i, j, undisc_return, done))
                 # print("Saved Model")
                 checkpoints_plots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
                 os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
-                savePlots(checkpoints_plots_dir_path, disc_return_per_ep, num_steps_per_ep, successes, epsilon_per_ep, avg_maxQ1_per_ep, avg_maxQ2_per_ep, avg_maxQ3_per_ep, avg_maxQ4_per_ep, avg_maxQ5_per_ep, avg_maxQ6_per_ep)
+                savePlots(checkpoints_plots_dir_path, undisc_return_per_ep, num_steps_per_ep, successes, epsilon_per_ep, avg_maxQ1_per_ep, avg_maxQ2_per_ep, avg_maxQ3_per_ep, avg_maxQ4_per_ep, avg_maxQ5_per_ep, avg_maxQ6_per_ep)
                 # print("Saved Plots")        
 
         end_time = time.time()
@@ -477,6 +482,6 @@ with open(total_time_file_path, "w") as total_time_file:
     json.dump(time_dict, total_time_file, sort_keys=True, indent=4)
 
 ## save plots separately
-savePlots(trained_model_plots_dir_path, disc_return_per_ep, num_steps_per_ep, successes, epsilon_per_ep, avg_maxQ1_per_ep, avg_maxQ2_per_ep, avg_maxQ3_per_ep, avg_maxQ4_per_ep, avg_maxQ5_per_ep, avg_maxQ6_per_ep)
+savePlots(trained_model_plots_dir_path, undisc_return_per_ep, num_steps_per_ep, successes, epsilon_per_ep, avg_maxQ1_per_ep, avg_maxQ2_per_ep, avg_maxQ3_per_ep, avg_maxQ4_per_ep, avg_maxQ5_per_ep, avg_maxQ6_per_ep)
 #plt.show() #optional
 
