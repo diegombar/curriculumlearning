@@ -87,7 +87,7 @@ class RobotEnv():
             self.clientID = vrep.simxStart('127.0.0.1', self.portNb, True, False, 5000, 0)
             if self.clientID != -1:
                 break
-            else
+            else:
                 print("connection failed, retrying")
                 counter += 1
                 if counter =10:
