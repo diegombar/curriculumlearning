@@ -220,7 +220,7 @@ with RobotEnv(1) as env:
     mainDQN = DQN(nActions, stateSize, nHidden, lrate)
     targetDQN = DQN(nActions, stateSize, nHidden, lrate)
 
-    h_params['num_hidden_layers_not_output'] = 2
+    h_params['num_hidden_layers_not_output'] = 4
     h_params['non_linearity'] = "ReLU for hidden layers, none for output"
     h_params['optimizer'] = "Adam"
 
@@ -317,6 +317,7 @@ with RobotEnv(1) as env:
                     # print("chosenActions4", chosenActions)
 
                 # perform action and get new state and reward
+                print('Actions:', chosenActions)
                 newState, r, done = env.step(chosenActions)
                 # print("\nnewState:", newState)
                 # print("\ndone:", done)
