@@ -233,7 +233,7 @@ class RobotEnv():
             # print("Distance received")
             self.reward = self.reward_normalizer * np.exp(-self.distance_decay_rate * self.distanceToGoal)
             if self.distanceToGoal < self.minDistance:
-                self.reward = self.goal_reward
+                self.goalReached = True
 
 
     # execute action
