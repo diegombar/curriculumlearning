@@ -168,7 +168,7 @@ with RobotEnv(1, 0.3) as env:
 
     e_max = 1.0 # initial epsilon mnih = 1.0
     e_min = 0.1 # final epsilon mnih = 0.01
-    e_tau = 400 # time constant in episodes, close to final value at 5 eTau
+    e_tau = 400 * max_steps_per_episode # time constant in steps, close to final value at 5 eTau
     addEFactor = 1.0 - (1.0 / e_tau)
 
     # e_update_steps = (max_steps_per_episode * num_episodes) // 3  #50 # times e is decreased (has to be =< num_episodes)
