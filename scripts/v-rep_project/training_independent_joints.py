@@ -97,24 +97,26 @@ class DQN():
         self.hidden2 = tf.nn.relu(tf.matmul(self.hidden1, self.W1) + self.b1)
         self.allJointsQvalues = tf.matmul(self.hidden2, self.W2) + self.b2 # Q values for all actions given inState, #batch_size x nActions
 
-        self.j1Qvalues, self.j2Qvalues, self.j3Qvalues, self.j4Qvalues, self.j5Qvalues, self.j6Qvalues = tf.split(self.allJointsQvalues, self.nJoints, axis=1) #each one batch_size x 3
+        # self.j1Qvalues, self.j2Qvalues, self.j3Qvalues, self.j4Qvalues, self.j5Qvalues, self.j6Qvalues = tf.split(self.allJointsQvalues, self.nJoints, axis=1) # batch_size x (nJoints x actionsPerJoint)
+        #get each one batch_size x actionsPerJoint
 
-        self.allQvalues3D = tf.reshape(self.allJointsQvalues, [-1, self.nJoints, self.nActionsPerJoint]) #could use this to compute jQvalues, etc.
+        self.allJointsQvalues3D = tf.reshape(self.allJointsQvalues, [-1, self.nJoints, self.nActionsPerJoint]) # batch_size x nJoints x actionsPerJoint
+        self.allJointsBestActions = tf.argmax(self.allQvalues3D, axis=2) # batch_size x nJoints
 
         # get batch of chosen actions a0
         self.chosenActions = tf.placeholder(shape=[None, self.nJoints],dtype=tf.int32) #batch_size x nJoints
         #select Q values for chosen actions a0
         self.chosenAs_onehot = tf.one_hot(self.chosenActions, self.nActionsPerJoint, dtype=tf.float32) #batch_size x nJoints x nActionsPerJoint
 
-        self.chosenActionsQvalues = tf.reduce_sum(tf.multiply(self.allQvalues3D, self.chosenAs_onehot), axis=2) #element-wise multiplication
+        self.chosenActionsQvalues = tf.reduce_sum(tf.multiply(self.allJointsQvalues3D, self.chosenAs_onehot), axis=2) #element-wise multiplication
 
         # action with highest Q given inState
-        self.bestActionj1 = tf.argmax(self.j1Qvalues, axis=1) #batch_size x 1
-        self.bestActionj2 = tf.argmax(self.j2Qvalues, axis=1) #batch_size x 1
-        self.bestActionj3 = tf.argmax(self.j3Qvalues, axis=1) #batch_size x 1
-        self.bestActionj4 = tf.argmax(self.j4Qvalues, axis=1) #batch_size x 1
-        self.bestActionj5 = tf.argmax(self.j5Qvalues, axis=1) #batch_size x 1
-        self.bestActionj6 = tf.argmax(self.j6Qvalues, axis=1) #batch_size x 1
+        # self.bestActionj1 = tf.argmax(self.j1Qvalues, axis=1) #batch_size x 1
+        # self.bestActionj2 = tf.argmax(self.j2Qvalues, axis=1) #batch_size x 1
+        # self.bestActionj3 = tf.argmax(self.j3Qvalues, axis=1) #batch_size x 1
+        # self.bestActionj4 = tf.argmax(self.j4Qvalues, axis=1) #batch_size x 1
+        # self.bestActionj5 = tf.argmax(self.j5Qvalues, axis=1) #batch_size x 1
+        # self.bestActionj6 = tf.argmax(self.j6Qvalues, axis=1) #batch_size x 1
 
         # loss by taking the sum of squares difference between the target and prediction Q values.
         self.Qtargets = tf.placeholder(shape=[None, self.nJoints], dtype=tf.float32) #batch_size x nJoints
@@ -302,14 +304,17 @@ with RobotEnv(1, 0.3) as env:
 
                 # pick action from the DQN, epsilon greedy
                 # chosenAction, allJointsQvalues = sess.run([mainDQN.bestAction, mainDQN.allJointsQvalues], feed_dict={mainDQN.inState:initialState})
-                chosenActions, j1Qvalues, j2Qvalues, j3Qvalues, j4Qvalues, j5Qvalues, j6Qvalues = sess.run([[mainDQN.bestActionj1, mainDQN.bestActionj2, mainDQN.bestActionj3, mainDQN.bestActionj4, mainDQN.bestActionj5, mainDQN.bestActionj6], mainDQN.j1Qvalues, mainDQN.j2Qvalues, mainDQN.j3Qvalues, mainDQN.j4Qvalues, mainDQN.j5Qvalues, mainDQN.j6Qvalues], feed_dict={mainDQN.inState:initialState})
+                # chosenActions, j1Qvalues, j2Qvalues, j3Qvalues, j4Qvalues, j5Qvalues, j6Qvalues = sess.run([[mainDQN.bestActionj1, mainDQN.bestActionj2, mainDQN.bestActionj3, mainDQN.bestActionj4, mainDQN.bestActionj5, mainDQN.bestActionj6], mainDQN.j1Qvalues, mainDQN.j2Qvalues, mainDQN.j3Qvalues, mainDQN.j4Qvalues, mainDQN.j5Qvalues, mainDQN.j6Qvalues], feed_dict={mainDQN.inState:initialState})
+                chosenActions, allJQValues = sess.run([mainDQN.allJointsBestActions, mainDQN.allJointsQvalues3D], feed_dict={mainDQN.inState:initialState})
                 # print("\nchosenAction:", chosenAction)
-                maxQ1 = np.max(j1Qvalues)
-                maxQ2 = np.max(j2Qvalues)
-                maxQ3 = np.max(j3Qvalues)
-                maxQ4 = np.max(j4Qvalues)
-                maxQ5 = np.max(j5Qvalues)
-                maxQ6 = np.max(j6Qvalues)
+                # maxQ1 = np.max(j1Qvalues) # or maxQ1 = j1Qvalues[chosenActions[0]]
+                # maxQ2 = np.max(j2Qvalues)
+                # maxQ3 = np.max(j3Qvalues)
+                # maxQ4 = np.max(j4Qvalues)
+                # maxQ5 = np.max(j5Qvalues)
+                # maxQ6 = np.max(j6Qvalues)
+
+                maxQvalues = allJQValues[range(nJoints), chosenActions]
 
                 chosenActions = np.reshape(np.array(chosenActions), nJoints)
                 if total_steps <= replay_start_size:
@@ -347,9 +352,11 @@ with RobotEnv(1, 0.3) as env:
                         actions0 = np.vstack(actions0)
                         states1 = np.vstack(states1)
 
-                        bestActionsj1, bestActionsj2, bestActionsj3, bestActionsj4, bestActionsj5, bestActionsj6 = sess.run([mainDQN.bestActionj1, mainDQN.bestActionj2, mainDQN.bestActionj3, mainDQN.bestActionj4, mainDQN.bestActionj5, mainDQN.bestActionj6], feed_dict={mainDQN.inState:states1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a')) #batch_size x 1
+                        # bestActionsj1, bestActionsj2, bestActionsj3, bestActionsj4, bestActionsj5, bestActionsj6 = sess.run([mainDQN.bestActionj1, mainDQN.bestActionj2, mainDQN.bestActionj3, mainDQN.bestActionj4, mainDQN.bestActionj5, mainDQN.bestActionj6], feed_dict={mainDQN.inState:states1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a')) #batch_size x 1
+                        allJBestActions = sess.run(mainDQN.allJointsBestActions, feed_dict={mainDQN.inState:states1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a')) #batch_size x 1
 
-                        allQj1, allQj2, allQj3, allQj4, allQj5, allQj6 = sess.run([targetDQN.j1Qvalues, targetDQN.j2Qvalues, targetDQN.j3Qvalues, targetDQN.j4Qvalues, targetDQN.j5Qvalues, targetDQN.j6Qvalues], feed_dict={targetDQN.inState:states1}) #feed btach of s' and get batch of Q2(a') # batch_size x 3
+                        # allQj1, allQj2, allQj3, allQj4, allQj5, allQj6 = sess.run([targetDQN.j1Qvalues, targetDQN.j2Qvalues, targetDQN.j3Qvalues, targetDQN.j4Qvalues, targetDQN.j5Qvalues, targetDQN.j6Qvalues], feed_dict={targetDQN.inState:states1}) #feed btach of s' and get batch of Q2(a') # batch_size x 3
+                        allJQvalues = sess.run(targetDQN.allJointsQvalues3D, feed_dict={targetDQN.inState:states1}) #feed btach of s' and get batch of Q2(a') # batch_size x 3
 
                         #get Q values of best actions
                         bestActionsQValuesj1 = allQj1[range(batch_size), bestActionsj1] # batch_size x 1
@@ -358,6 +365,9 @@ with RobotEnv(1, 0.3) as env:
                         bestActionsQValuesj4 = allQj4[range(batch_size), bestActionsj4]
                         bestActionsQValuesj5 = allQj5[range(batch_size), bestActionsj5]
                         bestActionsQValuesj6 = allQj6[range(batch_size), bestActionsj6]
+
+
+                        allJBestActionsQValues = allJQvalues[range(batch_size), range(nJoints), allJBestActions]
 
                         end_multiplier = -(dones - 1) # batch_size x 1
 
@@ -392,12 +402,12 @@ with RobotEnv(1, 0.3) as env:
 
                 undisc_return += r
                 # print("\nmaxQ:", maxQ)
-                sum_of_maxQ1 += maxQ1
-                sum_of_maxQ2 += maxQ2
-                sum_of_maxQ3 += maxQ3
-                sum_of_maxQ4 += maxQ4
-                sum_of_maxQ5 += maxQ5
-                sum_of_maxQ6 += maxQ6
+                sum_of_maxQ1 += maxQvalues[0]
+                sum_of_maxQ2 += maxQvalues[1]
+                sum_of_maxQ3 += maxQvalues[2]
+                sum_of_maxQ4 += maxQvalues[3]
+                sum_of_maxQ5 += maxQvalues[4]
+                sum_of_maxQ6 += maxQvalues[5]
 
                 initialState = newState
 
