@@ -1,0 +1,22 @@
+{
+    "_commit_hash": "f4c4e68fede45b0fb5c94f7aa2597c07c81647ef",
+    "batch_size": 32,
+    "discount_factor": 0.99,
+    "e_max": 1.0,
+    "e_min": 0.1,
+    "e_tau": 200000,
+    "learning_rate": 1e-06,
+    "max_steps_per_episode": 500,
+    "neurons_per_hidden_layer": 50,
+    "non_linearity": "ReLU for hidden layers, none for output",
+    "notes": "goal_reward = 1, exponential decay reward, normalized angles",
+    "num_episodes": 3000,
+    "num_hidden_layers_not_output": 4,
+    "number_of_actions": 18,
+    "optimizer": "Adam",
+    "replay_memory_size": 100000,
+    "replay_start_size": 50000,
+    "state_size": 6,
+    "train_model_steps_period": 4,
+    "update_target_net_rate_tau": 0.001
+}

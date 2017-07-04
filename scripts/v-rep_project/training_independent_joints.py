@@ -101,22 +101,15 @@ class DQN():
         #get each one batch_size x actionsPerJoint
 
         self.allJointsQvalues3D = tf.reshape(self.allJointsQvalues, [-1, self.nJoints, self.nActionsPerJoint]) # batch_size x nJoints x actionsPerJoint
-        self.allJointsBestActions = tf.argmax(self.allQvalues3D, axis=2) # batch_size x nJoints
+        self.allJointsBestActions = tf.argmax(self.allJointsQvalues3D, axis=2) # batch_size x nJoints
 
         # get batch of chosen actions a0
         self.chosenActions = tf.placeholder(shape=[None, self.nJoints],dtype=tf.int32) #batch_size x nJoints
         #select Q values for chosen actions a0
         self.chosenAs_onehot = tf.one_hot(self.chosenActions, self.nActionsPerJoint, dtype=tf.float32) #batch_size x nJoints x nActionsPerJoint
-
         self.chosenActionsQvalues = tf.reduce_sum(tf.multiply(self.allJointsQvalues3D, self.chosenAs_onehot), axis=2) #element-wise multiplication
 
         # action with highest Q given inState
-        # self.bestActionj1 = tf.argmax(self.j1Qvalues, axis=1) #batch_size x 1
-        # self.bestActionj2 = tf.argmax(self.j2Qvalues, axis=1) #batch_size x 1
-        # self.bestActionj3 = tf.argmax(self.j3Qvalues, axis=1) #batch_size x 1
-        # self.bestActionj4 = tf.argmax(self.j4Qvalues, axis=1) #batch_size x 1
-        # self.bestActionj5 = tf.argmax(self.j5Qvalues, axis=1) #batch_size x 1
-        # self.bestActionj6 = tf.argmax(self.j6Qvalues, axis=1) #batch_size x 1
 
         # loss by taking the sum of squares difference between the target and prediction Q values.
         self.Qtargets = tf.placeholder(shape=[None, self.nJoints], dtype=tf.float32) #batch_size x nJoints
@@ -149,7 +142,9 @@ with RobotEnv(1, 0.3) as env:
     trained_model_plots_dir_path = os.path.join(current_model_dir_path, "trained_model_results")
     checkpoints_dir_path = os.path.join(current_model_dir_path, "saved_checkpoints")
     trained_model_dir_path = os.path.join(current_model_dir_path, "trained_model")
-
+    #####
+    model_to_load_file_path = os.path.join(all_models_dir_path, "model_and_results_2017-Jul-03_15-24-03", "saved_checkpoints")
+    #####
     for new_directory in [trained_model_plots_dir_path, checkpoints_dir_path, trained_model_dir_path]:
         os.makedirs(new_directory, exist_ok=True)
 
@@ -163,14 +158,14 @@ with RobotEnv(1, 0.3) as env:
     h_params["_commit_hash"] = git_hash.decode("utf-8").strip()
     y = 0.99 # discount factor mnih:0.99
     h_params['discount_factor'] = y
-    num_episodes = 3000 # number of runs#######################################TO SET
+    num_episodes = 2500 # number of runs#######################################TO SET
     h_params['num_episodes'] = num_episodes
-    max_steps_per_episode = 500 # max number of actions per episode##########TO SET
+    max_steps_per_episode = 1000 # max number of actions per episode##########TO SET
     h_params['max_steps_per_episode'] = max_steps_per_episode
 
     e_max = 1.0 # initial epsilon mnih = 1.0
     e_min = 0.1 # final epsilon mnih = 0.01
-    e_tau = 400 * max_steps_per_episode # time constant in steps, close to final value at 5 eTau
+    e_tau = max_steps_per_episode * 400 # time constant in steps, close to final value at 5 eTau
     addEFactor = 1.0 - (1.0 / e_tau)
 
     # e_update_steps = (max_steps_per_episode * num_episodes) // 3  #50 # times e is decreased (has to be =< num_episodes)
@@ -186,15 +181,10 @@ with RobotEnv(1, 0.3) as env:
     # eFactor = 1 - 1E-5
     # h_params['e_factor'] = eFactor
 
-
-
     batch_size = 32 #mnih=32
     train_model_steps_period = 4 # mnih = 4
     replay_start_size = 50000 # 100 episodes #num of steps to fill dataset with random actions mnih=5E4
     replay_memory_size = 100000 #steps #200 ep #mnih: 1E6 about 100 episodes
-    
-    #experience replay
-    dataset = experience_dataset(replay_memory_size)
 
     # about 50 episodes
     if replay_start_size <= max_steps_per_episode or replay_start_size < batch_size:
@@ -209,7 +199,8 @@ with RobotEnv(1, 0.3) as env:
 
     tau = 0.001 #Rate to update target network toward primary network
     h_params['update_target_net_rate_tau'] = tau
-    load_model = "false" # "false", "trained", "checkpoint"
+    load_model = True ########
+    skip_training = True #######
 
     h_params['notes'] = "goal_reward = 1, exponential decay reward, normalized angles"
 
@@ -224,7 +215,7 @@ with RobotEnv(1, 0.3) as env:
     stateSize = env.observation_space_size
     nActions = env.action_space_size
     nJoints = 6
-    nActionsPerJoint = nActions / nJoints
+    nActionsPerJoint = nActions // nJoints
     h_params['state_size'] = stateSize
     h_params['number_of_actions'] = nActions
     mainDQN = DQN(nActions, stateSize, nHidden, lrate)
@@ -260,24 +251,24 @@ with RobotEnv(1, 0.3) as env:
     avg_maxQ6_per_ep = []
 
     #initialize epsilon
-    addE = e_max - e_min
-    epsilon = e_min + addE
+    epsilon = e_min
+    if not skip_training:
+        addE = e_max - e_min
+        epsilon = e_min + addE
+        #experience replay
+        dataset = experience_dataset(replay_memory_size)
 
     with tf.Session() as sess:
         print("Starting training...")
         start_time = time.time()
         sess.run(init)
 
-        #load trained model/checkpoint, not working for the moment (timestamp in name...)
-        # if load_model != "false":
-        #     print('Loading Model...')
-        #     if load_model =="trained":
-        #         path = checkpoint_model_file_path
-        #     elif load_model =="checkpoint":
-        #         path = trained_model_file_path
-        #     ckpt = tf.train.get_checkpoint_state(path)
-        #     saver.restore(sess,ckpt.model_checkpoint_path)
-        #     print('Model loaded')
+        # load trained model/checkpoint, not working for the moment (timestamp in name...)
+        if load_model:
+            print('Loading Model...')
+            path = model_to_load_file_path
+            saver.restore(sess,"/homes/dam416/curriculumlearning/scripts/v-rep_project/trained_models_and_results/model_and_results_2017-Jul-03_15-24-03/saved_checkpoints/checkpoint_model-400")
+            print('Model loaded')
 
         updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
         total_steps = 0
@@ -295,7 +286,8 @@ with RobotEnv(1, 0.3) as env:
             sum_of_maxQ6 = 0
             done = False
             j = 0
-            episodeBuffer = experience_dataset(replay_memory_size) # temporary buffer
+
+            if not skip_training: episodeBuffer = experience_dataset(replay_memory_size) # temporary buffer
 
             while j < max_steps_per_episode:
                 # print("\nstep:", j)
@@ -303,21 +295,13 @@ with RobotEnv(1, 0.3) as env:
                 total_steps += 1
 
                 # pick action from the DQN, epsilon greedy
-                # chosenAction, allJointsQvalues = sess.run([mainDQN.bestAction, mainDQN.allJointsQvalues], feed_dict={mainDQN.inState:initialState})
-                # chosenActions, j1Qvalues, j2Qvalues, j3Qvalues, j4Qvalues, j5Qvalues, j6Qvalues = sess.run([[mainDQN.bestActionj1, mainDQN.bestActionj2, mainDQN.bestActionj3, mainDQN.bestActionj4, mainDQN.bestActionj5, mainDQN.bestActionj6], mainDQN.j1Qvalues, mainDQN.j2Qvalues, mainDQN.j3Qvalues, mainDQN.j4Qvalues, mainDQN.j5Qvalues, mainDQN.j6Qvalues], feed_dict={mainDQN.inState:initialState})
-                chosenActions, allJQValues = sess.run([mainDQN.allJointsBestActions, mainDQN.allJointsQvalues3D], feed_dict={mainDQN.inState:initialState})
-                # print("\nchosenAction:", chosenAction)
-                # maxQ1 = np.max(j1Qvalues) # or maxQ1 = j1Qvalues[chosenActions[0]]
-                # maxQ2 = np.max(j2Qvalues)
-                # maxQ3 = np.max(j3Qvalues)
-                # maxQ4 = np.max(j4Qvalues)
-                # maxQ5 = np.max(j5Qvalues)
-                # maxQ6 = np.max(j6Qvalues)
-
-                maxQvalues = allJQValues[range(nJoints), chosenActions]
+                chosenActions, allJQValues = sess.run([mainDQN.allJointsBestActions, mainDQN.allJointsQvalues3D], feed_dict={mainDQN.inState:np.reshape(initialState, (1, nJoints))})
 
                 chosenActions = np.reshape(np.array(chosenActions), nJoints)
-                if total_steps <= replay_start_size:
+                allJQValues = np.reshape(np.array(allJQValues), (nJoints, nActionsPerJoint))
+                maxQvalues = allJQValues[range(nJoints), chosenActions] # 1 x nJoints #working
+
+                if total_steps <= replay_start_size and not skip_training:
                     chosenActions = np.random.randint(0, nActionsPerJoint, nJoints)
                 else:
                     indices = np.random.rand(6) < epsilon
@@ -325,16 +309,14 @@ with RobotEnv(1, 0.3) as env:
 
                 # perform action and get new state and reward
                 newState, r, done = env.step(chosenActions)
-                # print("\nnewState:", newState)
-                # print("\ndone:", done)
-                transition = np.array([initialState, chosenActions, r, newState, done])
+                if not skip_training:
+                    transition = np.array([initialState, chosenActions, r, newState, done])
+                    transition = np.reshape(transition, [1, 5]) # 1 x 5
+                    episodeBuffer.add(transition) # add step to episode buffer
+                initialState = newState
 
-                episodeBuffer.add(np.reshape(transition, [1, 5])) # add step to episode buffer
-
-                if total_steps > replay_start_size:
-                    # decrease epsilon
-                    # if e > e_min:
-                    #     e -= eDecrease
+                if total_steps > replay_start_size and not skip_training:
+                    # epsilon decay
                     addE *= addEFactor
                     epsilon = e_min + addE
 
@@ -343,11 +325,6 @@ with RobotEnv(1, 0.3) as env:
                         batch = dataset.sample(batch_size)
 
                         states0, actions0, rewards, states1, dones = batch.T
-                        # print(states0)
-                        # print(actions0)
-                        # print(rewards)
-                        # print(states1)
-                        # print(dones)
                         states0 = np.vstack(states0)
                         actions0 = np.vstack(actions0)
                         states1 = np.vstack(states1)
@@ -359,34 +336,16 @@ with RobotEnv(1, 0.3) as env:
                         allJQvalues = sess.run(targetDQN.allJointsQvalues3D, feed_dict={targetDQN.inState:states1}) #feed btach of s' and get batch of Q2(a') # batch_size x 3
 
                         #get Q values of best actions
-                        bestActionsQValuesj1 = allQj1[range(batch_size), bestActionsj1] # batch_size x 1
-                        bestActionsQValuesj2 = allQj2[range(batch_size), bestActionsj2]
-                        bestActionsQValuesj3 = allQj3[range(batch_size), bestActionsj3]
-                        bestActionsQValuesj4 = allQj4[range(batch_size), bestActionsj4]
-                        bestActionsQValuesj5 = allQj5[range(batch_size), bestActionsj5]
-                        bestActionsQValuesj6 = allQj6[range(batch_size), bestActionsj6]
-
-
-                        allJBestActionsQValues = allJQvalues[range(batch_size), range(nJoints), allJBestActions]
-
+                        allJBestActions_one_hot = np.arange(nActionsPerJoint) == allJBestActions[:,:,None]
+                        allJBestActionsQValues = np.sum(np.multiply(allJBestActions_one_hot, allJQvalues), axis=2) # batch_size x nJoints
                         end_multiplier = -(dones - 1) # batch_size x 1
+                        end_multiplier = np.reshape(end_multiplier, (batch_size, 1))
+                        rewards = np.reshape(rewards, (batch_size, 1))
 
-                        targetQj1 =  np.reshape(rewards + y * bestActionsQValuesj1 * end_multiplier, (-1,1)) # batch_size x 1
-                        targetQj2 =  np.reshape(rewards + y * bestActionsQValuesj2 * end_multiplier, (-1,1))
-                        targetQj3 =  np.reshape(rewards + y * bestActionsQValuesj3 * end_multiplier, (-1,1))
-                        targetQj4 =  np.reshape(rewards + y * bestActionsQValuesj4 * end_multiplier, (-1,1))
-                        targetQj5 =  np.reshape(rewards + y * bestActionsQValuesj5 * end_multiplier, (-1,1))
-                        targetQj6 =  np.reshape(rewards + y * bestActionsQValuesj6 * end_multiplier, (-1,1))
-
-
-                        targetQ = np.concatenate((targetQj1, targetQj2, targetQj3, targetQj4, targetQj5, targetQj6), axis=1) # batch_size x nJoints
+                        allJQtargets = np.reshape(rewards + y * allJBestActionsQValues * end_multiplier, (batch_size,nJoints)) #batch_size x nJoints
 
                         #Update the network with our target values.
-                        # print("states0:", states0)
-                        # print("targetQ:", targetQ)
-                        # print("actions0:", actions0)
-                        _ = sess.run(mainDQN.updateModel, feed_dict={mainDQN.inState:states0,mainDQN.Qtargets:targetQ, mainDQN.chosenActions:actions0})
-                        
+                        _ = sess.run(mainDQN.updateModel, feed_dict={mainDQN.inState:states0,mainDQN.Qtargets:allJQtargets, mainDQN.chosenActions:actions0})
                         updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
 
                         # for s,a,r,s1,d in batch: #to change: feed all at once
@@ -401,7 +360,6 @@ with RobotEnv(1, 0.3) as env:
                         #     sess.run([updateModel], feed_dict={inState:s, Qtargets:targetQ})
 
                 undisc_return += r
-                # print("\nmaxQ:", maxQ)
                 sum_of_maxQ1 += maxQvalues[0]
                 sum_of_maxQ2 += maxQvalues[1]
                 sum_of_maxQ3 += maxQvalues[2]
@@ -409,14 +367,12 @@ with RobotEnv(1, 0.3) as env:
                 sum_of_maxQ5 += maxQvalues[4]
                 sum_of_maxQ6 += maxQvalues[5]
 
-                initialState = newState
-
                 if done == True:
                     success_count +=1
                     break
 
             # add current episode's list of transitions to dataset
-            dataset.add(episodeBuffer.data)
+            if not skip_training: dataset.add(episodeBuffer.data)
 
             num_steps_per_ep.append(j)
             undisc_return_per_ep.append(undisc_return)
@@ -424,35 +380,28 @@ with RobotEnv(1, 0.3) as env:
             epsilon_per_ep.append(epsilon)
 
             averageMaxQ1 = sum_of_maxQ1 / j
-            # print("averageMaxQ1:", averageMaxQ1)
-            avg_maxQ1_per_ep.append(averageMaxQ1)
             averageMaxQ2 = sum_of_maxQ2 / j
-            # print("averageMaxQ2:", averageMaxQ2)
-            avg_maxQ2_per_ep.append(averageMaxQ2)
             averageMaxQ3 = sum_of_maxQ3 / j
-            # print("averageMaxQ3:", averageMaxQ3)
-            avg_maxQ3_per_ep.append(averageMaxQ3)
-            averageMaxQ4 = sum_of_maxQ4 /j
-            # print("averageMaxQ4:", averageMaxQ4)
-            avg_maxQ4_per_ep.append(averageMaxQ4)
+            averageMaxQ4 = sum_of_maxQ4 / j
             averageMaxQ5 = sum_of_maxQ5 / j
-            # print("averageMaxQ5:", averageMaxQ5)
-            avg_maxQ5_per_ep.append(averageMaxQ5)
             averageMaxQ6 = sum_of_maxQ6 / j
-            # print("averageMaxQ6:", averageMaxQ6)
+
+            avg_maxQ1_per_ep.append(averageMaxQ1)
+            avg_maxQ2_per_ep.append(averageMaxQ2)
+            avg_maxQ3_per_ep.append(averageMaxQ3)
+            avg_maxQ4_per_ep.append(averageMaxQ4)
+            avg_maxQ5_per_ep.append(averageMaxQ5)
             avg_maxQ6_per_ep.append(averageMaxQ6)
+
             print("averageMaxQ for each joint: ", averageMaxQ1, averageMaxQ2, averageMaxQ3, averageMaxQ4, averageMaxQ5, averageMaxQ6)
             
             #save the model and log training
             if i % model_saving_period ==0:
-                # print("\nr:", r) ############ print if having problems
                 save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
                 print(message.format(i, j, undisc_return, done))
-                # print("Saved Model")
                 checkpoints_plots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
                 os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
                 savePlots(checkpoints_plots_dir_path, undisc_return_per_ep, num_steps_per_ep, successes, epsilon_per_ep, avg_maxQ1_per_ep, avg_maxQ2_per_ep, avg_maxQ3_per_ep, avg_maxQ4_per_ep, avg_maxQ5_per_ep, avg_maxQ6_per_ep)
-                # print("Saved Plots")        
 
         end_time = time.time()
         print("Training ended")

@@ -223,10 +223,10 @@ class RobotEnv():
             newState = np.array(newState)
             newState = newState + np.pi # convert values to ]0, +2*pi]
             state1 = newState / np.pi # convert to ]0, 1]
-            try: 
-                self.state = state1.reshape((1,6)) #reshape (for tensorflow)
-            except:
-                pass
+            # try:
+            self.state = state1.reshape(6)
+            # except:
+            #     pass
             # get reward from distance reading and check goal
             # print("Reading distance...")
             returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking) #dist in metres #vrep.simx_opmode_buffer after streaming start
