@@ -184,7 +184,7 @@ with RobotEnv(1, 0.3) as env:
     batch_size = 32 #mnih=32
     train_model_steps_period = 4 # mnih = 4
     replay_start_size = 50000 # 100 episodes #num of steps to fill dataset with random actions mnih=5E4
-    replay_memory_size = 100000 #steps #200 ep #mnih: 1E6 about 100 episodes
+    replay_memory_size = 500000 #1000 #steps #200 ep #mnih: 1E6 about 100 episodes
 
     # about 50 episodes
     if replay_start_size <= max_steps_per_episode or replay_start_size < batch_size:
@@ -199,8 +199,8 @@ with RobotEnv(1, 0.3) as env:
 
     tau = 0.001 #Rate to update target network toward primary network
     h_params['update_target_net_rate_tau'] = tau
-    load_model = True ########
-    skip_training = True #######
+    load_model = False ########
+    skip_training = False #######
 
     h_params['notes'] = "goal_reward = 1, exponential decay reward, normalized angles"
 
