@@ -155,7 +155,9 @@ trained_model_plots_dir_path = os.path.join(current_model_dir_path, "trained_mod
 checkpoints_dir_path = os.path.join(current_model_dir_path, "saved_checkpoints")
 trained_model_dir_path = os.path.join(current_model_dir_path, "trained_model")
 #####
-model_to_load_file_path = os.path.join(all_models_dir_path, "model_and_results_2017-Jul-03_15-24-03", "saved_checkpoints")
+model_to_load_file_path = "/homes/dam416/curriculumlearning/scripts/v-rep_project/trained_models_and_results/model_and_results_2017-Jul-03_15-24-03/trained_model/final_model-3000"
+h_params["model_to_load_file_path"] = model_to_load_file_path
+
 #####
 for new_directory in [trained_model_plots_dir_path, checkpoints_dir_path, trained_model_dir_path]:
     os.makedirs(new_directory, exist_ok=True)
@@ -167,11 +169,11 @@ trained_model_file_path = os.path.join(trained_model_dir_path, "final_model")
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
 h_params["_commit_hash"] = git_hash.decode("utf-8").strip()
 
-
 # V-REP params
 showGUI = 1
 velocity = 0.3
 h_params["joint_velocity"] = velocity
+
 #plot and save reward function
 rewards_normalizer = 0.1
 rewards_decay_rate = 3
@@ -179,6 +181,10 @@ h_params['rewards_normalizer'] = rewards_normalizer
 h_params['rewards_decay_rate'] = rewards_decay_rate
 saveRewardFunction(rewards_normalizer, rewards_decay_rate, current_model_dir_path)
 
+load_model = True ########
+skip_training = True #######
+h_params['load_model'] = load_model
+h_params['skip_training'] = skip_training
 with RobotEnv(showGUI, velocity, rewards_normalizer, rewards_decay_rate) as env:
     
     y = 0.99 # discount factor mnih:0.99
@@ -224,8 +230,7 @@ with RobotEnv(showGUI, velocity, rewards_normalizer, rewards_decay_rate) as env:
 
     tau = 0.001 #Rate to update target network toward primary network
     h_params['update_target_net_rate_tau'] = tau
-    load_model = False ########
-    skip_training = False #######
+    
 
     h_params['notes'] = "goal_reward = 1, exponential decay reward, normalized angles"
 
@@ -291,8 +296,7 @@ with RobotEnv(showGUI, velocity, rewards_normalizer, rewards_decay_rate) as env:
         # load trained model/checkpoint, not working for the moment (timestamp in name...)
         if load_model:
             print('Loading Model...')
-            path = model_to_load_file_path
-            saver.restore(sess,"/homes/dam416/curriculumlearning/scripts/v-rep_project/trained_models_and_results/model_and_results_2017-Jul-03_15-24-03/saved_checkpoints/checkpoint_model-400")
+            saver.restore(sess, model_to_load_file_path)
             print('Model loaded')
 
         updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
