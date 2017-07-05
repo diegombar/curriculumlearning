@@ -25,6 +25,18 @@ def bias_variable(shape):
   initial = tf.constant(0.1, shape=shape)
   return tf.Variable(initial)
 
+def saveRewardFunction(normalizer, decay_rate, dir_path):
+    fig = plt.figure()
+    d = np.arange(0., 3., 0.05)
+    rewards = normalizer * np.exp(- decay_rate * d)
+    plt.plot(d, rewards, linewidth=0.5)
+    plt.ylabel('reward')
+    plt.xlabel('distance to goal (m)')
+    plt.title('Reward function')
+    plot_file = os.path.join(dir_path, 'reward_function.svg')
+    fig.savefig(plot_file, bbox_inches='tight')
+    plt.close()
+
 def savePlot(var_value_per_ep, ylabel_str, title_str, dir_path, name):
     fig = plt.figure()
     plt.plot(var_value_per_ep, linewidth=0.5)
@@ -133,29 +145,42 @@ def updateTarget(op_holder,sess):
     for op in op_holder:
         sess.run(op)
 
-with RobotEnv(1, 0.3) as env:
-    ### create folders to save results ###
-    current_dir_path = os.path.dirname(os.path.realpath(__file__)) # directory of this .py file
-    all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
-    timestr = time.strftime("%Y-%b-%d_%H-%M-%S",time.gmtime()) #or time.localtime()
-    current_model_dir_path = os.path.join(all_models_dir_path, "model_and_results_" + timestr)
-    trained_model_plots_dir_path = os.path.join(current_model_dir_path, "trained_model_results")
-    checkpoints_dir_path = os.path.join(current_model_dir_path, "saved_checkpoints")
-    trained_model_dir_path = os.path.join(current_model_dir_path, "trained_model")
-    #####
-    model_to_load_file_path = os.path.join(all_models_dir_path, "model_and_results_2017-Jul-03_15-24-03", "saved_checkpoints")
-    #####
-    for new_directory in [trained_model_plots_dir_path, checkpoints_dir_path, trained_model_dir_path]:
-        os.makedirs(new_directory, exist_ok=True)
 
-    checkpoint_model_file_path = os.path.join(checkpoints_dir_path, "checkpoint_model")
-    trained_model_file_path = os.path.join(trained_model_dir_path, "final_model")
+### create folders to save results ###
+current_dir_path = os.path.dirname(os.path.realpath(__file__)) # directory of this .py file
+all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
+timestr = time.strftime("%Y-%b-%d_%H-%M-%S",time.gmtime()) #or time.localtime()
+current_model_dir_path = os.path.join(all_models_dir_path, "model_and_results_" + timestr)
+trained_model_plots_dir_path = os.path.join(current_model_dir_path, "trained_model_results")
+checkpoints_dir_path = os.path.join(current_model_dir_path, "saved_checkpoints")
+trained_model_dir_path = os.path.join(current_model_dir_path, "trained_model")
+#####
+model_to_load_file_path = os.path.join(all_models_dir_path, "model_and_results_2017-Jul-03_15-24-03", "saved_checkpoints")
+#####
+for new_directory in [trained_model_plots_dir_path, checkpoints_dir_path, trained_model_dir_path]:
+    os.makedirs(new_directory, exist_ok=True)
+
+checkpoint_model_file_path = os.path.join(checkpoints_dir_path, "checkpoint_model")
+trained_model_file_path = os.path.join(trained_model_dir_path, "final_model")
+
+# Set learning hyper parameters and save them
+git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+h_params["_commit_hash"] = git_hash.decode("utf-8").strip()
 
 
+# V-REP params
+showGUI = 1
+velocity = 0.3
+h_params["joint_velocity"] = velocity
+#plot and save reward function
+rewards_normalizer = 0.1
+rewards_decay_rate = 3
+h_params['rewards_normalizer'] = rewards_normalizer
+h_params['rewards_decay_rate'] = rewards_decay_rate
+saveRewardFunction(rewards_normalizer, rewards_decay_rate, current_model_dir_path)
 
-    # Set learning hyper parameters and save them
-    git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
-    h_params["_commit_hash"] = git_hash.decode("utf-8").strip()
+with RobotEnv(showGUI, velocity, rewards_normalizer, rewards_decay_rate) as env:
+    
     y = 0.99 # discount factor mnih:0.99
     h_params['discount_factor'] = y
     num_episodes = 2500 # number of runs#######################################TO SET

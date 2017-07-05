@@ -35,7 +35,7 @@ class RobotEnv():
     scenePath = os.path.join(current_dir_path, "MicoRobot.ttt")
 
     # initialize the environment
-    def __init__(self, showGUI, velocity):
+    def __init__(self, showGUI, velocity, rewards_normalizer, rewards_decay_rate):
         #actions/states/reward/done
         self.action_space_size = 3 * 6 # (+Vel, -Vel, 0) for 6 joints
         self.observation_space_size = 6
@@ -58,8 +58,8 @@ class RobotEnv():
         # self.goal_reward = 1 #reward given at goal
         self.jointVel = velocity
         self.showGUI = showGUI
-        self.distance_decay_rate = 3 #=1/0.3, so that the reward is close to zero for 5 x 0.3 = 1.5 m
-        self.reward_normalizer = 0.1
+        self.distance_decay_rate = rewards_decay_rate #=1/0.3, so that the reward is close to zero for 5 x 0.3 = 1.5 m
+        self.reward_normalizer = rewards_normalizer
     # enter and exit methods: needs with statement (used to exit the v-rep simulation properly)
     def __enter__(self):
         print('Starting environment...')
@@ -230,8 +230,9 @@ class RobotEnv():
             # get reward from distance reading and check goal
             # print("Reading distance...")
             returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking) #dist in metres #vrep.simx_opmode_buffer after streaming start
-            # print("Distance received")
+            print("Distance to goal: ", self.distanceToGoal)
             self.reward = self.reward_normalizer * np.exp(-self.distance_decay_rate * self.distanceToGoal)
+            print("Reward received: ", self.reward)
             if self.distanceToGoal < self.minDistance:
                 self.goalReached = True
 
