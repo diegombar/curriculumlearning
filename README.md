@@ -8,14 +8,13 @@ The purpose of this work is to evaluate the effectiveness of curriculum learning
 
 ## Files
 
-[Main files](../master/scripts/v-rep_project/) are located in curriculumlearning/scripts/v-rep_project/
+Main files are located in [curriculumlearning/scripts/v-rep_project/](../master/scripts/v-rep_project/) :
 
-- [Training deep q-learning script](../master/scripts/v-rep_project/training_independent_joints.py)
+- [training_independent_joints.py](../master/scripts/v-rep_project/training_independent_joints.py) implements the Deep Q-learning algorithm
 
-- [Simulation environment interface](../master/scripts/v-rep_project/robotenv.py) to communicate with [V-REP simulator](http://www.coppeliarobotics.com/index.html) based on [OpenAI Gym](https://gym.openai.com/docs) environments
+- [robotenv.py](../master/scripts/v-rep_project/robotenv.py) implements an interface to communicate with [V-REP simulator](http://www.coppeliarobotics.com/index.html) based on [OpenAI Gym](https://gym.openai.com/docs) environments
 
-- [V-REP scene containing a model of the Mico Robot Arm](../master/scripts/v-rep_project/MicoRobot.ttt)
-
+- [MicoRobot.ttt](../master/scripts/v-rep_project/MicoRobot.ttt) is a V-REP scene file containing a model of the Mico Robot Arm
 
 ## Links
 
