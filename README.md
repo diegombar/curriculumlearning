@@ -8,15 +8,13 @@ The purpose of this work is to evaluate the effectiveness of curriculum learning
 
 ## Files
 
-[Main files](curriculumlearning/scripts/v-rep_project/)
+[Main files](../scripts/v-rep_project/) are located in curriculumlearning/scripts/v-rep_project/
 
-Main files are located in [curriculumlearning/scripts/v-rep_project/]
+- [Training deep q-learning script](../scripts/v-rep_project/training_independent_joints.py)
 
-- [Training deep q-learning script](curriculumlearning/scripts/v-rep_project/training_independent_joints.py)
+- [Simulation environment interface](../scripts/v-rep_project/robotenv.py)
 
-- [Simulation environment interface](curriculumlearning/scripts/v-rep_project/robotenv.py)
-
-- [V-REP scene containing a model of the Mico Robot Arm](curriculumlearning/scripts/v-rep_project/MicoRobot.ttt)
+- [V-REP scene containing a model of the Mico Robot Arm](../scripts/v-rep_project/MicoRobot.ttt)
 
 
 ## Links
