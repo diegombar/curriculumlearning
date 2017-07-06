@@ -195,7 +195,7 @@ with RobotEnv(showGUI, velocity, rewards_normalizer, rewards_decay_rate) as env:
     h_params['max_steps_per_episode'] = max_steps_per_episode
 
     e_max = 1.0 # initial epsilon mnih = 1.0
-    e_min = 0.1 # final epsilon mnih = 0.01
+    e_min = 0.01 # final epsilon mnih = 0.0 ##P(random action in at least one joint) = (1 - epsilon)**nJoints
     e_tau = max_steps_per_episode * 400 # time constant in steps, close to final value at 5 eTau
     addEFactor = 1.0 - (1.0 / e_tau)
 
