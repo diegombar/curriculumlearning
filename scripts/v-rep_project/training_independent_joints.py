@@ -171,7 +171,7 @@ git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
 h_params["_commit_hash"] = git_hash.decode("utf-8").strip()
 
 # V-REP params
-showGUI = 0
+showGUI = 1
 velocity = 0.3
 h_params["joint_velocity"] = velocity
 
@@ -190,14 +190,14 @@ with RobotEnv(showGUI, velocity, rewards_normalizer, rewards_decay_rate) as env:
     
     y = 0.99 # discount factor mnih:0.99
     h_params['discount_factor'] = y
-    num_episodes = 2500 # number of runs#######################################TO SET
+    num_episodes = 2000 # number of runs#######################################TO SET
     h_params['num_episodes'] = num_episodes
-    max_steps_per_episode = 1000 # max number of actions per episode##########TO SET
+    max_steps_per_episode = 500 # max number of actions per episode##########TO SET
     h_params['max_steps_per_episode'] = max_steps_per_episode
 
     e_max = 1.0 # initial epsilon mnih = 1.0
     e_min = 0.01 # final epsilon mnih = 0.0 ##P(random action in at least one joint) = (1 - epsilon)**nJoints
-    e_tau = max_steps_per_episode * 400 # time constant in steps, close to final value at 5 eTau
+    e_tau = max_steps_per_episode * num_episodes * 0.8 /5 # time constant in steps, close to final value at 5 eTau
     addEFactor = 1.0 - (1.0 / e_tau)
 
     # e_update_steps = (max_steps_per_episode * num_episodes) // 3  #50 # times e is decreased (has to be =< num_episodes)
