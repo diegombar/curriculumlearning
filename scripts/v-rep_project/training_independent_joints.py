@@ -155,7 +155,8 @@ trained_model_plots_dir_path = os.path.join(current_model_dir_path, "trained_mod
 checkpoints_dir_path = os.path.join(current_model_dir_path, "saved_checkpoints")
 trained_model_dir_path = os.path.join(current_model_dir_path, "trained_model")
 #####
-model_to_load_file_path = "/homes/dam416/curriculumlearning/scripts/v-rep_project/trained_models_and_results/model_and_results_2017-Jul-03_15-24-03/trained_model/final_model-3000"
+# model_to_load_file_path = "/homes/dam416/curriculumlearning/scripts/v-rep_project/trained_models_and_results/model_and_results_2017-Jul-03_15-24-03/trained_model/final_model-3000"
+# model_to_load_file_path = "/homes/dam416/curriculumlearning/scripts/v-rep_project/trained_models_and_results/model_and_results_2017-Jul-03_15-24-03/saved_checkpoints/checkpoint_model-400"
 h_params["model_to_load_file_path"] = model_to_load_file_path
 
 #####
@@ -170,7 +171,7 @@ git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
 h_params["_commit_hash"] = git_hash.decode("utf-8").strip()
 
 # V-REP params
-showGUI = 1
+showGUI = 0
 velocity = 0.3
 h_params["joint_velocity"] = velocity
 
@@ -181,8 +182,8 @@ h_params['rewards_normalizer'] = rewards_normalizer
 h_params['rewards_decay_rate'] = rewards_decay_rate
 saveRewardFunction(rewards_normalizer, rewards_decay_rate, current_model_dir_path)
 
-load_model = True ########
-skip_training = True #######
+load_model = False ########
+skip_training = False #######
 h_params['load_model'] = load_model
 h_params['skip_training'] = skip_training
 with RobotEnv(showGUI, velocity, rewards_normalizer, rewards_decay_rate) as env:

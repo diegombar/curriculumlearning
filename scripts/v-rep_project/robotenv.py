@@ -30,9 +30,10 @@ class RobotEnv():
     portNb = 19998 # must match the portNb on server side specified in remoteApiConnections.txt
     vrepPath = os.path.join(home_path, "V-REP_PRO_EDU_V3_4_0_Linux", "vrep.sh")
     #blade "/home/diego/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
-    #doc lab : "/homes/dam416/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
+    #doc lab : "/homes/dam416/V-REP_PRO_EDU_V3_3_1_64_Linux/vrep.sh"
     current_dir_path = os.path.dirname(os.path.realpath(__file__)) # directory of this .py file
     scenePath = os.path.join(current_dir_path, "MicoRobot.ttt")
+    # scenePath = os.path.join(current_dir_path, "mico_scene_vrep3-3-1.ttt")
 
     # initialize the environment
     def __init__(self, showGUI, velocity, rewards_normalizer, rewards_decay_rate):
@@ -98,6 +99,12 @@ class RobotEnv():
             print('Failed connecting to remote API server')
         else:
             print('Connected to remote API server')
+
+            ##close model browser and hierarchy window
+            vrep.simxSetBooleanParameter(self.clientID, vrep.sim_boolparam_browser_visible, False, vrep.simx_opmode_blocking)
+            vrep.simxSetBooleanParameter(self.clientID, vrep.sim_boolparam_hierarchy_visible, False, vrep.simx_opmode_blocking)
+            vrep.simxSetBooleanParameter(self.clientID, vrep.sim_boolparam_console_visible, False, vrep.simx_opmode_blocking)
+
             ## load scene
             # time.sleep(5) # to avoid errors
             # returnCode = vrep.simxLoadScene(self.clientID, self.scenePath, 1, vrep.simx_opmode_oneshot_wait) # vrep.simx_opmode_blocking is recommended
@@ -230,9 +237,7 @@ class RobotEnv():
             # get reward from distance reading and check goal
             # print("Reading distance...")
             returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking) #dist in metres #vrep.simx_opmode_buffer after streaming start
-            print("Distance to goal: ", self.distanceToGoal)
             self.reward = self.reward_normalizer * np.exp(-self.distance_decay_rate * self.distanceToGoal)
-            print("Reward received: ", self.reward)
             if self.distanceToGoal < self.minDistance:
                 self.goalReached = True
 
