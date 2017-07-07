@@ -156,7 +156,7 @@ checkpoints_dir_path = os.path.join(current_model_dir_path, "saved_checkpoints")
 trained_model_dir_path = os.path.join(current_model_dir_path, "trained_model")
 #####
 # model_to_load_file_path = "/homes/dam416/curriculumlearning/scripts/v-rep_project/trained_models_and_results/model_and_results_2017-Jul-03_15-24-03/trained_model/final_model-3000"
-# model_to_load_file_path = "/homes/dam416/curriculumlearning/scripts/v-rep_project/trained_models_and_results/model_and_results_2017-Jul-03_15-24-03/saved_checkpoints/checkpoint_model-400"
+model_to_load_file_path = "/homes/dam416/curriculumlearning/scripts/v-rep_project/trained_models_and_results/model_and_results_2017-Jul-03_15-24-03/saved_checkpoints/checkpoint_model-400"
 h_params["model_to_load_file_path"] = model_to_load_file_path
 
 #####
