@@ -28,7 +28,7 @@ def bias_variable(shape):
 def saveRewardFunction(normalizer, decay_rate, dir_path):
     fig = plt.figure()
     d = np.arange(0., 3., 0.05)
-    rewards = normalizer * np.exp(- decay_rate * d)
+    rewards = normalizer * (np.exp(-decay_rate * d) - 1)
     plt.plot(d, rewards, linewidth=0.5)
     plt.ylabel('reward')
     plt.xlabel('distance to goal (m)')
