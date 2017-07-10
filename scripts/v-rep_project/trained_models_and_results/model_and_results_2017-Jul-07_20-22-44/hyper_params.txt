@@ -14,7 +14,7 @@
     "non_linearity": "ReLU for hidden layers, none for output",
     "notes": "goal_reward = 1, exponential decay reward, normalized angles",
     "num_episodes": 2000,
-    "num_hidden_layers_not_output": 4,
+    "num_hidden_layers_not_output": 2,
     "number_of_actions": 18,
     "optimizer": "Adam",
     "replay_memory_size": 500000,

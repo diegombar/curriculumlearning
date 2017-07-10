@@ -67,7 +67,7 @@ class RobotEnv():
 
         # launch v-rep
         vrep_cmd = [self.vrepPath, '-gREMOTEAPISERVERSERVICE_' + str(self.portNb) + '_FALSE_FALSE']
-        if self.showGUI == 0:
+        if not self.showGUI:
             vrep_cmd.append('-h') #headless mode
         vrep_cmd.append(self.scenePath)
 
