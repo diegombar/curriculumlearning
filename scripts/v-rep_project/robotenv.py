@@ -67,7 +67,7 @@ class RobotEnv():
 
         # launch v-rep
         vrep_cmd = [self.vrepPath, '-gREMOTEAPISERVERSERVICE_' + str(self.portNb) + '_FALSE_FALSE']
-        if self.showGUI == 0:
+        if not self.showGUI:
             vrep_cmd.append('-h') #headless mode
         vrep_cmd.append(self.scenePath)
 
@@ -237,7 +237,7 @@ class RobotEnv():
             # get reward from distance reading and check goal
             # print("Reading distance...")
             returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking) #dist in metres #vrep.simx_opmode_buffer after streaming start
-            self.reward = self.reward_normalizer * np.exp(-self.distance_decay_rate * self.distanceToGoal)
+            self.reward = self.reward_normalizer * (np.exp(-self.distance_decay_rate * self.distanceToGoal) - 1)
             if self.distanceToGoal < self.minDistance:
                 self.goalReached = True
 
