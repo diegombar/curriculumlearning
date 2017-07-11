@@ -160,12 +160,12 @@ def updateTarget(op_holder,sess):
         sess.run(op)
 
 def trainDQL(
-  showGUI=True,
   num_hidden_layers, num_neurons_per_hidden,
   num_episodes, max_steps_per_episode, e_min, model_saving_period,
   batch_size, replay_start_size, replay_memory_size,
+  showGUI=True,
   velocity=0.3,
-  model_to_load_file_path=None
+  model_to_load_file_path=None,
   notes=None):
 
     # hyper params to save to txt file
@@ -283,7 +283,7 @@ def trainDQL(
                     print("episode number:", i)
                 initialState = env.reset() # reset environment and get first observation
                 undisc_return = 0
-                sum_of_maxQ = np.zeros(nJoints,1)
+                sum_of_maxQ = np.zeros((nJoints,1))
                 done = False
                 if not skip_training: episodeBuffer = experience_dataset(replay_memory_size) # temporary buffer
                 j = 0
@@ -363,7 +363,7 @@ def trainDQL(
 
                 averageMaxQ = sum_of_maxQ / j #nJoints x 1
 
-                print("averageMaxQ for each joint: ", averageMaxQ)
+                print("averageMaxQ for each joint:\n", averageMaxQ)
 
                 average_maxQ_per_ep = np.concatenate((average_maxQ_per_ep,averageMaxQ), axis=1)
 
