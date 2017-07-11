@@ -19,7 +19,7 @@ import training_independent_joints as training
 #feed set of hyper params
 training.trainDQL(num_hidden_layers=2,
                   num_neurons_per_hidden=50,
-                  num_episodes=2000,
+                  num_episodes=3000,
                   max_steps_per_episode=500,
                   e_min=0.01,
                   model_saving_period=100,
@@ -29,4 +29,4 @@ training.trainDQL(num_hidden_layers=2,
                   showGUI=True,
                   velocity=0.3,
                   model_to_load_file_path=None,
-                  notes="changed to negative rewards")
+                  notes="negative and positive reward function")
