@@ -20,7 +20,7 @@ h_params = {} # params to save in txt file:
 def saveRewardFunction(normalizer, decay_rate, dir_path):
     fig = plt.figure()
     d = np.arange(0., 3., 0.05)
-    rewards = normalizer * (np.exp(-decay_rate * d) - 1)
+    rewards = normalizer * (np.exp(-decay_rate * d) - 0.5)
     plt.plot(d, rewards, linewidth=0.5)
     plt.ylabel('reward')
     plt.xlabel('distance to goal (m)')
