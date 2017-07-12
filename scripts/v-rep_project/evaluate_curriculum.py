@@ -11,10 +11,10 @@ import training_independent_joints as training
 #                   batch_size=2,
 #                   replay_start_size=2,
 #                   replay_memory_size=10,
-#                   showGUI=True,
+#                   showGUI=False,
 #                   velocity=0.3,
 #                   model_to_load_file_path=None,
-#                   notes="changed to negative rewards")
+#                   notes="testing algorithm")
 
 #feed set of hyper params
 training.trainDQL(num_hidden_layers=2,
@@ -29,4 +29,4 @@ training.trainDQL(num_hidden_layers=2,
                   showGUI=True,
                   velocity=0.3,
                   model_to_load_file_path=None,
-                  notes="changed to negative rewards")
+                  notes="changed rewards")

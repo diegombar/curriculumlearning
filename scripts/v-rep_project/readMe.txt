@@ -1,3 +1,5 @@
+#mainfiles
+
 Needed files in the current directory (can be found in ~/V-REP_PRO_EDU_V3_4_0_Linux/programming/remoteApiBindings/python/python):
 
 1. vrep.py
@@ -8,4 +10,7 @@ Needed files in the current directory (can be found in ~/V-REP_PRO_EDU_V3_4_0_Li
 
 V-REP_settings directory contains 
 1.the settings used to avoid issues during training time
-2.the script executed by V-REP to start a socket communication for continuous remote API
+
+
+Command to launch curriculum learning script:
+$ ./RUN

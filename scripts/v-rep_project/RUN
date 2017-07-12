@@ -1,0 +1,2 @@
+#/!/bin/sh
+nohup ./run_script.sh </dev/null >/dev/null 2>/dev/null &

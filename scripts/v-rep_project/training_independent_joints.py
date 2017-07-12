@@ -363,7 +363,7 @@ def trainDQL(
 
                 averageMaxQ = sum_of_maxQ / j #nJoints x 1
 
-                print("averageMaxQ for each joint:\n", averageMaxQ)
+                print("averageMaxQ for each joint:\n", averageMaxQ.T)
 
                 average_maxQ_per_ep = np.concatenate((average_maxQ_per_ep,averageMaxQ), axis=1)
 
