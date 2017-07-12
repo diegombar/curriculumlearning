@@ -30,4 +30,4 @@ training.trainDQL(num_hidden_layers=2,
                   showGUI=True,
                   velocity=0.3,
                   model_to_load_file_path=None,
-                  notes="changed rewards")
+                  notes="back to positive rewards")
