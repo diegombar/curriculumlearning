@@ -11,12 +11,13 @@ import training_independent_joints as training
 #                   batch_size=2,
 #                   replay_start_size=2,
 #                   replay_memory_size=10,
-#                   showGUI=False,
+#                   showGUI=True,
 #                   velocity=0.3,
 #                   model_to_load_file_path=None,
 #                   notes="testing algorithm")
 
 #feed set of hyper params
+
 training.trainDQL(num_hidden_layers=2,
                   num_neurons_per_hidden=50,
                   num_episodes=3000,

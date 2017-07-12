@@ -20,7 +20,7 @@ h_params = {} # params to save in txt file:
 def saveRewardFunction(normalizer, decay_rate, dir_path):
     fig = plt.figure()
     d = np.arange(0., 3., 0.05)
-    rewards = normalizer * (np.exp(-decay_rate * d) - 0.5)
+    rewards = normalizer * np.exp(-decay_rate * d)
     plt.plot(d, rewards, linewidth=0.5)
     plt.ylabel('reward')
     plt.xlabel('distance to goal (m)')
@@ -205,7 +205,9 @@ def trainDQL(
 
     #plot and save reward function
     h_params['rewards_normalizer'] = rewards_normalizer = 0.1
-    h_params['rewards_decay_rate'] = rewards_decay_rate = 3 #=1/0.33 i.e. near 0 at 5 * 0.33 = 1.65m away
+    distanceOfRewardCloseToZero = 1.0
+    h_params['rewards_decay_rate'] = rewards_decay_rate = 1.0/ (distanceOfRewardCloseToZero / 5) #=1/0.33 i.e. near 0 at 5 * 0.33 = 1.65m away
+
     saveRewardFunction(rewards_normalizer, rewards_decay_rate, current_model_dir_path)
 
     # load model if path is specified
