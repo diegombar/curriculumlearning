@@ -29,40 +29,58 @@ def saveRewardFunction(normalizer, decay_rate, dir_path):
     fig.savefig(plot_file, bbox_inches='tight')
     plt.close()
 
-def savePlot(var_value_per_ep, ylabel_str, title_str, dir_path, name):
+def savePlot(dir_path, var_value_per_ep, ylabel_str, title_str, name):
     fig = plt.figure()
+    episodes = range(1, len(var_value_per_ep) + 1) # start at episode 1
     plt.plot(var_value_per_ep, linewidth=0.5)
-    plt.ylabel(ylabel_str)
     plt.xlabel('episode')
+    plt.ylabel(ylabel_str)
     plt.title(title_str)
     plot_file = os.path.join(dir_path, name)
     fig.savefig(plot_file, bbox_inches='tight')
     plt.close()
 
+def saveQvaluesPlot(dir_path, statesArray, maxQvaluesArray, nJoints=6):
+    # statesArray = maxQvaluesArray = nJoints x ?
+    for i in range(nJoints):
+        normalized_angles = statesArray[i]
+        maxQvalues = maxQvaluesArray[i]
+        fig = plt.figure()
+        plt.scatter(normalized_angles, maxQvalues)
+        plt.xlabel('normalized angle')
+        plt.ylabel('max Q-value')
+        plt.title('Max Q-values for angles observed, joint'+ str(i + 1))
+        plot_file = os.path.join(dir_path, 'angles_Q_values_joint' + str(i + 1) + '.svg')
+        fig.savefig(plot_file, bbox_inches='tight')
+        plt.close()
+
 def savePlots(
   dir_path, undisc_returns, num_steps, 
-  successes, epsilons, avg_maxQs):
+  successes, epsilons, avg_maxQs,
+  statesArray, maxQvaluesArray):
     #note: "per_ep" in variable names were omitted
     # discounted returns for each episode
-    savePlot(undisc_returns, "undisc. return", "Undiscounted return obtained", dir_path, "undisc_returns.svg")
+    savePlot(dir_path, undisc_returns, "undisc. return", "Undiscounted return obtained", "undisc_returns.svg")
 
     # steps performed in each episode
-    savePlot(num_steps, "steps", "Steps performed per episode", dir_path, "steps.svg")
+    savePlot(dir_path, num_steps, "steps", "Steps performed per episode", "steps.svg")
 
     # number of success so far, for each episode
-    savePlot(successes, "successes", "Number of successes", dir_path, "successes.svg")
+    savePlot(dir_path, successes, "successes", "Number of successes", "successes.svg")
     
     # epsilon evolution
-    savePlot(epsilons, "epsilon value", "Epsilon updates", dir_path, "epsilons.svg")
+    savePlot(dir_path, epsilons, "epsilon value", "Epsilon updates", "epsilons.svg")
 
     # average (over steps, for each episode) of maxQ
     avg_maxQ1s, avg_maxQ2s, avg_maxQ3s, avg_maxQ4s, avg_maxQ5s, avg_maxQ6s = avg_maxQs
-    savePlot(avg_maxQ1s, "average maxQ", "Average maxQ per episode, joint 1", dir_path, "average_q1.svg")
-    savePlot(avg_maxQ2s, "average maxQ", "Average maxQ per episode, joint 2", dir_path, "average_q2.svg")
-    savePlot(avg_maxQ3s, "average maxQ", "Average maxQ per episode, joint 3", dir_path, "average_q3.svg")
-    savePlot(avg_maxQ4s, "average maxQ", "Average maxQ per episode, joint 4", dir_path, "average_q4.svg")
-    savePlot(avg_maxQ5s, "average maxQ", "Average maxQ per episode, joint 5", dir_path, "average_q5.svg")
-    savePlot(avg_maxQ6s, "average maxQ", "Average maxQ per episode, joint 6", dir_path, "average_q6.svg")
+    savePlot(dir_path, avg_maxQ1s, "average maxQ", "Average maxQ per episode, joint 1", "average_q1.svg")
+    savePlot(dir_path, avg_maxQ2s, "average maxQ", "Average maxQ per episode, joint 2", "average_q2.svg")
+    savePlot(dir_path, avg_maxQ3s, "average maxQ", "Average maxQ per episode, joint 3", "average_q3.svg")
+    savePlot(dir_path, avg_maxQ4s, "average maxQ", "Average maxQ per episode, joint 4", "average_q4.svg")
+    savePlot(dir_path, avg_maxQ5s, "average maxQ", "Average maxQ per episode, joint 5", "average_q5.svg")
+    savePlot(dir_path, avg_maxQ6s, "average maxQ", "Average maxQ per episode, joint 6", "average_q6.svg")
+
+    saveQvaluesPlot(dir_path, statesArray, maxQvaluesArray)
 
 # experience replay dataset, experience = (s,a,r,s',done)
 class experience_dataset():
@@ -90,15 +108,6 @@ class DQN():
 
         self.variable_dict = {}
 
-        variable_dict = {
-                            "weight0":mainDQN.weights[0],
-                            "weight1":mainDQN.weights[1],
-                            "weight1":mainDQN.weights[2],
-                            "bias0":mainDQN.biases[0],
-                            "bias1":mainDQN.biases[1],
-                            "bias2":mainDQN.biases[2],
-                        }
-
         nHidden = num_neurons_per_hidden
 
         if use_variable_names:
@@ -119,8 +128,8 @@ class DQN():
                     b = tf.Variable(tf.constant(0.1, shape=[1]), name=bias_name)
                     self.weights.append(w)
                     self.biases.append(b)
-                    variable_dict[weight_name] = self.weights[-1]
-                    variable_dict[bias_name] = self.bias[-1]
+                    self.variable_dict[weight_name] = self.weights[-1]
+                    self.variable_dict[bias_name] = self.biases[-1]
                     if i == 0:
                         layer = tf.nn.relu(tf.matmul(self.inState, self.weights[0]) + self.biases[0], name="neuron_activations" + str(i))
                         self.hidden_layers.append(layer)
@@ -129,6 +138,14 @@ class DQN():
                         self.hidden_layers.append(layer)
                     else:
                         self.allJointsQvalues = tf.add(tf.matmul(self.hidden_layers[-1], self.weights[-1]),self.biases[-1], name="q_values") # Q values for all actions given inState, #batch_size x nActions
+            # self.variable_dict = {
+            #                 "weight0":mainDQN.weights[0],
+            #                 "weight1":mainDQN.weights[1],
+            #                 "weight1":mainDQN.weights[2],
+            #                 "bias0":mainDQN.biases[0],
+            #                 "bias1":mainDQN.biases[1],
+            #                 "bias2":mainDQN.biases[2],
+            #             }
         else:
             # self.W0 = tf.Variable(tf.truncated_normal([stateSize, nHidden], mean=0.0, stddev=0.1), name="weights0")
             # self.W1 = tf.Variable(tf.truncated_normal([nHidden, nHidden], mean=0.0, stddev=0.1), name="weights1")
@@ -146,27 +163,38 @@ class DQN():
             self.b1 = tf.Variable(tf.constant(0.1, shape=[1]))
             self.b2 = tf.Variable(tf.constant(0.1, shape=[1]))
 
+            self.variable_dict = {
+                                     "Variable":self.W0,
+                                     "Variable_1":self.W1,
+                                     "Variable_2":self.W2,
+                                     "Variable_3":self.b0,
+                                     "Variable_4":self.b1,
+                                     "Variable_5":self.b2,
+                                 }
+
             # layers
             self.hidden1 = tf.nn.relu(tf.matmul(self.inState, self.W0) + self.b0)
             self.hidden2 = tf.nn.relu(tf.matmul(self.hidden1, self.W1) + self.b1)
             self.allJointsQvalues = tf.matmul(self.hidden2, self.W2) + self.b2 # Q values for all actions given inState, #batch_size x nActions
 
         # self.j1Qvalues, self.j2Qvalues, self.j3Qvalues, self.j4Qvalues, self.j5Qvalues, self.j6Qvalues = tf.split(self.allJointsQvalues, self.nJoints, axis=1) # batch_size x (nJoints x actionsPerJoint)
-        #get each one batch_size x actionsPerJoint
 
+        # get actions of highest Q value for each joint
         self.allJointsQvalues3D = tf.reshape(self.allJointsQvalues, [-1, self.nJoints, self.nActionsPerJoint]) # batch_size x nJoints x actionsPerJoint
         self.allJointsBestActions = tf.argmax(self.allJointsQvalues3D, axis=2, name='best_actions') # batch_size x nJoints
 
-        # get batch of chosen actions a0
-        self.chosenActions = tf.placeholder(shape=[None, self.nJoints],dtype=tf.int32, name='chosen_actions') #batch_size x nJoints
-        #select Q values for chosen actions a0
-        self.chosenAs_onehot = tf.one_hot(self.chosenActions, self.nActionsPerJoint, dtype=tf.float32) #batch_size x nJoints x nActionsPerJoint
-        self.chosenActionsQvalues = tf.reduce_sum(tf.multiply(self.allJointsQvalues3D, self.chosenAs_onehot), axis=2, name='chosen_actions_q_values') #element-wise multiplication
-
-        # action with highest Q given inState
-
-        # loss by taking the sum of squares difference between the target and predicted Q values.
+        #get Q target values
         self.Qtargets = tf.placeholder(shape=[None, self.nJoints], dtype=tf.float32, name='q_targets') #batch_size x nJoints
+
+        # get batch of executed actions a0
+        self.chosenActions = tf.placeholder(shape=[None, self.nJoints],dtype=tf.int32, name='chosen_actions') #batch_size x nJoints
+
+        #get Q values corresponding to executed actions (i.e. Q values to update)
+        with tf.name_scope('q_values_to_update') as scope:
+            self.chosenAs_onehot = tf.one_hot(self.chosenActions, self.nActionsPerJoint, dtype=tf.float32) #batch_size x nJoints x nActionsPerJoint
+            self.chosenActionsQvalues = tf.reduce_sum(tf.multiply(self.allJointsQvalues3D, self.chosenAs_onehot), axis=2, name='executed_actions_q_values') #element-wise multiplication
+
+        # loss by taking the sum of squares difference between the target and predicted Q values
         self.error = tf.square(self.Qtargets - self.chosenActionsQvalues, name='error') #element-wise
         self.loss = tf.reduce_mean(self.error, name='loss')
         self.optimizer = tf.train.AdamOptimizer(learning_rate=lrate)
@@ -203,6 +231,8 @@ def trainDQL(
     h_params['neurons_per_hidden_layer'] = num_neurons_per_hidden  #mnih: 512 for dense hidden layer
     h_params['num_episodes'] = num_episodes
     h_params['max_steps_per_episode'] = max_steps_per_episode
+    h_params['model_saving_period'] = model_saving_period
+    h_params['q_values_log_period'] = q_values_log_period = max(model_saving_period // 5, 1)
     h_params['e_min'] = e_min
     h_params['batch_size'] = batch_size #mnih=32
     h_params['replay_start_size'] = replay_start_size # steps to fill dataset with random actions mnih=5E4
@@ -269,7 +299,7 @@ def trainDQL(
         h_params['state_size'] = stateSize = env.observation_space_size
         h_params['number_of_actions'] = nActions = env.action_space_size
         h_params['number_of_joints'] = nJoints = nActions // nActionsPerJoint
-        mainDQN, variable_dict = DQN(nActions, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names)
+        mainDQN = DQN(nActions, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names)
         targetDQN = DQN(nActions, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names)
 
         # save txt file with hyper parameters
@@ -280,27 +310,27 @@ def trainDQL(
         # initialize and create variables saver
         init = tf.global_variables_initializer()
 
-        variable_dict = mainDQN.variable_dict
-        variable_dict = {
-                            "weight0":mainDQN.weights[0],
-                            "weight1":mainDQN.weights[1],
-                            "weight1":mainDQN.weights[2],
-                            "bias0":mainDQN.biases[0],
-                            "bias1":mainDQN.biases[1],
-                            "bias2":mainDQN.biases[2],
-                        }
+        # variable_dict = mainDQN.variable_dict
+        # variable_dict = {
+        #                     "weight0":mainDQN.weights[0],
+        #                     "weight1":mainDQN.weights[1],
+        #                     "weight1":mainDQN.weights[2],
+        #                     "bias0":mainDQN.biases[0],
+        #                     "bias1":mainDQN.biases[1],
+        #                     "bias2":mainDQN.biases[2],
+        #                 }
 
-        if not use_variable_names:
-            variable_dict = {
-                                "Variable":mainDQN.W0,
-                                "Variable_1":mainDQN.W1,
-                                "Variable_2":mainDQN.W2,
-                                "Variable_3":mainDQN.b0,
-                                "Variable_4":mainDQN.b1,
-                                "Variable_5":mainDQN.b2,
-                            }
+        # if not use_variable_names:
+        #     variable_dict = {
+        #                         "Variable":mainDQN.W0,
+        #                         "Variable_1":mainDQN.W1,
+        #                         "Variable_2":mainDQN.W2,
+        #                         "Variable_3":mainDQN.b0,
+        #                         "Variable_4":mainDQN.b1,
+        #                         "Variable_5":mainDQN.b2,
+        #                     }
 
-        saver = tf.train.Saver(variable_dict, max_to_keep=5, keep_checkpoint_every_n_hours=2)
+        saver = tf.train.Saver(mainDQN.variable_dict, keep_checkpoint_every_n_hours=2)
         trainables = tf.trainable_variables()
         targetOps = updateTargetGraph(trainables,tau)
 
@@ -331,10 +361,11 @@ def trainDQL(
             successes = []
             epsilon_per_ep = []
             average_maxQ_per_ep = np.array([]).reshape(nJoints,0)
+            statesArray = np.array([]).reshape(nJoints,0)
+            maxQvaluesArray = np.array([]).reshape(nJoints,0)
 
             for i in range(1, num_episodes + 1):
-                if i % model_saving_period == 0:
-                    print("episode number:", i)
+                print("episode number ", i)
                 initialState = env.reset() # reset environment and get first observation
                 undisc_return = 0
                 sum_of_maxQ = np.zeros((nJoints,1))
@@ -368,7 +399,6 @@ def trainDQL(
                         transition = np.array([initialState, chosenActions, r, newState, done])
                         transition = np.reshape(transition, [1, 5]) # 1 x 5
                         episodeBuffer.add(transition) # add step to episode buffer
-                    initialState = newState
 
                     if total_steps > replay_start_size and not skip_training:
                         # epsilon decay
@@ -401,6 +431,13 @@ def trainDQL(
                     undisc_return += r
                     maxQvalues = np.reshape(maxQvalues, (nJoints, 1))
                     sum_of_maxQ += maxQvalues
+
+                    # save q values for training logs
+                    if total_steps % q_values_log_period == 0:
+                        statesArray = np.concatenate((statesArray, np.reshape(initialState, (nJoints, 1))), axis=1)
+                        maxQvaluesArray = np.concatenate((maxQvaluesArray, maxQvalues), axis=1)
+
+                    initialState = newState
                     if done:
                         success_count +=1
                         break
@@ -419,7 +456,7 @@ def trainDQL(
 
                 print("averageMaxQ for each joint:\n", averageMaxQ.T)
 
-                average_maxQ_per_ep = np.concatenate((average_maxQ_per_ep,averageMaxQ), axis=1)
+                average_maxQ_per_ep = np.concatenate((average_maxQ_per_ep, averageMaxQ), axis=1)
 
                 #save the model and log training
                 if i % model_saving_period ==0:
@@ -428,7 +465,10 @@ def trainDQL(
                     checkpoints_plots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
                     os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
                     savePlots(checkpoints_plots_dir_path, undisc_return_per_ep, num_steps_per_ep,
-                              successes, epsilon_per_ep, average_maxQ_per_ep)
+                              successes, epsilon_per_ep, average_maxQ_per_ep, statesArray, maxQvaluesArray)
+                    statesArray = np.array([]).reshape(nJoints,0) # reset q values logs
+                    maxQvaluesArray = np.array([]).reshape(nJoints,0)
+
             #training ended, save results
             end_time = time.time()
             print("Training ended")

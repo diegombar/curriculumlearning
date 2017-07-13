@@ -15,6 +15,7 @@ training.trainDQL(num_hidden_layers=2,
                   showGUI=True,
                   velocity=0.3,
                   model_to_load_file_path=None,
+                  use_variable_names=True,
                   notes="testing algorithm")
 
 #feed set of hyper params
