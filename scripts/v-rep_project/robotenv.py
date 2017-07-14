@@ -27,7 +27,7 @@ def printlog(functionName, returnCode):
 home_path = os.path.expanduser('~')
 
 class RobotEnv():
-    portNb = 19998 # must match the portNb on server side specified in remoteApiConnections.txt
+    portNb = 19998
     vrepPath = os.path.join(home_path, "V-REP_PRO_EDU_V3_4_0_Linux", "vrep.sh")
     #blade "/home/diego/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
     #doc lab : "/homes/dam416/V-REP_PRO_EDU_V3_3_1_64_Linux/vrep.sh"
@@ -229,7 +229,7 @@ class RobotEnv():
             newState = [angle if angle <= np.pi else angle - 2 * np.pi for angle in jointPositions] # convert values to ]-pi, +pi]
             newState = np.array(newState)
             newState = newState + np.pi # convert values to ]0, +2*pi]
-            state1 = newState / np.pi # convert to ]0, 1]
+            state1 = newState / (2 * np.pi) # convert to ]0, 1]
             # try:
             self.state = state1.reshape(6)
             # except:
