@@ -470,6 +470,7 @@ def trainDQL(
 
                 #save the model and log training
                 if i % model_saving_period ==0:
+                    print("Saving model and results")
                     save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
                     print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(i, j, undisc_return, done))
                     checkpoints_plots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
@@ -486,16 +487,24 @@ def trainDQL(
             save_path = saver.save(sess, trained_model_file_path, global_step=num_episodes) #save the trained model
             print("Trained model saved in file: %s" % save_path)
 
-    # time
+    # save total time and steps to txt file
     total_training_time = end_time - start_time #in seconds
     print('\nTotal training time:', total_training_time)
-    time_dict = {"total_training_time_in_secs":total_training_time}
+    end_stats_dict = {"total_number_of_steps_executed":total_steps}
+    end_stats_dict["total_training_time_in_secs"] = total_training_time
+    stats_file_path = os.path.join(current_model_dir_path, "total_time.txt")
+    with open(stats_file_path, "w") as stats_file:
+        json.dump(end_stats_dict, stats_file, sort_keys=True, indent=4)
 
-    # save txt file with total time
-    total_time_file_path = os.path.join(current_model_dir_path, "total_time.txt")
-    with open(total_time_file_path, "w") as total_time_file:
-        json.dump(time_dict, total_time_file, sort_keys=True, indent=4)
+    # save lists of results for later plots
+    lists_to_serialize = ['undisc_return_per_ep', 'num_steps_per_ep', 'successes', 'epsilon_per_ep']
+    for list_to_serialize in lists_to_serialize:
+        list_json_file = os.path.join(current_model_dir_path, list_to_serialize + '.json')
+        with open(list_json_file, "w") as json_file:
+            json.dump(eval(list_to_serialize), json_file)
 
     ## save plots separately
     savePlots(trained_model_plots_dir_path, undisc_return_per_ep, num_steps_per_ep, successes, epsilon_per_ep, average_maxQ_per_ep, statesArray, maxQvaluesArray)
     #plt.show() #optional
+
+    return save_path # for easy model loading
