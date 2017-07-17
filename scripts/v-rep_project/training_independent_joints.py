@@ -220,12 +220,16 @@ def updateTarget(op_holder,sess):
 
 def trainDQL(
   num_hidden_layers, num_neurons_per_hidden,
-  num_episodes, max_steps_per_episode, e_min, model_saving_period,
-  batch_size, replay_start_size, replay_memory_size,
+  num_episodes, max_steps_per_episode, e_min,
+  model_saving_period=100,
+  batch_size=32,
+  replay_start_size=50000,
+  replay_memory_size=500000,
   showGUI=True,
   velocity=0.3,
   model_to_load_file_path=None,
   use_variable_names=False,
+  skip_training=False,
   notes=None):
 
     # hyper params to save to txt file
@@ -241,8 +245,22 @@ def trainDQL(
     h_params['replay_start_size'] = replay_start_size # steps to fill dataset with random actions mnih=5E4
     h_params['replay_memory_size'] = replay_memory_size # in steps #mnih: 1E6
     h_params["joint_velocity"] = velocity
+    h_params['use_variable_names'] = use_variable_names #use non-default names for variables
+
+    # load model if path is specified
+    load_model = False
+    if model_to_load_file_path is not None:
+        # e.g.
+        # model_to_load_file_path = os.path.join(all_models_dir_path,"model_and_results_2017-Jul-07_20-22-44","saved_checkpoints","checkpoint_model-400")
+        # model_to_load_file_path = os.path.join(all_models_dir_path,"model_and_results_2017-Jul-07_20-22-44","trained_model","final_model-2000")
+        h_params["model_to_load_file_path"] = model_to_load_file_path
+        load_model = True
+
+    h_params['load_model'] = load_model
+    h_params['skip_training'] = skip_training #skip for visualization, do not skip for curriculum learning/pre-training
 
     if notes is not None: h_params['notes'] = notes
+
 
     if replay_start_size <= max_steps_per_episode or replay_start_size < batch_size:
         print("WARNING: replay_start_size must be greater than max_steps_per_episode and batch_size")
@@ -271,21 +289,8 @@ def trainDQL(
     distanceOfRewardCloseToZero = 1.0
     h_params['rewards_decay_rate'] = rewards_decay_rate = 1.0/ (distanceOfRewardCloseToZero / 5) #=1/0.33 i.e. near 0 at 5 * 0.33 = 1.65m away
 
-    # load model if path is specified
-    load_model = False
-    skip_training = False
-    if model_to_load_file_path is not None:
-        # e.g.
-        # model_to_load_file_path = os.path.join(all_models_dir_path,"model_and_results_2017-Jul-07_20-22-44","saved_checkpoints","checkpoint_model-400")
-        # model_to_load_file_path = os.path.join(all_models_dir_path,"model_and_results_2017-Jul-07_20-22-44","trained_model","final_model-2000")
-        h_params["model_to_load_file_path"] = model_to_load_file_path
-        load_model = True
-        skip_training = True
-    h_params['load_model'] = load_model
-    h_params['skip_training'] = skip_training #skip for visualization, do not skip for curriculum learning/pre-training
-
     # recursive exponential decay for epsilon
-    h_params['e_max'] = e_max = 1.0 #P(random action in at least one joint) = (1 - epsilon)**nJoints
+    h_params['e_max'] = e_max = 1.0 #P(random action in at least one joint) = 1- (1 - epsilon)**nJoints
     h_params['e_tau'] = e_tau = max_steps_per_episode * num_episodes * 0.8 /5 # time constant in steps, close to final value at 5 eTau
     addEFactor = 1.0 - (1.0 / e_tau)
 
