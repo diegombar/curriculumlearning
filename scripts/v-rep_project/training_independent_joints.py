@@ -291,7 +291,7 @@ def trainDQL(
 
     # recursive exponential decay for epsilon
     h_params['e_max'] = e_max = 1.0 #P(random action in at least one joint) = 1- (1 - epsilon)**nJoints
-    h_params['e_tau'] = e_tau = max_steps_per_episode * num_episodes * 0.8 /5 # time constant in steps, close to final value at 5 eTau
+    h_params['e_tau'] = e_tau = max_steps_per_episode * num_episodes * 0.9 /5 # time constant in steps, close to final value at 5 eTau
     addEFactor = 1.0 - (1.0 / e_tau)
 
     h_params['train_model_steps_period'] = train_model_steps_period = 4 # mnih = 4, period of mini-batch sampling and training
@@ -492,7 +492,7 @@ def trainDQL(
     print('\nTotal training time:', total_training_time)
     end_stats_dict = {"total_number_of_steps_executed":total_steps}
     end_stats_dict["total_training_time_in_secs"] = total_training_time
-    stats_file_path = os.path.join(current_model_dir_path, "total_time.txt")
+    stats_file_path = os.path.join(current_model_dir_path, "end_stats.txt")
     with open(stats_file_path, "w") as stats_file:
         json.dump(end_stats_dict, stats_file, sort_keys=True, indent=4)
 
