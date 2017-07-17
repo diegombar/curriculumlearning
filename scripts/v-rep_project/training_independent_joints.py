@@ -42,13 +42,9 @@ def savePlot(dir_path, var_value_per_ep, ylabel_str, title_str, name):
 
 def saveQvaluesPlot(dir_path, statesArray, maxQvaluesArray, nJoints=6):
     # statesArray = maxQvaluesArray = nJoints x ?
-    print('\nstatesArray', statesArray)
-    print('\nmaxQvaluesArray', maxQvaluesArray)
     for i in range(nJoints):
         normalized_angles = statesArray[i]
         maxQvalues = maxQvaluesArray[i]
-        print('\nnormalized_angles', normalized_angles)
-        print('\nmaxQvalues', maxQvalues)
         fig = plt.figure()
         plt.scatter(normalized_angles, maxQvalues)
         plt.xlabel('normalized angle')
@@ -439,8 +435,6 @@ def trainDQL(
 
                     # save q values for training logs
                     if total_steps % q_values_log_period == 0:
-                        print("\nstate: ", stateToSave)
-                        print("\nq_values: ", maxQvalues)
                         statesArray = np.concatenate((statesArray, stateToSave), axis=1)
                         maxQvaluesArray = np.concatenate((maxQvaluesArray, maxQvalues), axis=1)
 
