@@ -17,11 +17,11 @@ from robotenv import RobotEnv
 
 h_params = {} # params to save in txt file:
 
-def saveRewardFunction(normalizer, decay_rate, dir_path):
+def saveRewardFunction(robotenv, dir_path):
     fig = plt.figure()
-    d = np.arange(0., 3., 0.05)
-    rewards = normalizer * np.exp(-decay_rate * d)
-    plt.plot(d, rewards, linewidth=0.5)
+    distance = np.arange(0., 3., 0.05)
+    rewards = robotenv.distance2reward(distance)
+    plt.plot(distance, rewards, linewidth=0.5)
     plt.ylabel('reward')
     plt.xlabel('distance to goal (m)')
     plt.title('Reward function')
@@ -110,72 +110,75 @@ class DQN():
 
         nHidden = num_neurons_per_hidden
 
-        # if use_variable_names:
-        #     # list of layer sizes
-        #     neuronsPerLayer = [num_neurons_per_hidden] * (num_hidden_layers + 2)
-        #     neuronsPerLayer[0] = stateSize
-        #     neuronsPerLayer[-1] = nActions
+        if use_variable_names:
+            # list of layer sizes
+            neuronsPerLayer = [num_neurons_per_hidden] * (num_hidden_layers + 2)
+            neuronsPerLayer[0] = stateSize
+            neuronsPerLayer[-1] = nActions
 
-        #     # initialize params
-        #     self.weights = []
-        #     self.biases = []
-        #     self.hidden_layers = []
-        #     for i in range(len(neuronsPerLayer) - 1):
-        #         with tf.name_scope('layer'+str(i)) as scope:
-        #             weight_name = "weight" + str(i)
-        #             bias_name = "bias" + str(i)
-        #             w = tf.Variable(tf.truncated_normal([neuronsPerLayer[i], neuronsPerLayer[i+1]], mean=0.0, stddev=0.1), name=weight_name)
-        #             b = tf.Variable(tf.constant(0.1, shape=[1]), name=bias_name)
-        #             self.weights.append(w)
-        #             self.biases.append(b)
-        #             self.variable_dict[weight_name] = self.weights[-1]
-        #             self.variable_dict[bias_name] = self.biases[-1]
-        #             if i == 0:
-        #                 layer = tf.nn.relu(tf.matmul(self.inState, self.weights[0]) + self.biases[0], name="neuron_activations" + str(i))
-        #                 self.hidden_layers.append(layer)
-        #             elif i<(len(neuronsPerLayer) - 2):
-        #                 layer = tf.nn.relu(tf.matmul(self.hidden_layers[-1], self.weights[-1]) + self.biases[-1], name="neuron_activations" + str(i))
-        #                 self.hidden_layers.append(layer)
-        #             else:
-        #                 self.allJointsQvalues = tf.add(tf.matmul(self.hidden_layers[-1], self.weights[-1]),self.biases[-1], name="q_values") # Q values for all actions given inState, #batch_size x nActions
-        #     # self.variable_dict = {
-        #     #                 "weight0":mainDQN.weights[0],
-        #     #                 "weight1":mainDQN.weights[1],
-        #     #                 "weight1":mainDQN.weights[2],
-        #     #                 "bias0":mainDQN.biases[0],
-        #     #                 "bias1":mainDQN.biases[1],
-        #     #                 "bias2":mainDQN.biases[2],
-        #     #             }
-        # else:
-            # self.W0 = tf.Variable(tf.truncated_normal([stateSize, nHidden], mean=0.0, stddev=0.1), name="weights0")
-            # self.W1 = tf.Variable(tf.truncated_normal([nHidden, nHidden], mean=0.0, stddev=0.1), name="weights1")
-            # self.W2 = tf.Variable(tf.truncated_normal([nHidden, nActions], mean=0.0, stddev=0.1), name="weights2")
+            # initialize params
+            self.weights = []
+            self.biases = []
+            self.hidden_layers = []
+            for i in range(len(neuronsPerLayer) - 1):
+                with tf.name_scope('layer'+str(i)) as scope:
+                    weight_name = "weight" + str(i)
+                    bias_name = "bias" + str(i)
+                    w = tf.Variable(tf.truncated_normal([neuronsPerLayer[i], neuronsPerLayer[i+1]], mean=0.0, stddev=0.1), name=weight_name)
+                    b = tf.Variable(tf.constant(0.1, shape=[1]), name=bias_name)
+                    self.weights.append(w)
+                    self.biases.append(b)
+                    self.variable_dict[weight_name] = self.weights[-1]
+                    self.variable_dict[bias_name] = self.biases[-1]
+                    if i == 0:
+                        layer = tf.nn.relu(tf.matmul(self.inState, self.weights[0]) + self.biases[0], name="neuron_activations" + str(i))
+                        self.hidden_layers.append(layer)
+                    elif i<(len(neuronsPerLayer) - 2):
+                        layer = tf.nn.relu(tf.matmul(self.hidden_layers[-1], self.weights[-1]) + self.biases[-1], name="neuron_activations" + str(i))
+                        self.hidden_layers.append(layer)
+                    else:
+                        self.allJointsQvalues = tf.add(tf.matmul(self.hidden_layers[-1], self.weights[-1]),self.biases[-1], name="q_values") # Q values for all actions given inState, #batch_size x nActions
+            # self.variable_dict = {
+            #                 "weight0":self.weights[0],
+            #                 "weight1":self.weights[1],
+            #                 "weight1":self.weights[2],
+            #                 "bias0":self.biases[0],
+            #                 "bias1":self.biases[1],
+            #                 "bias2":self.biases[2],
+            #             }
+        else:
+            self.W0 = tf.Variable(tf.truncated_normal([stateSize, nHidden], mean=0.0, stddev=0.1),
+                # name="weight0"
+                )
+            self.W1 = tf.Variable(tf.truncated_normal([nHidden, nHidden], mean=0.0, stddev=0.1),
+                # name="weight1"
+                )
+            self.W2 = tf.Variable(tf.truncated_normal([nHidden, nActions], mean=0.0, stddev=0.1),
+                # name="weight2"
+                )
+            self.b0 = tf.Variable(tf.constant(0.1, shape=[1]),
+                # name="bias0"
+                )
+            self.b1 = tf.Variable(tf.constant(0.1, shape=[1]),
+                # name="bias1"
+                )
+            self.b2 = tf.Variable(tf.constant(0.1, shape=[1]),
+                # name="bias2"
+                )
 
-            # self.b0 = tf.Variable(tf.constant(0.1, shape=[1]), name="bias0")
-            # self.b1 = tf.Variable(tf.constant(0.1, shape=[1]), name="bias1")
-            # self.b2 = tf.Variable(tf.constant(0.1, shape=[1]), name="bias2")
+            self.variable_dict = {
+                                     "Variable":self.W0,
+                                     "Variable_1":self.W1,
+                                     "Variable_2":self.W2,
+                                     "Variable_3":self.b0,
+                                     "Variable_4":self.b1,
+                                     "Variable_5":self.b2,
+                                 }
 
-        self.W0 = tf.Variable(tf.truncated_normal([stateSize, nHidden], mean=0.0, stddev=0.1))
-        self.W1 = tf.Variable(tf.truncated_normal([nHidden, nHidden], mean=0.0, stddev=0.1))
-        self.W2 = tf.Variable(tf.truncated_normal([nHidden, nActions], mean=0.0, stddev=0.1))
-
-        self.b0 = tf.Variable(tf.constant(0.1, shape=[1]))
-        self.b1 = tf.Variable(tf.constant(0.1, shape=[1]))
-        self.b2 = tf.Variable(tf.constant(0.1, shape=[1]))
-
-        # self.variable_dict = {
-        #                          "Variable":self.W0,
-        #                          "Variable_1":self.W1,
-        #                          "Variable_2":self.W2,
-        #                          "Variable_3":self.b0,
-        #                          "Variable_4":self.b1,
-        #                          "Variable_5":self.b2,
-        #                      }
-
-        # layers
-        self.hidden1 = tf.nn.relu(tf.matmul(self.inState, self.W0) + self.b0)
-        self.hidden2 = tf.nn.relu(tf.matmul(self.hidden1, self.W1) + self.b1)
-        self.allJointsQvalues = tf.matmul(self.hidden2, self.W2) + self.b2 # Q values for all actions given inState, #batch_size x nActions
+            # layers
+            self.hidden1 = tf.nn.relu(tf.matmul(self.inState, self.W0) + self.b0)
+            self.hidden2 = tf.nn.relu(tf.matmul(self.hidden1, self.W1) + self.b1)
+            self.allJointsQvalues = tf.matmul(self.hidden2, self.W2) + self.b2 # Q values for all actions given inState, #batch_size x nActions
 
         # self.j1Qvalues, self.j2Qvalues, self.j3Qvalues, self.j4Qvalues, self.j5Qvalues, self.j6Qvalues = tf.split(self.allJointsQvalues, self.nJoints, axis=1) # batch_size x (nJoints x actionsPerJoint)
 
@@ -268,8 +271,6 @@ def trainDQL(
     distanceOfRewardCloseToZero = 1.0
     h_params['rewards_decay_rate'] = rewards_decay_rate = 1.0/ (distanceOfRewardCloseToZero / 5) #=1/0.33 i.e. near 0 at 5 * 0.33 = 1.65m away
 
-    saveRewardFunction(rewards_normalizer, rewards_decay_rate, current_model_dir_path)
-
     # load model if path is specified
     load_model = False
     skip_training = False
@@ -299,6 +300,9 @@ def trainDQL(
         h_params['state_size'] = stateSize = env.observation_space_size
         h_params['number_of_actions'] = nActions = env.action_space_size
         h_params['number_of_joints'] = nJoints = nActions // nActionsPerJoint
+
+        saveRewardFunction(env, current_model_dir_path)
+
         mainDQN = DQN(nActions, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names)
         targetDQN = DQN(nActions, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names)
 
@@ -330,7 +334,7 @@ def trainDQL(
         #                         "Variable_5":mainDQN.b2,
         #                     }
 
-        saver = tf.train.Saver()
+        saver = tf.train.Saver(mainDQN.variable_dict)
         trainables = tf.trainable_variables()
         targetOps = updateTargetGraph(trainables,tau)
 

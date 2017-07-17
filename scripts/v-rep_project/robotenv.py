@@ -219,6 +219,9 @@ class RobotEnv():
 
             return self.state
 
+    def distance2reward(self, distance):
+        return self.reward_normalizer * np.exp(-self.distance_decay_rate * distance)
+
     #update the state
     def updateState(self):
         if vrep.simxGetConnectionId(self.clientID) != -1:
@@ -238,10 +241,9 @@ class RobotEnv():
             # get reward from distance reading and check goal
             # print("Reading distance...")
             returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking) #dist in metres #vrep.simx_opmode_buffer after streaming start
-            self.reward = self.reward_normalizer * np.exp(-self.distance_decay_rate * self.distanceToGoal)
+            self.reward = self.distance2reward(self.distanceToGoal)
             if self.distanceToGoal < self.minDistance:
                 self.goalReached = True
-
 
     # execute action
     def step(self, actions):
@@ -284,6 +286,3 @@ class RobotEnv():
             #         print("sent reward3=", self.reward)
             #         break
             return self.state, self.reward, self.goalReached
-
-
-    
