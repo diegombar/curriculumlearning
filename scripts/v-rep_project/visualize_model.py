@@ -45,6 +45,7 @@ training.trainDQL(num_hidden_layers=2,
                   model_to_load_file_path=model_to_load,
                   use_variable_names=True,
                   skip_training=True,
-                  notes="visualizing loaded model")
+                  notes="visualizing loaded model",
+                  previous_norm=False)
 
-#note: in first few models, angles were normalized to [0,2] (now fixed)
+#note: use previous_norm for first few models (angles were normalized to [0,2] (now fixed))

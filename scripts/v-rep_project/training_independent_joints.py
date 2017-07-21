@@ -101,7 +101,7 @@ class experience_dataset():
         return np.reshape(sample, [sample_size,5])
 
 class DQN():
-    def __init__(self, nActions, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names=True):
+    def __init__(self, nActions, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names=True, previous_norm=False):
         self.nJoints = 6
         self.nActionsPerJoint = nActions // self.nJoints
         self.inState = tf.placeholder(shape=[None,stateSize], dtype=tf.float32, name='state') #batch_size x stateSize
@@ -131,11 +131,14 @@ class DQN():
                     self.variable_dict[weight_name] = self.weights[-1]
                     self.variable_dict[bias_name] = self.biases[-1]
                     if i == 0:
-                        layer = tf.nn.relu(tf.matmul(self.inState, self.weights[0]) + self.biases[0], name="neuron_activations" + str(i))
-                        self.hidden_layers.append(layer)
+                        if previous_norm:
+                            h_layer1 = tf.nn.relu(tf.matmul(2 * self.inState, self.weights[0]) + self.biases[0], name="neuron_activations" + str(i))
+                        else:
+                            h_layer1 = tf.nn.relu(tf.matmul(self.inState, self.weights[0]) + self.biases[0], name="neuron_activations" + str(i))
+                        self.hidden_layers.append(h_layer1)
                     elif i<(len(neuronsPerLayer) - 2):
-                        layer = tf.nn.relu(tf.matmul(self.hidden_layers[-1], self.weights[-1]) + self.biases[-1], name="neuron_activations" + str(i))
-                        self.hidden_layers.append(layer)
+                        h_layer = tf.nn.relu(tf.matmul(self.hidden_layers[-1], self.weights[-1]) + self.biases[-1], name="neuron_activations" + str(i))
+                        self.hidden_layers.append(h_layer)
                     else:
                         self.allJointsQvalues = tf.add(tf.matmul(self.hidden_layers[-1], self.weights[-1]),self.biases[-1], name="q_values") # Q values for all actions given inState, #batch_size x nActions
             # self.variable_dict = {
@@ -176,7 +179,10 @@ class DQN():
                                  }
 
             # layers
-            self.hidden1 = tf.nn.relu(tf.matmul(self.inState, self.W0) + self.b0)
+            if previous_norm:
+                self.hidden1 = tf.nn.relu(tf.matmul(2 * self.inState, self.W0) + self.b0)
+            else:
+                self.hidden1 = tf.nn.relu(tf.matmul(self.inState, self.W0) + self.b0)
             self.hidden2 = tf.nn.relu(tf.matmul(self.hidden1, self.W1) + self.b1)
             self.allJointsQvalues = tf.matmul(self.hidden2, self.W2) + self.b2 # Q values for all actions given inState, #batch_size x nActions
 
@@ -230,7 +236,8 @@ def trainDQL(
   model_to_load_file_path=None,
   use_variable_names=False,
   skip_training=False,
-  notes=None):
+  notes=None,
+  previous_norm=False):
 
     # hyper params to save to txt file
     h_params["showGUI"] = showGUI
@@ -308,8 +315,8 @@ def trainDQL(
 
         saveRewardFunction(env, current_model_dir_path)
 
-        mainDQN = DQN(nActions, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names)
-        targetDQN = DQN(nActions, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names)
+        mainDQN = DQN(nActions, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names, previous_norm)
+        targetDQN = DQN(nActions, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names, previous_norm)
 
         # save txt file with hyper parameters
         h_params_file_path = os.path.join(current_model_dir_path, "hyper_params.txt")

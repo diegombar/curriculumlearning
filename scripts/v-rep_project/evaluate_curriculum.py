@@ -18,4 +18,5 @@ for i in range(1,8):
                         showGUI=True,
                         velocity=0.3,
                         model_to_load_file_path=None,
-                        notes="testing different numbers of episodes, with 300 steps per ep")
+                        notes="testing different numbers of episodes, with 300 steps per ep",
+                        previous_norm=False)

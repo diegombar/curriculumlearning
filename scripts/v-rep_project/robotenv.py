@@ -232,8 +232,8 @@ class RobotEnv():
             newState = [angle if angle <= np.pi else angle - 2 * np.pi for angle in jointPositions] # convert values to ]-pi, +pi]
             newState = np.array(newState)
             newState = newState + np.pi # convert values to ]0, +2*pi]
-            state1 = newState / np.pi # previous version (mistake), convert to ]0, 2]
-            # state1 = newState / (2 * np.pi) # convert to ]0, 1]
+            # state1 = newState / np.pi # previous version (mistake), convert to ]0, 2]
+            state1 = newState / (2 * np.pi) # convert to ]0, 1]
             # try:
             self.state = state1.reshape(6)
             # except:

@@ -26,13 +26,20 @@ def printlog(functionName, returnCode):
     else:
         print("{} got error code: {}".format(functionName, returnCode))
 
+def degrees2Radians(positionsInDeg):
+    #use np.array
+    return positionsInDeg * np.pi / 180
+
+
 # launch v-rep
-vrepPath = "/home/diego/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
-vrepProcess = subprocess.Popen(vrepPath, shell=True, stdout=subprocess.PIPE, preexec_fn=os.setsid)
+portNb = 19998 
+home_path = os.path.expanduser('~')
+vrepPath = os.path.join(home_path, "V-REP_PRO_EDU_V3_4_0_Linux", "vrep.sh")
+vrep_cmd = [vrepPath, '-gREMOTEAPISERVERSERVICE_' + str(portNb) + '_FALSE_FALSE']
+vrepProcess = subprocess.Popen(vrep_cmd, shell=False, preexec_fn=os.setsid)
 
 # connect to V-Rep Remote Api Server
 vrep.simxFinish(-1)# close all opened connections
-portNb = 19998 # must match the portNb on server side specified in remoteApiConnections.txt
 clientID=vrep.simxStart('127.0.0.1',portNb,True,False,5000,5) # Connect to V-REP
 
 if clientID ==-1:
@@ -41,7 +48,7 @@ else:
     print('Connected to remote API server')
     # load scene
     time.sleep(5) # to avoid errors
-    scenePath = 'MicoRobot.ttt'
+    scenePath = 'MicoRobotTest.ttt'
     returnCode = vrep.simxLoadScene(clientID, scenePath, 1, vrep.simx_opmode_oneshot_wait) # vrep.simx_opmode_blocking is recommended
     printlog('simxLoadScene', returnCode)
 
@@ -72,11 +79,15 @@ else:
     pi = np.pi
     vel = 1 # looks fast in simulation!
 
-    #some test target positions for the 6 joints
-    targetPos1 = [90*pi/180] * 6
-    targetPos2 = [90*pi/180, 135*pi/180, 225*pi/180, 180*pi/180, 180*pi/180,350*pi/180]
-    targetPos3 = [pi] * 6
-    targetPos4 = [pi, 135*pi/180, 225*pi/180, 180*pi/180, 180*pi/180, 350*pi/180]
+    #some test target positions for the 6 joints, in radians
+    targetPos0 = np.zeros(6)
+    targetPosPi = np.array([pi] * 6) #default initial state: pi or 180 degrees for all joints
+    targetPosPiO2 = np.array([pi/2] * 6)
+    targetPos1 = np.array([pi/2] * 6)
+    targetPos2 = np.array([90, 135, 225, 180, 180, 350])
+    targetPos2 = degrees2Radians(targetPos2)
+    targetPos4 = np.array([180, 135, 225, 180, 180, 350])
+    targetPos4 = degrees2Radians(targetPos4)
 
     #checkGoal
     goalReached = False
@@ -93,12 +104,12 @@ else:
     #     returnCode = vrep.simxSetJointTargetVelocity(clientID, fingersH1, closingVel, vrep.simx_opmode_oneshot)
     #     returnCode = vrep.simxSetJointTargetVelocity(clientID, fingersH2, closingVel, vrep.simx_opmode_oneshot)
 
-    #set joints target positions
-    # def setJointTargetPositions(clientID, targetPositions):
-    #     for i in range(6):
-    #         returnCode = vrep.simxSetJointTargetPosition(clientID, jointHandles[i], targetPositions[i], vrep.simx_opmode_oneshot)
-    #         if returnCode != vrep.simx_return_ok:
-    #             print("SetJointTargetPosition got error code: %s" % returnCode)
+    # set joints target positions
+    def setJointTargetPositions(clientID, targetPositions):
+        for i in range(6):
+            returnCode = vrep.simxSetJointTargetPosition(clientID, jointHandles[i], targetPositions[i], vrep.simx_opmode_oneshot)
+            if returnCode != vrep.simx_return_ok:
+                print("SetJointTargetPosition got error code: %s" % returnCode)
 
     # Start simulation
     returnCode = vrep.simxStartSimulation(clientID,vrep.simx_opmode_blocking)
@@ -112,14 +123,17 @@ else:
         c = readchar.readchar()
         print('char=',c)
         if c == 'a':    
-            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], vel, vrep.simx_opmode_blocking)
-            printlog('simxSetJointTargetVelocity', returnCode)
+            # returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], vel, vrep.simx_opmode_blocking)
+            # printlog('simxSetJointTargetVelocity', returnCode)
+            setJointTargetPositions(clientID, targetPos0)
         elif c == 'd':
-            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], -vel, vrep.simx_opmode_blocking)
-            printlog('simxSetJointTargetVelocity', returnCode)
+            # returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], -vel, vrep.simx_opmode_blocking)
+            # printlog('simxSetJointTargetVelocity', returnCode)
+            setJointTargetPositions(clientID, targetPosPiO2)
         elif c == 's':
-            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], 0, vrep.simx_opmode_blocking)
-            printlog('simxSetJointTargetVelocity', returnCode)
+            # returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], 0, vrep.simx_opmode_blocking)
+            # printlog('simxSetJointTargetVelocity', returnCode)
+            setJointTargetPositions(clientID, targetPosPi)
         elif c == 'w':    
             returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[4], vel, vrep.simx_opmode_blocking)
             printlog('simxSetJointTargetVelocity', returnCode)
