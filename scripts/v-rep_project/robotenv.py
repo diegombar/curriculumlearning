@@ -127,7 +127,7 @@ class RobotEnv():
 
             # get first valid state
 
-            self.updateState()
+            self.updateState() # default initial state: 180 degrees (=pi radians) for all angles
             ## check the state is valid
             # while True:
             #     self.updateState()
@@ -223,15 +223,22 @@ class RobotEnv():
         return self.reward_normalizer * np.exp(-self.distance_decay_rate * distance)
 
     #update the state
-    def updateState(self):
+    def updateState(self,centerInZeroRad=False):
         if vrep.simxGetConnectionId(self.clientID) != -1:
+            # NOTE: default initial state: 180 degrees (=pi radians) for all angles
             # update joint angles, normalize to ]0,1]
             returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_blocking) # or simx_opmode_blocking (not recommended)
             jointPositions = np.array(floatData[0::2]) #take elements at odd positions (even correspond to torques)
             jointPositions = jointPositions % (2 * np.pi) #convert values to [0, 2*pi[
-            newState = [angle if angle <= np.pi else angle - 2 * np.pi for angle in jointPositions] # convert values to ]-pi, +pi]
-            newState = np.array(newState)
-            newState = newState + np.pi # convert values to ]0, +2*pi]
+
+            if centerInZeroRad:
+                newState = [angle if angle <= np.pi else angle - 2 * np.pi for angle in jointPositions] # convert values to ]-pi, +pi]
+                newState = np.array(newState)
+                newState = newState + np.pi # convert values to ]0, +2*pi]
+            else:
+                #center in pi
+                newState = np.array(jointPositions)
+
             # state1 = newState / np.pi # previous version (mistake), convert to ]0, 2]
             state1 = newState / (2 * np.pi) # convert to ]0, 1]
             # try:

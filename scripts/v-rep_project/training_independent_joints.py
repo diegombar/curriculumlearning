@@ -228,6 +228,7 @@ def trainDQL(
   num_hidden_layers, num_neurons_per_hidden,
   num_episodes, max_steps_per_episode, e_min,
   model_saving_period=100,
+  lrate=1E-6,
   batch_size=32,
   replay_start_size=50000,
   replay_memory_size=500000,
@@ -303,7 +304,7 @@ def trainDQL(
 
     h_params['train_model_steps_period'] = train_model_steps_period = 4 # mnih = 4, period of mini-batch sampling and training
     h_params['update_target_net_rate_tau'] = tau = 0.001 # rate to update target network toward main network
-    h_params['learning_rate'] = lrate = 1E-6
+    h_params['learning_rate'] = lrate #= 1E-6
     h_params['discount_factor'] = y = 0.99 # mnih:0.99
 
     with RobotEnv(showGUI, velocity, rewards_normalizer, rewards_decay_rate) as env: 
