@@ -477,7 +477,7 @@ def trainDQL(
                 average_maxQ_per_ep = np.concatenate((average_maxQ_per_ep, averageMaxQ), axis=1)
 
                 #save the model and log training
-                if i % model_saving_period ==0:
+                if i % model_saving_period == 0:
                     print("Saving model and results")
                     save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
                     print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(i, j, undisc_return, done))
