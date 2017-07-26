@@ -270,7 +270,6 @@ class RobotEnv():
             elif self.task == TASK_PUSH_CUBE_TO_TARGET_POSITION:
                 target_x, target_y = self.targetPosition
                 #self.state = np.append(self.state, [x,y])
-                print('\n State: ', self.state)
                 self.distanceToGoal = np.sqrt((target_x - x)**2 + (target_y - y)**2)
                 print('\n Distance to Target Position: ', self.distanceToGoal)
             else:
