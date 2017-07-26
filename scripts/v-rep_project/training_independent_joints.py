@@ -109,7 +109,7 @@ class DQN():
         self.variable_dict = {}
 
         nHidden = num_neurons_per_hidden
-
+        print
         if use_variable_names:
             # list of layer sizes
             neuronsPerLayer = [num_neurons_per_hidden] * (num_hidden_layers + 2)
@@ -235,7 +235,7 @@ def trainDQL(
   showGUI=True,
   velocity=0.3,
   model_to_load_file_path=None,
-  use_variable_names=False,
+  use_variable_names=True,
   skip_training=False,
   notes=None,
   previous_norm=False):
