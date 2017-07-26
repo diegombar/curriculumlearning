@@ -12,7 +12,7 @@ TASK_PUSH_CUBE_TO_TARGET_POSITION = 2
 targetRelativePos = (0.0, 0.7) #relative x, y in metres
 
 # test the training script
-training.trainDQL(experiment_name='testing_algorithm_'+timestr,
+training.trainDQL(experiment_folder_name='testing_algorithm_'+timestr,
                   num_hidden_layers=2,
                   num_neurons_per_hidden=50,
                   num_episodes=10,

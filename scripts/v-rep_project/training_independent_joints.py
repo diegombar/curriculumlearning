@@ -305,7 +305,7 @@ def trainDQL(
 
     # recursive exponential decay for epsilon
     h_params['e_max'] = e_max = 1.0 #P(random action in at least one joint) = 1- (1 - epsilon)**nJoints
-    h_params['e_tau'] = e_tau = max_steps_per_episode * num_episodes * 0.9 /5 # time constant in steps, close to final value at 5 eTau
+    h_params['e_tau'] = e_tau = num_episodes * 0.9 / 5 # time constant in steps, close to final value at 5 eTau
     addEFactor = 1.0 - (1.0 / e_tau)
 
     h_params['train_model_steps_period'] = train_model_steps_period = 4 # mnih = 4, period of mini-batch sampling and training
@@ -396,6 +396,10 @@ def trainDQL(
 
             for i in range(1, num_episodes + 1):
                 print("episode number ", i)
+                if total_steps > replay_start_size and not skip_training:
+                    # decay epsilon
+                    addE *= addEFactor
+                    epsilon = e_min + addE
                 initialState = env.reset() # reset environment and get first observation
                 undisc_return = 0
                 sum_of_maxQ = np.zeros((nJoints,1))
@@ -431,9 +435,6 @@ def trainDQL(
                         episodeBuffer.add(transition) # add step to episode buffer
 
                     if total_steps > replay_start_size and not skip_training:
-                        # epsilon decay
-                        addE *= addEFactor
-                        epsilon = e_min + addE
                         if total_steps % train_model_steps_period == 0:
                             batch = dataset.sample(batch_size)
                             states0, actions0, rewards, states1, dones = batch.T

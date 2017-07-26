@@ -277,6 +277,7 @@ class RobotEnv():
 
             if self.distanceToGoal < self.minDistance:
                 self.goalReached = True
+                print('#### SUCCESS ####')
 
     # execute action
     def step(self, actions):
