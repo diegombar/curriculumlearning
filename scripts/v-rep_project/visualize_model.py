@@ -3,6 +3,13 @@ import os.path
 
 current_dir_path = os.path.dirname(os.path.realpath(__file__))
 
+
+#tasks
+TASK_REACH_CUBE = 1
+TASK_PUSH_CUBE_TO_TARGET_POSITION = 2
+
+targetRelativePos = (0.0, 0.7) #relative x, y in metres
+
 #model to load
 
 # model1_ep400 = os.path.join(
@@ -44,12 +51,14 @@ training.trainDQL(num_hidden_layers=2,
                   num_episodes=10,
                   max_steps_per_episode=500,
                   e_min=0.01,
+                  task=TASK_REACH_CUBE,
                   showGUI=True,
                   velocity=2.0,
                   model_to_load_file_path=model_to_load,
                   use_variable_names=True, #test changing
                   skip_training=True,
                   notes="visualizing loaded model",
-                  previous_norm=False)
+                  previous_norm=False,
+                  targetRelativePos=targetRelativePos)
 
 #note: use previous_norm for first few models (angles were normalized to [0,2] (now fixed))

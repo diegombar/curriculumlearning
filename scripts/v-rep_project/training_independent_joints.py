@@ -42,7 +42,7 @@ def savePlot(dir_path, var_value_per_ep, ylabel_str, title_str, name):
 
 def saveQvaluesPlot(dir_path, statesArray, maxQvaluesArray, nJoints=6):
     # statesArray = maxQvaluesArray = nJoints x ?
-    for i in range(nJoints):
+    for i in range(nJoints): #first state elements have to be the joint angles
         normalized_angles = statesArray[i]
         maxQvalues = maxQvaluesArray[i]
         fig = plt.figure()
@@ -225,8 +225,10 @@ def updateTarget(op_holder,sess):
         sess.run(op)
 
 def trainDQL(
+  experiment_folder_name,
   num_hidden_layers, num_neurons_per_hidden,
   num_episodes, max_steps_per_episode, e_min,
+  task,
   model_saving_period=100,
   lrate=1E-6,
   batch_size=32,
@@ -238,9 +240,11 @@ def trainDQL(
   use_variable_names=True,
   skip_training=False,
   notes=None,
-  previous_norm=False):
+  previous_norm=False,
+  targetRelativePos=0):
 
     # hyper params to save to txt file
+    h_params["experiment_folder_name"] = experiment_folder_name
     h_params["showGUI"] = showGUI
     h_params['num_hidden_layers'] = num_hidden_layers # not counting output layer
     h_params['neurons_per_hidden_layer'] = num_neurons_per_hidden  #mnih: 512 for dense hidden layer
@@ -249,6 +253,7 @@ def trainDQL(
     h_params['model_saving_period'] = model_saving_period
     h_params['q_values_log_period'] = q_values_log_period = max(model_saving_period // 5, 1)
     h_params['e_min'] = e_min
+    h_params['task'] = task
     h_params['batch_size'] = batch_size #mnih=32
     h_params['replay_start_size'] = replay_start_size # steps to fill dataset with random actions mnih=5E4
     h_params['replay_memory_size'] = replay_memory_size # in steps #mnih: 1E6
@@ -276,8 +281,9 @@ def trainDQL(
     # create folders to save results
     current_dir_path = os.path.dirname(os.path.realpath(__file__)) # directory of this .py file
     all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
+    experiment_dir_path = os.path.join(all_models_dir_path, experiment_folder_name)
     timestr = time.strftime("%Y-%b-%d_%H-%M-%S",time.gmtime()) #or time.localtime()
-    current_model_dir_path = os.path.join(all_models_dir_path, "model_and_results_" + timestr)
+    current_model_dir_path = os.path.join(experiment_dir_path, "model_and_results_" + timestr)
     trained_model_plots_dir_path = os.path.join(current_model_dir_path, "trained_model_results")
     checkpoints_dir_path = os.path.join(current_model_dir_path, "saved_checkpoints")
     trained_model_dir_path = os.path.join(current_model_dir_path, "trained_model")
@@ -307,7 +313,13 @@ def trainDQL(
     h_params['learning_rate'] = lrate #= 1E-6
     h_params['discount_factor'] = y = 0.99 # mnih:0.99
 
-    with RobotEnv(showGUI, velocity, rewards_normalizer, rewards_decay_rate) as env: 
+
+    with RobotEnv(task=task,
+        targetPosition=targetRelativePos,
+        rewards_normalizer=rewards_normalizer,
+        rewards_decay_rate=rewards_decay_rate,
+        showGUI=showGUI,
+        velocity=velocity) as env:
         tf.reset_default_graph()
         nActionsPerJoint = 3
         h_params['state_size'] = stateSize = env.observation_space_size
@@ -359,8 +371,9 @@ def trainDQL(
             sess.run(init)
 
             if load_model:
+                print('\n################ LOADING SAVED MODEL ################')
                 saver.restore(sess, model_to_load_file_path)
-                print('\nPreviously saved model was loaded')
+                print('\n######## SAVED MODEL WAS SUCCESSFULLY LOADED ########')
 
             updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
 
@@ -378,7 +391,7 @@ def trainDQL(
             successes = []
             epsilon_per_ep = []
             average_maxQ_per_ep = np.array([]).reshape(nJoints,0)
-            statesArray = np.array([]).reshape(nJoints,0)
+            statesArray = np.array([]).reshape(stateSize,0)
             maxQvaluesArray = np.array([]).reshape(nJoints,0)
 
             for i in range(1, num_episodes + 1):
@@ -397,7 +410,7 @@ def trainDQL(
                     # pick action from the DQN, epsilon greedy
                     chosenActions, allJQValues = sess.run(
                         [mainDQN.allJointsBestActions, mainDQN.allJointsQvalues3D],
-                        feed_dict={mainDQN.inState:np.reshape(initialState, (1, nJoints))}
+                        feed_dict={mainDQN.inState:np.reshape(initialState, (1, stateSize))}
                     )
 
                     chosenActions = np.reshape(np.array(chosenActions), nJoints)
@@ -447,7 +460,7 @@ def trainDQL(
                     # end of step, save tracked statistics
                     undisc_return += r
                     maxQvalues = np.reshape(maxQvalues, (nJoints, 1))
-                    stateToSave = np.reshape(initialState, (nJoints, 1))
+                    stateToSave = np.reshape(initialState, (stateSize, 1))
                     sum_of_maxQ += maxQvalues
 
                     # save q values for training logs
@@ -485,7 +498,7 @@ def trainDQL(
                     os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
                     savePlots(checkpoints_plots_dir_path, undisc_return_per_ep, num_steps_per_ep,
                               successes, epsilon_per_ep, average_maxQ_per_ep, statesArray, maxQvaluesArray)
-                    statesArray = np.array([]).reshape(nJoints,0) # reset q values logs
+                    statesArray = np.array([]).reshape(stateSize,0) # reset q values logs
                     maxQvaluesArray = np.array([]).reshape(nJoints,0)
 
             #training ended, save results
