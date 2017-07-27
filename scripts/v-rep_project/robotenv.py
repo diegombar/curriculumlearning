@@ -26,6 +26,10 @@ def printlog(functionName, returnCode):
 
 home_path = os.path.expanduser('~')
 
+#tasks
+TASK_REACH_CUBE = 1
+TASK_PUSH_CUBE_TO_TARGET_POSITION = 2
+
 class RobotEnv():
     portNb = 19998
     vrepPath = os.path.join(home_path, "V-REP_PRO_EDU_V3_4_0_Linux", "vrep.sh")
@@ -36,10 +40,16 @@ class RobotEnv():
     # scenePath = os.path.join(current_dir_path, "mico_scene_vrep3-3-1.ttt")
 
     # initialize the environment
-    def __init__(self, showGUI, velocity, rewards_normalizer, rewards_decay_rate):
+    def __init__(self, task, targetPosition, rewards_normalizer, rewards_decay_rate, showGUI=True, velocity=1):
         #actions/states/reward/done
+        self.task = task #see tasks 1, 2 above
+
+        if self.task == TASK_REACH_CUBE:
+            self.observation_space_size = 6 # 6 joint angles
+        if self.task == TASK_PUSH_CUBE_TO_TARGET_POSITION:
+            self.targetPosition = targetPosition #tuple (x,y) target position relative to robot base
+            self.observation_space_size = 6 # FOR NOW #8 # 6 joint angles, cube.x, cube.y
         self.action_space_size = 3 * 6 # (+Vel, -Vel, 0) for 6 joints
-        self.observation_space_size = 6
         self.action_space = range(0,self.action_space_size)
         self.observation_space = np.zeros((1,self.observation_space_size))
         self.state = np.zeros((1,self.observation_space_size))
@@ -121,6 +131,8 @@ class RobotEnv():
             printlog('simxGetObjectHandle', returnCode)
             returnCode, self.fingersH1 = vrep.simxGetObjectHandle(self.clientID, 'MicoHand_fingers12_motor1', vrep.simx_opmode_blocking)
             returnCode, self.fingersH2 = vrep.simxGetObjectHandle(self.clientID, 'MicoHand_fingers12_motor2', vrep.simx_opmode_blocking)
+            returnCode, self.goalCube = vrep.simxGetObjectHandle(self.clientID, 'GoalCube', vrep.simx_opmode_blocking)
+            returnCode, self.robotBase = vrep.simxGetObjectHandle(self.clientID, 'Mico_link1_visible', vrep.simx_opmode_blocking)
             returnCode, self.jointsCollectionHandle = vrep.simxGetCollectionHandle(self.clientID, "sixJoints#", vrep.simx_opmode_blocking)
             returnCode, self.distToGoalHandle = vrep.simxGetDistanceHandle(self.clientID, "distanceToGoal#", vrep.simx_opmode_blocking)
             # returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_streaming) #start streaming
@@ -240,6 +252,7 @@ class RobotEnv():
                 #center in pi
                 newState = np.array(jointPositions)
 
+
             # state1 = newState / np.pi # previous version (mistake), convert to ]0, 2]
             state1 = newState / (2 * np.pi) # convert to ]0, 1]
             # try:
@@ -248,10 +261,24 @@ class RobotEnv():
             #     pass
             # get reward from distance reading and check goal
             # print("Reading distance...")
-            returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking) #dist in metres #vrep.simx_opmode_buffer after streaming start
-            self.reward = self.distance2reward(self.distanceToGoal)
+
+            returnCode, goalCubeRelPos = vrep.simxGetObjectPosition(self.clientID, self.goalCube, self.robotBase, vrep.simx_opmode_blocking)
+            x, y, z = goalCubeRelPos #works, z doesnt change in the plane
+
+            if self.task == TASK_REACH_CUBE:
+                returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking) #dist in metres #vrep.simx_opmode_buffer after streaming start
+                self.reward = self.distance2reward(self.distanceToGoal)
+            elif self.task == TASK_PUSH_CUBE_TO_TARGET_POSITION:
+                target_x, target_y = self.targetPosition
+                #self.state = np.append(self.state, [x,y])
+                self.distanceToGoal = np.sqrt((target_x - x)**2 + (target_y - y)**2)
+                print('\n Distance to Target Position: ', self.distanceToGoal)
+            else:
+                print('ERROR: Invalid Task')
+
             if self.distanceToGoal < self.minDistance:
                 self.goalReached = True
+                print('#### SUCCESS ####')
 
     # execute action
     def step(self, actions):
