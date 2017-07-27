@@ -111,6 +111,7 @@ class RobotEnv():
 
             # Start simulation
             # vrep.simxSetIntegerSignal(self.clientID, 'dummy', 1, vrep.simx_opmode_blocking)
+            time.sleep(5) #to center window for recordings
             returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
             printlog('simxStartSimulation', returnCode)
 

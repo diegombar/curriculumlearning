@@ -31,18 +31,31 @@ current_dir_path = os.path.dirname(os.path.realpath(__file__))
 #    current_dir_path,"trained_models_and_results",
 #    "model_and_results_2017-Jul-12_01-32-42","trained_model","final_model-3000")
 
-new_model = os.path.join(
-   current_dir_path,"trained_models_and_results",
-   "model_and_results_2017-Jul-26_09-41-08","trained_model","final_model-400")
+# new_model = os.path.join(
+#    current_dir_path,"trained_models_and_results",
+#    "model_and_results_2017-Jul-26_09-41-08","trained_model","final_model-400")
 
-model_to_load = new_model
+vel2 = os.path.join(
+   current_dir_path,"trained_models_and_results",
+   "decreasing_speed","model_and_results_2017-Jul-26_17-00-30_vel=2","trained_model","final_model-400")
+vel1= os.path.join(
+   current_dir_path,"trained_models_and_results",
+   "decreasing_speed","model_and_results_2017-Jul-26_20-30-32_vel=1","trained_model","final_model-400")
+vel05 = os.path.join(
+   current_dir_path,"trained_models_and_results",
+   "decreasing_speed","model_and_results_2017-Jul-26_23-38-21_vel=05","trained_model","final_model-400")
+vel025 = os.path.join(
+   current_dir_path,"trained_models_and_results",
+   "decreasing_speed","model_and_results_2017-Jul-27_02-49-34_vel=025","trained_model","final_model-400")
+
+model_to_load = vel2
 
 
 #load model
 training.trainDQL(num_hidden_layers=2,
                   num_neurons_per_hidden=50,
-                  num_episodes=10,
-                  max_steps_per_episode=500,
+                  num_episodes=20,
+                  max_steps_per_episode=400,
                   e_min=0.01,
                   showGUI=True,
                   velocity=2.0,
