@@ -20,7 +20,7 @@ for episodes in [200, 400, 800, 1200, 1600]:
                               num_neurons_per_hidden=50,
                               num_episodes=episodes,
                               max_steps_per_episode=max_steps,
-                              e_min=0.0,
+                              e_min=0.01,
                               task=TASK_REACH_CUBE,
                               model_saving_period=episodes//2,
                               lrate=1E-3, # 1E-3 seems to work fine
@@ -31,6 +31,7 @@ for episodes in [200, 400, 800, 1200, 1600]:
                               velocity=1.0, # 1.0 seems to work fine
                               model_to_load_file_path=None,
                               use_variable_names=True,
+                              skip_training=False,
                               notes="e_min=0, different num_ep, steps=200, vel=1",
                               previous_norm=False)
 

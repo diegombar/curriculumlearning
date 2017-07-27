@@ -62,7 +62,12 @@ model_2000ep_vel1_0 = os.path.join(
    "final_model-2000") #good results with e_min=0.1
 
 
-model_to_load = model_1600ep_vel1_0
+model_800ep_vel1_emin0 = os.path.join(
+   current_dir_path,"trained_models_and_results",
+   "e_min=0, different num_ep, steps=200, vel=1_2017-Jul-26_22-22-21/model_and_results_2017-Jul-27_02-26-31/trained_model",
+   "final_model-800")
+
+model_to_load = model_800ep_vel1_emin0
 
 
 #load model
@@ -71,12 +76,12 @@ training.trainDQL(experiment_folder_name='visualizing_algorithm_'+timestr,
                   num_neurons_per_hidden=50,
                   num_episodes=10,
                   max_steps_per_episode=300,
-                  e_min=0.1, #or 0.01
+                  e_min=0.01, #or 0.01
                   task=TASK_REACH_CUBE,
                   showGUI=True,
                   velocity=1.0,
                   model_to_load_file_path=model_to_load,
-                  use_variable_names=False, #test changing
+                  use_variable_names=True, #test changing
                   skip_training=True,
                   notes="visualizing loaded model",
                   previous_norm=False)
