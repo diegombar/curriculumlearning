@@ -86,15 +86,19 @@ model_800ep_vel1_emin0 = os.path.join(
    "e_min=0, different num_ep, steps=200, vel=1_2017-Jul-26_22-22-21/model_and_results_2017-Jul-27_02-26-31/trained_model",
    "final_model-800")
 
+<<<<<<< HEAD
 reach_then_push = os.path.join(
    current_dir_path,"trained_models_and_results",
    "CL_reach_then_push_2017-Jul-26_20-27-48/model_and_results_2017-Jul-27_07-30-58",
    "trained_model",
    "final_model-400")
 
+model_longer_training_025 = os.path.join(
+   current_dir_path,"trained_models_and_results",
+   "longer_training_vel025_2017-Jul-27_17-29-43/model_and_results_2017-Jul-27_17-29-43/trained_model",
+   "final_model-1000")
 
-model_to_load = reach_then_push
-
+model_to_load = model_longer_training_025
 
 #load model
 training.trainDQL(experiment_folder_name='visualizing_algorithm_'+timestr,
@@ -112,5 +116,6 @@ training.trainDQL(experiment_folder_name='visualizing_algorithm_'+timestr,
                   notes="visualizing loaded model",
                   previous_norm=False,
                   targetRelativePos=targetRelativePos)
+
 
 #note: use previous_norm for first few models (angles were normalized to [0,2] (now fixed))

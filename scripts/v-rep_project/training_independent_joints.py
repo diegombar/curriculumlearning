@@ -11,6 +11,7 @@ import random
 import os.path
 import json
 import subprocess
+import socket
 
 # Load environment
 from robotenv import RobotEnv
@@ -56,8 +57,7 @@ def saveQvaluesPlot(dir_path, statesArray, maxQvaluesArray, nJoints=6):
 
 def savePlots(
   dir_path, undisc_returns, num_steps, 
-  successes, epsilons, avg_maxQs,
-  statesArray, maxQvaluesArray):
+  successes, epsilons, avg_maxQs):
     #note: "per_ep" in variable names were omitted
     # discounted returns for each episode
     savePlot(dir_path, undisc_returns, "undisc. return", "Undiscounted return obtained", "undisc_returns.svg")
@@ -79,8 +79,6 @@ def savePlots(
     savePlot(dir_path, avg_maxQ4s, "average maxQ", "Average maxQ per episode, joint 4", "average_q4.svg")
     savePlot(dir_path, avg_maxQ5s, "average maxQ", "Average maxQ per episode, joint 5", "average_q5.svg")
     savePlot(dir_path, avg_maxQ6s, "average maxQ", "Average maxQ per episode, joint 6", "average_q6.svg")
-
-    saveQvaluesPlot(dir_path, statesArray, maxQvaluesArray)
 
 # experience replay dataset, experience = (s,a,r,s',done)
 class experience_dataset():
@@ -241,7 +239,11 @@ def trainDQL(
   skip_training=False,
   notes=None,
   previous_norm=False,
-  targetRelativePos=0):
+  targetRelativePos=0,
+  policy_test_period = 100, # episodes
+  test_success_rate_list=None, # policy success rate list
+  test_step_numbers=None # track number of steps before each test
+  ):
 
     # hyper params to save to txt file
     h_params["experiment_folder_name"] = experiment_folder_name
@@ -259,6 +261,8 @@ def trainDQL(
     h_params['replay_memory_size'] = replay_memory_size # in steps #mnih: 1E6
     h_params["joint_velocity"] = velocity
     h_params['use_variable_names'] = use_variable_names #use non-default names for variables
+
+    h_params['hostname'] = socket.gethostname()
 
     # load model if path is specified
     load_model = False
@@ -305,13 +309,15 @@ def trainDQL(
 
     # recursive exponential decay for epsilon
     h_params['e_max'] = e_max = 1.0 #P(random action in at least one joint) = 1- (1 - epsilon)**nJoints
-    h_params['e_tau'] = e_tau = num_episodes * 0.9 / 5 # time constant in steps, close to final value at 5 eTau
+    h_params['e_tau'] = e_tau = (num_episodes - (replay_start_size // max_steps_per_episode)) / 5 # time constant in episodes, close to final value at 5 e_tau
     addEFactor = 1.0 - (1.0 / e_tau)
 
     h_params['train_model_steps_period'] = train_model_steps_period = 4 # mnih = 4, period of mini-batch sampling and training
     h_params['update_target_net_rate_tau'] = tau = 0.001 # rate to update target network toward main network
     h_params['learning_rate'] = lrate #= 1E-6
     h_params['discount_factor'] = y = 0.99 # mnih:0.99
+    h_params['policy_test_period'] = policy_test_period #episodes
+    h_params['policy_test_num_of_test_episodes '] = policy_test_episodes = 10 # episodes
 
 
     with RobotEnv(task=task,
@@ -394,22 +400,36 @@ def trainDQL(
             statesArray = np.array([]).reshape(stateSize,0)
             maxQvaluesArray = np.array([]).reshape(nJoints,0)
 
-            for i in range(1, num_episodes + 1):
-                print("episode number ", i)
-                if total_steps > replay_start_size and not skip_training:
+            # success rate initialization:
+            if test_success_rate_list is None:
+                test_success_rate_list = [0]
+            if test_step_numbers is None:
+                test_step_numbers = [0]
+            testing_policy_episode = 0
+            testing_policy = False
+            epsilon_backup = 0
+            no_progress_count = 0
+
+            i = 1
+            while i <= num_episodes:
+                print("\nepisode number ", i)
+
+                if skip_training:
+                    epsilon = e_min
+                elif total_steps > replay_start_size:
                     # decay epsilon
                     addE *= addEFactor
                     epsilon = e_min + addE
+
                 initialState = env.reset() # reset environment and get first observation
                 undisc_return = 0
                 sum_of_maxQ = np.zeros((nJoints,1))
                 done = False
                 if not skip_training: episodeBuffer = experience_dataset(replay_memory_size) # temporary buffer
-                j = 0
-                while j < max_steps_per_episode:
-                    # print("\nstep:", j)
-                    j += 1
-                    total_steps += 1
+                
+                j = 1
+                while j <= max_steps_per_episode:
+                    print("\nstep:", j)
 
                     # pick action from the DQN, epsilon greedy
                     chosenActions, allJQValues = sess.run(
@@ -429,78 +449,128 @@ def trainDQL(
 
                     # perform action and get new state and reward
                     newState, r, done = env.step(chosenActions)
+
                     if not skip_training:
+                        #add experience to buffer
                         transition = np.array([initialState, chosenActions, r, newState, done])
                         transition = np.reshape(transition, [1, 5]) # 1 x 5
                         episodeBuffer.add(transition) # add step to episode buffer
 
-                    if total_steps > replay_start_size and not skip_training:
-                        if total_steps % train_model_steps_period == 0:
-                            batch = dataset.sample(batch_size)
-                            states0, actions0, rewards, states1, dones = batch.T
-                            states0 = np.vstack(states0)
-                            actions0 = np.vstack(actions0)
-                            states1 = np.vstack(states1)
-                            rewards = np.reshape(rewards, (batch_size, 1))
-                            dones = np.reshape(dones, (batch_size, 1))
+                        if total_steps > replay_start_size:
+                            if total_steps % train_model_steps_period == 0:
+                                #train model
+                                batch = dataset.sample(batch_size)
+                                states0, actions0, rewards, states1, dones = batch.T
+                                states0 = np.vstack(states0)
+                                actions0 = np.vstack(actions0)
+                                states1 = np.vstack(states1)
+                                rewards = np.reshape(rewards, (batch_size, 1))
+                                dones = np.reshape(dones, (batch_size, 1))
 
-                            allJBestActions = sess.run(mainDQN.allJointsBestActions, feed_dict={mainDQN.inState:states1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a')) #batch_size x 1
-                            allJQvalues = sess.run(targetDQN.allJointsQvalues3D, feed_dict={targetDQN.inState:states1}) #feed btach of s' and get batch of Q2(a') # batch_size x 3
+                                allJBestActions = sess.run(mainDQN.allJointsBestActions, feed_dict={mainDQN.inState:states1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a')) #batch_size x 1
+                                allJQvalues = sess.run(targetDQN.allJointsQvalues3D, feed_dict={targetDQN.inState:states1}) #feed btach of s' and get batch of Q2(a') # batch_size x 3
 
-                            #get Q values of best actions
-                            allJBestActions_one_hot = np.arange(nActionsPerJoint) == allJBestActions[:,:,None]
-                            allJBestActionsQValues = np.sum(np.multiply(allJBestActions_one_hot, allJQvalues), axis=2) # batch_size x nJoints
-                            end_multiplier = -(dones - 1) # batch_size x 1
+                                #get Q values of best actions
+                                allJBestActions_one_hot = np.arange(nActionsPerJoint) == allJBestActions[:,:,None]
+                                allJBestActionsQValues = np.sum(np.multiply(allJBestActions_one_hot, allJQvalues), axis=2) # batch_size x nJoints
+                                end_multiplier = -(dones - 1) # batch_size x 1
 
-                            allJQtargets = np.reshape(rewards + y * allJBestActionsQValues * end_multiplier, (batch_size,nJoints)) #batch_size x nJoints
+                                allJQtargets = np.reshape(rewards + y * allJBestActionsQValues * end_multiplier, (batch_size,nJoints)) #batch_size x nJoints
 
-                            #Update the primary network with our target values.
-                            _ = sess.run(mainDQN.updateModel, feed_dict={mainDQN.inState:states0, mainDQN.Qtargets:allJQtargets, mainDQN.chosenActions:actions0})
-                            updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
+                                #Update the primary network with our target values.
+                                _ = sess.run(mainDQN.updateModel, feed_dict={mainDQN.inState:states0, mainDQN.Qtargets:allJQtargets, mainDQN.chosenActions:actions0})
+                                updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
 
-                    # end of step, save tracked statistics
-                    undisc_return += r
-                    maxQvalues = np.reshape(maxQvalues, (nJoints, 1))
-                    stateToSave = np.reshape(initialState, (stateSize, 1))
-                    sum_of_maxQ += maxQvalues
-
-                    # save q values for training logs
-                    if total_steps % q_values_log_period == 0:
+                    if not testing_policy:
+                        # end of step, save tracked statistics
+                        undisc_return += r
+                        maxQvalues2 = np.reshape(maxQvalues, (nJoints, 1))
+                        stateToSave = np.reshape(initialState, (stateSize, 1))
+                        sum_of_maxQ += maxQvalues2
+                        total_steps += 1
+                    else:
+                        # save q values for training logs
+                        # if total_steps % q_values_log_period == 0:
                         statesArray = np.concatenate((statesArray, stateToSave), axis=1)
-                        maxQvaluesArray = np.concatenate((maxQvaluesArray, maxQvalues), axis=1)
+                        maxQvaluesArray = np.concatenate((maxQvaluesArray, maxQvalues2), axis=1)
 
                     initialState = newState
+                    j += 1
+
                     if done:
-                        success_count +=1
+                        if testing_policy:
+                            current_test_success_count += 1
+                        else:
+                            success_count += 1
                         break
 
-                #episode ended, save tracked statistics
+                #episode ended
 
-                # add current episode's list of transitions to dataset
-                if not skip_training: dataset.add(episodeBuffer.data)
+                if testing_policy_episode == policy_test_episodes:
+                    # back to training
+                    print("\nBack to training.")
+                    testing_policy = False
+                    skip_training = False
+                    epsilon = epsilon_backup
+                    testing_policy_episode = 0
 
-                num_steps_per_ep.append(j)
-                undisc_return_per_ep.append(undisc_return)
-                successes.append(success_count)
-                epsilon_per_ep.append(epsilon)
+                    current_success_rate = current_test_success_count / policy_test_episodes
+                    test_success_rate_list.append(current_success_rate)
 
-                averageMaxQ = sum_of_maxQ / j #nJoints x 1
-
-                print("averageMaxQ for each joint:\n", averageMaxQ.T)
-
-                average_maxQ_per_ep = np.concatenate((average_maxQ_per_ep, averageMaxQ), axis=1)
-
-                #save the model and log training
-                if i % model_saving_period == 0:
-                    print("Saving model and results")
-                    save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
-                    print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(i, j, undisc_return, done))
-                    checkpoints_plots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
-                    os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
-                    savePlots(checkpoints_plots_dir_path, undisc_return_per_ep, num_steps_per_ep,
-                              successes, epsilon_per_ep, average_maxQ_per_ep, statesArray, maxQvaluesArray)
+                    # plot Q plots
+                    Qplots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
+                    os.makedirs(Qplots_dir_path, exist_ok=True)
+                    saveQvaluesPlot(Qplots_dir_path, statesArray, maxQvaluesArray)
                     statesArray = np.array([]).reshape(stateSize,0) # reset q values logs
                     maxQvaluesArray = np.array([]).reshape(nJoints,0)
+
+                    if test_success_rate_list[-1] < (test_success_rate_list[-2] * 1.1):
+                        no_progress_count += 1
+                    else:
+                        no_progress_count = 0
+
+                    if no_progress_count == 3:
+                        print("\nSuccess rate did not improve, moving on to next task.")
+                        break
+
+                # add current episode's list of transitions to dataset
+                if not skip_training: 
+                    dataset.add(episodeBuffer.data)
+
+                if testing_policy:
+                    testing_policy_episode += 1
+                else:
+                    # save tracked statistics
+                    num_steps_per_ep.append(j)
+                    undisc_return_per_ep.append(undisc_return)
+                    successes.append(success_count)
+                    epsilon_per_ep.append(epsilon)
+
+                    averageMaxQ = sum_of_maxQ / j #nJoints x 1
+                    print("averageMaxQ for each joint:\n", averageMaxQ.T)
+                    average_maxQ_per_ep = np.concatenate((average_maxQ_per_ep, averageMaxQ), axis=1)
+
+                    #save the model and log training
+                    if i % model_saving_period == 0:
+                        print("Saving model and results")
+                        save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
+                        print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(i, j, undisc_return, done))
+                        checkpoints_plots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
+                        os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
+                        savePlots(checkpoints_plots_dir_path, undisc_return_per_ep, num_steps_per_ep,
+                                  successes, epsilon_per_ep, average_maxQ_per_ep)
+
+                    if i % policy_test_period == 0 and not skip_training and not testing_policy:
+                        # pause training and test current policy for some episodes
+                        print("\nTesting policy...")
+                        test_step_numbers.append(total_steps)
+                        current_test_success_count = 0
+                        testing_policy = True
+                        skip_training = True
+                        testing_policy_episode = 1
+                        epsilon_backup = epsilon
+
+                    i += 1
 
             #training ended, save results
             end_time = time.time()
@@ -513,6 +583,7 @@ def trainDQL(
     total_training_time = end_time - start_time #in seconds
     print('\nTotal training time:', total_training_time)
     end_stats_dict = {"total_number_of_steps_executed":total_steps}
+    end_stats_dict = {"total_number_of_episodes_executed":i}
     end_stats_dict["total_training_time_in_secs"] = total_training_time
     stats_file_path = os.path.join(current_model_dir_path, "end_stats.txt")
     with open(stats_file_path, "w") as stats_file:
@@ -525,8 +596,6 @@ def trainDQL(
         with open(list_json_file, "w") as json_file:
             json.dump(eval(list_to_serialize), json_file)
 
-    ## save plots separately
-    savePlots(trained_model_plots_dir_path, undisc_return_per_ep, num_steps_per_ep, successes, epsilon_per_ep, average_maxQ_per_ep, statesArray, maxQvaluesArray)
-    #plt.show() #optional
+    savePlots(trained_model_plots_dir_path, undisc_return_per_ep, num_steps_per_ep, successes, epsilon_per_ep, average_maxQ_per_ep)
 
-    return save_path # for easy model loading
+    return save_path, test_success_rate_list, test_step_numbers  # for visualization and curriculum learning
