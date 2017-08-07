@@ -58,6 +58,8 @@ vel025 = os.path.join(
    current_dir_path,"trained_models_and_results",
    "decreasing_speed","model_and_results_2017-Jul-27_02-49-34_vel=025","trained_model","final_model-400")
 
+
+
 model_1600ep_vel1_0 = os.path.join(
    current_dir_path,"trained_models_and_results",
    "Testing different num of episodes/model_and_results_2017-Jul-22_21-57-58_1600ep/trained_model",
@@ -84,7 +86,14 @@ model_800ep_vel1_emin0 = os.path.join(
    "e_min=0, different num_ep, steps=200, vel=1_2017-Jul-26_22-22-21/model_and_results_2017-Jul-27_02-26-31/trained_model",
    "final_model-800")
 
-model_to_load = model_800ep_vel1_emin0
+reach_then_push = os.path.join(
+   current_dir_path,"trained_models_and_results",
+   "CL_reach_then_push_2017-Jul-26_20-27-48/model_and_results_2017-Jul-27_07-30-58",
+   "trained_model",
+   "final_model-400")
+
+
+model_to_load = reach_then_push
 
 
 #load model
@@ -92,15 +101,16 @@ training.trainDQL(experiment_folder_name='visualizing_algorithm_'+timestr,
                   num_hidden_layers=2,
                   num_neurons_per_hidden=50,
                   num_episodes=10,
-                  max_steps_per_episode=300,
+                  max_steps_per_episode=200,
                   e_min=0.01, #or 0.1
-                  task=TASK_REACH_CUBE,
+                  task=TASK_PUSH_CUBE_TO_TARGET_POSITION,
                   showGUI=True,
-                  velocity=1.0,
+                  velocity=0.25,
                   model_to_load_file_path=model_to_load,
                   use_variable_names=True, #test changing
                   skip_training=True,
                   notes="visualizing loaded model",
-                  previous_norm=False)
+                  previous_norm=False,
+                  targetRelativePos=targetRelativePos)
 
 #note: use previous_norm for first few models (angles were normalized to [0,2] (now fixed))
