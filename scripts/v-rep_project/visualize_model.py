@@ -86,7 +86,6 @@ model_800ep_vel1_emin0 = os.path.join(
    "e_min=0, different num_ep, steps=200, vel=1_2017-Jul-26_22-22-21/model_and_results_2017-Jul-27_02-26-31/trained_model",
    "final_model-800")
 
-<<<<<<< HEAD
 reach_then_push = os.path.join(
    current_dir_path,"trained_models_and_results",
    "CL_reach_then_push_2017-Jul-26_20-27-48/model_and_results_2017-Jul-27_07-30-58",
