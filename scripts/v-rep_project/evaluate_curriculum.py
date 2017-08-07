@@ -86,5 +86,5 @@ for vel in [1, 0.5, 0.25]:
                               test_success_rate_list=saved_test_success_rate_list,
                               test_step_numbers=saved_test_step_numbers
                               )
-      os.makedirs(experiment_dir_path, exist_ok=True)
-      plot_success(experiment_dir_path, saved_test_success_rate_list, saved_test_step_numbers)
+    os.makedirs(experiment_dir_path, exist_ok=True)
+    plot_success(experiment_dir_path, saved_test_success_rate_list, saved_test_step_numbers)
