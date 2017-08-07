@@ -1,5 +1,6 @@
 import training_independent_joints as training
 import time
+import os
 
 timestr = time.strftime("%Y-%b-%d_%H-%M-%S",time.gmtime()) #or time.localtime()
 current_dir_path = os.path.dirname(os.path.realpath(__file__))
