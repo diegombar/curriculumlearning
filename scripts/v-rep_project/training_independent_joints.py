@@ -240,9 +240,10 @@ def trainDQL(
   notes=None,
   previous_norm=False,
   targetRelativePos=0,
-  policy_test_period = 100, # episodes
+  policy_test_period=100, # episodes
   test_success_rate_list=None, # policy success rate list
-  test_step_numbers=None # track number of steps before each test
+  test_step_numbers=None, # track number of steps before each test
+  success_rate_for_subtask_completion=False
   ):
 
     # hyper params to save to txt file
@@ -524,14 +525,15 @@ def trainDQL(
                     statesArray = np.array([]).reshape(stateSize,0) # reset q values logs
                     maxQvaluesArray = np.array([]).reshape(nJoints,0)
 
-                    if test_success_rate_list[-1] < (test_success_rate_list[-2] * 1.1):
-                        no_progress_count += 1
-                    else:
-                        no_progress_count = 0
+                    if success_rate_for_subtask_completion:
+                        if test_success_rate_list[-1] < (test_success_rate_list[-2] * 1.1):
+                            no_progress_count += 1
+                        else:
+                            no_progress_count = 0
 
-                    if no_progress_count == 3:
-                        print("\nSuccess rate did not improve, moving on to next task.")
-                        break
+                        if no_progress_count == 3:
+                            print("\nSuccess rate did not improve, moving on to next task.")
+                            break
 
                 # add current episode's list of transitions to dataset
                 if not skip_training: 
