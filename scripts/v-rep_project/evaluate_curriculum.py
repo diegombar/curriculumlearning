@@ -32,8 +32,12 @@ experiment_name = "CL_success_rate_to_decrease_vel_TEST"
 ####################################################
 
 folder_name =  experiment_name + '_' + timestr
+<<<<<<< HEAD
 
 episodes = 4000
+=======
+episodes = 5000
+>>>>>>> 5e10992cacf42d71be3699d171301b9f79ee4595
 max_steps= 200
 
 #targetRelativePos = (0.0, 0.5) #relative x, y in metres
@@ -43,7 +47,6 @@ experiment_dir_path = os.path.join(all_models_dir_path, folder_name)
 # vel025 = os.path.join(
 #    current_dir_path,"trained_models_and_results",
 #    "decreasing_speed","model_and_results_2017-Jul-27_02-49-34_vel=025","trained_model","final_model-400")
-
 
 saved_model_path = None
 saved_test_success_rate_list = None
