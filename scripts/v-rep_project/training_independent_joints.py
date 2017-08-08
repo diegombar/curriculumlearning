@@ -263,6 +263,11 @@ def trainDQL(
     h_params["joint_velocity"] = velocity
     h_params['use_variable_names'] = use_variable_names #use non-default names for variables
 
+    h_params['policy_test_period'] = policy_test_period
+    h_params['test_success_rate_list'] = test_success_rate_list is not None
+    h_params['test_step_numbers'] = test_step_numbers is not None
+    h_params['success_rate_for_subtask_completion'] = success_rate_for_subtask_completion
+
     h_params['hostname'] = socket.gethostname()
 
     # load model if path is specified

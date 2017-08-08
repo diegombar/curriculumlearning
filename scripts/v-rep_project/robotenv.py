@@ -48,7 +48,7 @@ class RobotEnv():
             self.observation_space_size = 6 # 6 joint angles
         if self.task == TASK_PUSH_CUBE_TO_TARGET_POSITION:
             self.targetPosition = targetPosition #tuple (x,y) target position relative to robot base
-            self.observation_space_size = 6 # FOR NOW #8 # 6 joint angles, cube.x, cube.y
+            self.observation_space_size = 8# FOR NOW #8 # 6 joint angles, cube.x, cube.y
         self.action_space_size = 3 * 6 # (+Vel, -Vel, 0) for 6 joints
         self.action_space = range(0,self.action_space_size)
         self.observation_space = np.zeros((1,self.observation_space_size))
@@ -270,7 +270,7 @@ class RobotEnv():
                 self.reward = self.distance2reward(self.distanceToGoal)
             elif self.task == TASK_PUSH_CUBE_TO_TARGET_POSITION:
                 target_x, target_y = self.targetPosition
-                #self.state = np.append(self.state, [x,y])
+                self.state = np.concatenate(self.state, [x,y])
                 self.distanceToGoal = np.sqrt((target_x - x)**2 + (target_y - y)**2)
                 print('\n Distance to Target Position: ', self.distanceToGoal)
             else:

@@ -33,7 +33,7 @@ experiment_name = "CL_success_rate_to_decrease_vel_with_CL"
 
 folder_name =  experiment_name + '_' + timestr
 
-episodes = 2000 #per sub-task
+episodes = 6000 #per sub-task
 max_steps= 200
 
 #targetRelativePos = (0.0, 0.5) #relative x, y in metres
@@ -48,7 +48,8 @@ saved_model_path = None
 saved_test_success_rate_list = None
 saved_test_step_numbers = None
 
-for vel in [1, 0.5, 0.25]:
+# for vel in [1, 0.5, 0.25]:
+for vel in [0.25]:
     saved_model_path, saved_test_success_rate_list, saved_test_step_numbers = training.trainDQL(
                               experiment_folder_name=folder_name,
                               num_hidden_layers=2,
@@ -73,7 +74,7 @@ for vel in [1, 0.5, 0.25]:
                               policy_test_period = 100,
                               test_success_rate_list=saved_test_success_rate_list,
                               test_step_numbers=saved_test_step_numbers,
-                              success_rate_for_subtask_completion=True # change with/without CL
+                              success_rate_for_subtask_completion=False # change with/without CL
                               )
     os.makedirs(experiment_dir_path, exist_ok=True)
     plot_success(experiment_dir_path, saved_test_success_rate_list, saved_test_step_numbers)
