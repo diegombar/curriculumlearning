@@ -27,13 +27,13 @@ def plot_success(dir_path, test_success_rate, test_step_numbers):
 
 ################# EDIT EXPERIMENT NAME #############
 
-experiment_name = "CL_success_rate_to_decrease_vel_TEST"
+experiment_name = "CL_success_rate_to_decrease_vel_no_CL"
 
 ####################################################
 
 folder_name =  experiment_name + '_' + timestr
 
-episodes = 5000
+episodes = 7000
 max_steps= 200
 
 #targetRelativePos = (0.0, 0.5) #relative x, y in metres

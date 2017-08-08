@@ -318,7 +318,7 @@ def trainDQL(
     h_params['learning_rate'] = lrate #= 1E-6
     h_params['discount_factor'] = y = 0.99 # mnih:0.99
     h_params['policy_test_period'] = policy_test_period #episodes
-    h_params['policy_test_num_of_test_episodes '] = policy_test_episodes = 10 # episodes
+    h_params['policy_test_num_of_test_episodes '] = policy_test_episodes = 20 # episodes
 
 
     with RobotEnv(task=task,
@@ -526,12 +526,12 @@ def trainDQL(
                     maxQvaluesArray = np.array([]).reshape(nJoints,0)
 
                     if success_rate_for_subtask_completion:
-                        if test_success_rate_list[-1] < (test_success_rate_list[-2] * 1.1):
+                        if test_success_rate_list[-1] < test_success_rate_list[-2]:
                             no_progress_count += 1
                         else:
                             no_progress_count = 0
 
-                        if no_progress_count == 3:
+                        if no_progress_count == 5:
                             print("\nSuccess rate did not improve, moving on to next task.")
                             break
 
