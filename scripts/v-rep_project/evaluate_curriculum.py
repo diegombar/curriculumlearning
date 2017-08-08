@@ -32,12 +32,8 @@ experiment_name = "CL_success_rate_to_decrease_vel_TEST"
 ####################################################
 
 folder_name =  experiment_name + '_' + timestr
-<<<<<<< HEAD
 
-episodes = 4000
-=======
 episodes = 5000
->>>>>>> 5e10992cacf42d71be3699d171301b9f79ee4595
 max_steps= 200
 
 #targetRelativePos = (0.0, 0.5) #relative x, y in metres
