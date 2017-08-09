@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 timestr = time.strftime("%Y-%b-%d_%H-%M-%S", time.gmtime())
 current_dir_path = os.path.dirname(os.path.realpath(__file__))
 all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
-experiment_name = "testing_algorithm_"
+experiment_name = "testing_algorithm"
 folder_name = experiment_name + '_' + timestr
 experiment_dir_path = os.path.join(all_models_dir_path, folder_name)
 
@@ -36,7 +36,7 @@ saved_test_step_numbers = None
 # test the training script
 for nASJoints in range(1, 7):
     saved_model_path, saved_test_success_rate_list, saved_test_step_numbers = training.trainDQL(
-                              experiment_folder_name=experiment_name,
+                              experiment_folder_name=folder_name,
                               num_hidden_layers=2,
                               num_neurons_per_hidden=50,
                               num_episodes=10,#400
@@ -53,7 +53,7 @@ for nASJoints in range(1, 7):
                               model_to_load_file_path=saved_model_path,
                               use_variable_names=True,
                               skip_training=False,
-                              notes="testing algorithm",
+                              notes=experiment_name,
                               previous_norm=False,
                               #targetRelativePos=targetRelativePos,
                               policy_test_period=5,
