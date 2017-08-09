@@ -109,24 +109,23 @@ class DQN():
         self.stateSize = stateSize
         self.nActionsPerJoint = 3
         self.nActions = self.nAJoints * self.nActionsPerJoint
-        self.inState = tf.placeholder(shape=[None,stateSize], dtype=tf.float32, name='state') #batch_size x stateSize
+        self.inState = tf.placeholder(shape=[None, stateSize], dtype=tf.float32, name='state')  #batch_size x stateSize
 
         self.variable_dict = {}
 
         nHidden = num_neurons_per_hidden
-        print
         if use_variable_names:
             # list of layer sizes
             neuronsPerLayer = [num_neurons_per_hidden] * (num_hidden_layers + 2)
             neuronsPerLayer[0] = self.nJoints + 2  #big state for CL, weights are adapted to stateSize below
-            neuronsPerLayer[-1] = nActions
+            neuronsPerLayer[-1] = self.nActions
 
             # initialize params
             self.weights = []
             self.biases = []
             self.hidden_layers = []
             for i in range(len(neuronsPerLayer) - 1):
-                with tf.name_scope('layer'+str(i)) as scope:
+                with tf.name_scope('layer' + str(i)) as scope:
                     weight_name = "weight" + str(i)
                     bias_name = "bias" + str(i)
                     w = tf.Variable(tf.truncated_normal([neuronsPerLayer[i], neuronsPerLayer[i+1]], mean=0.0, stddev=0.1), name=weight_name)
@@ -137,13 +136,13 @@ class DQN():
                     self.variable_dict[bias_name] = self.biases[-1]
                     if i == 0:
                         # ignore some weights to adapt to the stateSize (for CL)
-                        effective_weight = tf.slice(self.weights[0], [inputSize, 0], [-1, -1])
+                        weight_to_train = tf.slice(self.weights[0], [0, 0], [self.stateSize, -1], name='weights_to_train')
                         if previous_norm:
-                            h_layer1 = tf.nn.relu(tf.matmul(2 * self.inState, self.weights[0]) + self.biases[0], name="neuron_activations" + str(i))
+                            h_layer1 = tf.nn.relu(tf.matmul(2 * self.inState, weight_to_train) + self.biases[0], name="neuron_activations" + str(i))
                         else:
                             h_layer1 = tf.nn.relu(tf.matmul(self.inState, self.weights[0]) + self.biases[0], name="neuron_activations" + str(i))
                         self.hidden_layers.append(h_layer1)
-                    elif i<(len(neuronsPerLayer) - 2):
+                    elif i < (len(neuronsPerLayer) - 2):
                         h_layer = tf.nn.relu(tf.matmul(self.hidden_layers[-1], self.weights[-1]) + self.biases[-1], name="neuron_activations" + str(i))
                         self.hidden_layers.append(h_layer)
                     else:
@@ -158,32 +157,31 @@ class DQN():
             #             }
         else:
             self.W0 = tf.Variable(tf.truncated_normal([stateSize, nHidden], mean=0.0, stddev=0.1),
-                # name="weight0"
-                )
+                                  # name="weight0"
+                                  )
             self.W1 = tf.Variable(tf.truncated_normal([nHidden, nHidden], mean=0.0, stddev=0.1),
-                # name="weight1"
-                )
+                                  # name="weight1"
+                                  )
             self.W2 = tf.Variable(tf.truncated_normal([nHidden, nActions], mean=0.0, stddev=0.1),
-                # name="weight2"
-                )
+                                  # name="weight2"
+                                  )
             self.b0 = tf.Variable(tf.constant(0.1, shape=[1]),
-                # name="bias0"
-                )
+                                  # name="bias0"
+                                  )
             self.b1 = tf.Variable(tf.constant(0.1, shape=[1]),
-                # name="bias1"
-                )
+                                  # name="bias1"
+                                  )
             self.b2 = tf.Variable(tf.constant(0.1, shape=[1]),
-                # name="bias2"
-                )
+                                  # name="bias2"
+                                  )
 
-            self.variable_dict = {
-                                     "Variable":self.W0,
-                                     "Variable_1":self.W1,
-                                     "Variable_2":self.W2,
-                                     "Variable_3":self.b0,
-                                     "Variable_4":self.b1,
-                                     "Variable_5":self.b2,
-                                 }
+            self.variable_dict = {"Variable": self.W0,
+                                  "Variable_1": self.W1,
+                                  "Variable_2": self.W2,
+                                  "Variable_3": self.b0,
+                                  "Variable_4": self.b1,
+                                  "Variable_5": self.b2
+                                  }
 
             # layers
             if previous_norm:
@@ -238,7 +236,7 @@ def trainDQL(experiment_folder_name,
              num_episodes, max_steps_per_episode, e_min,
              task,
              model_saving_period=100,
-             lrate=1E-6,
+             lrate=1E-6,scripts/v-rep_project/training_independent_joints.py
              batch_size=32,
              replay_start_size=50000,
              replay_memory_size=500000,
@@ -254,8 +252,8 @@ def trainDQL(experiment_folder_name,
              test_success_rate_list=None,  # policy success rate list
              test_step_numbers=None,  # track number of steps before each test
              success_rate_for_subtask_completion=False,
-             nAJoints=6,
-             nSJoints=6
+             nSJoints=6,
+             nAJoints=6
              ):
 
     # hyper params to save to txt file
@@ -346,14 +344,15 @@ def trainDQL(experiment_folder_name,
                   rewards_decay_rate=rewards_decay_rate,
                   showGUI=showGUI,
                   velocity=velocity,
-                  nAJoints=nAJoints,
-                  nSJoints=nSJoints
+                  nSJoints=nSJoints,
+                  nAJoints=nAJoints
                   ) as env:
         tf.reset_default_graph()
         nActionsPerJoint = 3
         h_params['state_size'] = stateSize = env.observation_space_size
         h_params['number_of_actions'] = nActions = env.action_space_size
-        h_params['number_of_joints'] = nJoints = nActions // nActionsPerJoint
+        h_params['number_of_state_joints'] = nSJoints
+        h_params['number_of_action_joints'] = nAJoints
 
         saveRewardFunction(env, current_model_dir_path)
 

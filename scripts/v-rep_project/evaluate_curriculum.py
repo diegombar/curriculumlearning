@@ -34,7 +34,8 @@ experiment_name = "CL_success_rate_to_decrease_vel_with_CL"
 folder_name =  experiment_name + '_' + timestr
 
 episodes = 6000 #per sub-task
-max_steps= 200
+max_steps = 200
+nASJoints = 6
 
 #targetRelativePos = (0.0, 0.5) #relative x, y in metres
 
@@ -58,23 +59,25 @@ for vel in [0.25]:
                               max_steps_per_episode=max_steps,
                               e_min=0.01,
                               task=TASK_REACH_CUBE,
-                              model_saving_period=episodes//5,
-                              lrate=1E-3, # 1E-3 seems to work fine
+                              model_saving_period=episodes // 5,
+                              lrate=1E-3,  # 1E-3 seems to work fine
                               batch_size=32,
                               replay_start_size=50000,
                               replay_memory_size=500000,
                               showGUI=True,
-                              velocity=vel, # 1.0 seems to work fine
+                              velocity=vel,  # 1.0 seems to work fine
                               model_to_load_file_path=saved_model_path,
                               use_variable_names=True,
                               skip_training=False,
                               notes=experiment_name,
                               previous_norm=False,
                               #targetRelativePos=targetRelativePos,
-                              policy_test_period = 100,
+                              policy_test_period=100,
                               test_success_rate_list=saved_test_success_rate_list,
                               test_step_numbers=saved_test_step_numbers,
-                              success_rate_for_subtask_completion=False # change with/without CL
+                              success_rate_for_subtask_completion=False,  # change with/without CL
+                              nSJoints=nASJoints,
+                              nAJoints=nASJoints
                               )
     os.makedirs(experiment_dir_path, exist_ok=True)
     plot_success(experiment_dir_path, saved_test_success_rate_list, saved_test_step_numbers)
