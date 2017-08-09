@@ -53,26 +53,24 @@ CURRICULUM_INCREASING_JOINT_NUMBER = 2
 curriculum = CURRICULUM_INCREASING_JOINT_NUMBER
 #########################################
 
+episodes = 5000
+Velocities = [0.25]
+NumOfJoints = [6]
 if curriculum == NO_CURRICULUM_VEL_025:
     experiment_name = "no_curriculum_vel_025"
-    episodes = 5000
-    Velocities = [0.25]
-    NumOfJoints = [6]
 elif curriculum == NO_CURRICULUM_VEL_1:
     experiment_name = "no_curriculum_vel_1"
-    episodes = 5000
     Velocities = [1.0]
-    NumOfJoints = [6]
 elif curriculum == CURRICULUM_DECREASING_SPEED:
     experiment_name = "cl_decreasing_speeds"
     Velocities = [1, 0.5, 0.25]
-    NumOfJoints = [6]
-    episodes = 1000
+    episodes = episodes // len(Velocities)
 elif curriculum == CURRICULUM_INCREASING_JOINT_NUMBER:
     experiment_name = "cl_increasing_num_of_joints"
-    Velocities = [0.25]
     NumOfJoints = range(1, 7)
-    episodes = 1000
+    episodes = episodes // len(NumOfJoints)
+
+experiment_name = "TEST"
 
 max_steps = 200
 
@@ -97,6 +95,31 @@ st_num = 0
 for vel in Velocities:
     for nASJoints in NumOfJoints:
         st_num += 1
+
+        # trainDQL_args = {'experiment_dir_path',
+        #                  'num_hidden_layers':, 
+        #                  'num_neurons_per_hidden':,
+        #                  'num_episodes':,
+        #                  'max_steps_per_episode':,
+        #                  'e_min':,
+        #                  'task':,
+        #                  'model_saving_period':=100,
+        #                  'lrate':=1E-6,
+        #                  'batch_size':=32,
+        #                  'replay_start_size':=50000,
+        #                  'replay_memory_size':=500000,
+        #                  'showGUI':=True,
+        #                  'velocity':=0.3,
+        #                  'model_to_load_file_path':=None,
+        #                  'use_variable_names':=True,
+        #                  'skip_training':=False,
+        #                  'notes':=None,
+        #                  'previous_norm':=False,
+        #                  'targetRelativePos':=0,
+        #                  'policy_test_period':=100,  # episodes
+        #                  'success_rate_for_subtask_completion':=False,
+        #                  'nSJoints':=6,
+        #                  'nAJoints':=6
         model_path, subt_total_steps, subt_cumul_successes, subt_test_success_rates, subt_test_steps, st_time = training.trainDQL(
                                   experiment_dir_path=experiment_dir_path,
                                   num_hidden_layers=2,
