@@ -232,7 +232,7 @@ def updateTarget(op_holder, sess):
         sess.run(op)
 
 
-def trainDQL(experiment_folder_name,
+def trainDQL(experiment_dir_path,
              num_hidden_layers, num_neurons_per_hidden,
              num_episodes, max_steps_per_episode, e_min,
              task,
@@ -250,15 +250,13 @@ def trainDQL(experiment_folder_name,
              previous_norm=False,
              targetRelativePos=0,
              policy_test_period=100,  # episodes
-             test_success_rate_list=None,  # policy success rate list
-             test_step_numbers=None,  # track number of steps before each test
              success_rate_for_subtask_completion=False,
              nSJoints=6,
              nAJoints=6
              ):
 
     # hyper params to save to txt file
-    h_params["experiment_folder_name"] = experiment_folder_name
+    h_params["experiment_dir_path"] = experiment_dir_path
     h_params["showGUI"] = showGUI
     h_params['num_hidden_layers'] = num_hidden_layers # not counting output layer
     h_params['neurons_per_hidden_layer'] = num_neurons_per_hidden  #mnih: 512 for dense hidden layer
@@ -275,8 +273,6 @@ def trainDQL(experiment_folder_name,
     h_params['use_variable_names'] = use_variable_names #use non-default names for variables
 
     h_params['policy_test_period'] = policy_test_period
-    h_params['test_success_rate_list'] = test_success_rate_list is not None
-    h_params['test_step_numbers'] = test_step_numbers is not None
     h_params['success_rate_for_subtask_completion'] = success_rate_for_subtask_completion
 
     h_params['nAJoints'] = nAJoints
@@ -303,9 +299,9 @@ def trainDQL(experiment_folder_name,
         print("WARNING: replay_start_size must be greater than max_steps_per_episode and batch_size")
 
     # create folders to save results
-    current_dir_path = os.path.dirname(os.path.realpath(__file__)) # directory of this .py file
-    all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
-    experiment_dir_path = os.path.join(all_models_dir_path, experiment_folder_name)
+    # current_dir_path = os.path.dirname(os.path.realpath(__file__)) # directory of this .py file
+    # all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
+    # experiment_dir_path = os.path.join(all_models_dir_path, experiment_folder_name)
     timestr = time.strftime("%Y-%b-%d_%H-%M-%S",time.gmtime()) #or time.localtime()
     current_model_dir_path = os.path.join(experiment_dir_path, "model_and_results_" + timestr)
     trained_model_plots_dir_path = os.path.join(current_model_dir_path, "trained_model_results")
@@ -419,21 +415,21 @@ def trainDQL(experiment_folder_name,
                 epsilon = e_min + addE
                 dataset = experience_dataset(replay_memory_size)
 
-            total_steps = 0
+            subtask_total_steps = 0
             num_steps_per_ep = []
             undisc_return_per_ep = []
+
             success_count = 0
-            successes = []
+            subt_cumul_successes = []
+
             epsilon_per_ep = []
             average_maxQ_per_ep = np.array([]).reshape(nAJoints, 0)
             statesArray = np.array([]).reshape(stateSize, 0)
             maxQvaluesArray = np.array([]).reshape(nAJoints, 0)
 
-            # success rate initialization:
-            if test_success_rate_list is None:
-                test_success_rate_list = [0]
-            if test_step_numbers is None:
-                test_step_numbers = [0]
+            # test success initialization:
+            subt_test_success_rates = []
+            subt_test_steps = []
             testing_policy_episode = 0
             testing_policy = False
             epsilon_backup = 0
@@ -446,7 +442,7 @@ def trainDQL(experiment_folder_name,
 
                 if skip_training:
                     epsilon = e_min
-                elif total_steps > replay_start_size:
+                elif subtask_total_steps > replay_start_size:
                     # decay epsilon
                     addE *= addEFactor
                     epsilon = e_min + addE
@@ -471,7 +467,7 @@ def trainDQL(experiment_folder_name,
                     allJQValues = np.reshape(np.array(allJQValues), (nAJoints, nActionsPerJoint))
                     maxQvalues = allJQValues[range(nAJoints), chosenActions] # 1 x nJoints
 
-                    if total_steps <= replay_start_size and not skip_training:
+                    if subtask_total_steps <= replay_start_size and not skip_training:
                         chosenActions = np.random.randint(0, nActionsPerJoint, nAJoints)
                     else:
                         indices = np.random.rand(nAJoints) < epsilon
@@ -486,8 +482,8 @@ def trainDQL(experiment_folder_name,
                         transition = np.reshape(transition, [1, 5]) # 1 x 5
                         episodeBuffer.add(transition) # add step to episode buffer
 
-                        if total_steps > replay_start_size:
-                            if total_steps % train_model_steps_period == 0:
+                        if subtask_total_steps > replay_start_size:
+                            if subtask_total_steps % train_model_steps_period == 0:
                                 #train model
                                 batch = dataset.sample(batch_size)
                                 states0, actions0, rewards, states1, dones = batch.T
@@ -517,10 +513,10 @@ def trainDQL(experiment_folder_name,
                         maxQvalues2 = np.reshape(maxQvalues, (nAJoints, 1))
                         stateToSave = np.reshape(initialState, (stateSize, 1))
                         sum_of_maxQ += maxQvalues2
-                        total_steps += 1
+                        subtask_total_steps += 1
                     else:
                         # save q values for training logs
-                        # if total_steps % q_values_log_period == 0:
+                        # if subtask_total_steps % q_values_log_period == 0:
                         statesArray = np.concatenate((statesArray, stateToSave), axis=1)
                         maxQvaluesArray = np.concatenate((maxQvaluesArray, maxQvalues2), axis=1)
 
@@ -539,7 +535,7 @@ def trainDQL(experiment_folder_name,
                 if i % policy_test_period == 0 and not skip_training and not testing_policy:
                     # pause training and test current policy for some episodes
                     print("\nTesting policy...")
-                    test_step_numbers.append(total_steps)
+                    subt_test_steps.append(subtask_total_steps)
                     current_test_success_count = 0
                     testing_policy = True
                     skip_training = True
@@ -555,7 +551,7 @@ def trainDQL(experiment_folder_name,
                     testing_policy_episode = 0
 
                     current_success_rate = current_test_success_count / policy_test_episodes
-                    test_success_rate_list.append(current_success_rate)
+                    subt_test_success_rates.append(current_success_rate)
 
                     # plot Q plots
                     Qplots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
@@ -565,7 +561,7 @@ def trainDQL(experiment_folder_name,
                     maxQvaluesArray = np.array([]).reshape(nAJoints, 0)
 
                     if success_rate_for_subtask_completion:
-                        if test_success_rate_list[-1] < test_success_rate_list[-2]:
+                        if subt_test_success_rates[-1] < subt_test_success_rates[-2]:
                             no_progress_count += 1
                         else:
                             no_progress_count = 0
@@ -584,7 +580,7 @@ def trainDQL(experiment_folder_name,
                     # save tracked statistics
                     num_steps_per_ep.append(j)
                     undisc_return_per_ep.append(undisc_return)
-                    successes.append(success_count)
+                    subt_cumul_successes.append(success_count)
                     epsilon_per_ep.append(epsilon)
 
                     averageMaxQ = sum_of_maxQ / j #nJoints x 1
@@ -599,7 +595,7 @@ def trainDQL(experiment_folder_name,
                         checkpoints_plots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
                         os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
                         savePlots(checkpoints_plots_dir_path, undisc_return_per_ep, num_steps_per_ep,
-                                  successes, epsilon_per_ep, average_maxQ_per_ep)
+                                  subt_cumul_successes, epsilon_per_ep, average_maxQ_per_ep)
 
                     i += 1
 
@@ -611,22 +607,24 @@ def trainDQL(experiment_folder_name,
             print("Trained model saved in file: %s" % save_path)
 
     # save total time and steps to txt file
-    total_training_time = end_time - start_time #in seconds
+    total_training_time_in_secs = end_time - start_time #in seconds
+    total_training_time_in_hours = total_training_time_in_secs / 3600
     print('\nTotal training time:', total_training_time)
-    end_stats_dict = {"total_number_of_steps_executed":total_steps}
-    end_stats_dict = {"total_number_of_episodes_executed":i}
-    end_stats_dict["total_training_time_in_secs"] = total_training_time
+    subt_total_eps = i
+    end_stats_dict = {"total_number_of_steps_executed_subtask":subtask_total_steps}
+    end_stats_dict["total_number_of_episodes_executed_subtask"] = subt_total_eps
+    end_stats_dict["total_training_time_in_hours"] = total_training_time_in_hours
     stats_file_path = os.path.join(current_model_dir_path, "end_stats.txt")
     with open(stats_file_path, "w") as stats_file:
         json.dump(end_stats_dict, stats_file, sort_keys=True, indent=4)
 
     # save lists of results for later plots
-    lists_to_serialize = ['undisc_return_per_ep', 'num_steps_per_ep', 'successes', 'epsilon_per_ep']
+    lists_to_serialize = ['undisc_return_per_ep', 'num_steps_per_ep', 'subt_cumul_successes', 'epsilon_per_ep']
     for list_to_serialize in lists_to_serialize:
         list_json_file = os.path.join(current_model_dir_path, list_to_serialize + '.json')
         with open(list_json_file, "w") as json_file:
             json.dump(eval(list_to_serialize), json_file)
 
-    savePlots(trained_model_plots_dir_path, undisc_return_per_ep, num_steps_per_ep, successes, epsilon_per_ep, average_maxQ_per_ep)
+    savePlots(trained_model_plots_dir_path, undisc_return_per_ep, num_steps_per_ep, subt_cumul_successes, epsilon_per_ep, average_maxQ_per_ep)
 
-    return save_path, test_success_rate_list, test_step_numbers  # for visualization and curriculum learning
+    return save_path, subtask_total_steps, subt_cumul_successes, subt_test_success_rates, subt_test_steps, total_training_time_in_hours  # for visualization and curriculum learning
