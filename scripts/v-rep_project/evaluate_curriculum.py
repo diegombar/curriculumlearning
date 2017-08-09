@@ -1,19 +1,20 @@
 import training_independent_joints as training
 import time
 import os
+import json
 import numpy as np
 from matplotlib import pyplot as plt
 
 
-def plot_cl_success_rate(dir_path, subtask_switch_episodes, test_success_rate, test_step_numbers):
+def plot_cl_success_rate(dir_path, subtask_switch_steps, test_success_rate, test_step_numbers):
     fig = plt.figure()
     plt.plot(test_step_numbers, test_success_rate, linewidth=0.5)
-    plt.ylabel('steps')
-    plt.xlabel('success rate')
+    plt.ylabel('success rate')
+    plt.xlabel('steps')
     plt.title('Success rate in test conditions')
     #vertical lines at subtask switching
-    for switch_ep in subtask_switch_episodes:
-        plt.axvline(x=switch_ep)
+    for switch_ep in subtask_switch_steps:
+        plt.axvline(x=switch_ep, ls='.', color='r')
     plot_file = os.path.join(dir_path, 'success_rate.svg')
     fig.savefig(plot_file, bbox_inches='tight')
     plt.close()
@@ -21,14 +22,13 @@ def plot_cl_success_rate(dir_path, subtask_switch_episodes, test_success_rate, t
 
 def plot_cl_cumul_successes(dir_path, subtask_switch_episodes, cumul_successes):
     fig = plt.figure()
-    episodes = range(1, len(cumul_successes) + 1)  # start at episode 1
-    plt.plot(episodes, cumul_successes, linewidth=0.5)
-    plt.ylabel('episodes')
-    plt.xlabel('cumulative successes')
+    plt.plot(cumul_successes, linewidth=0.5)
+    plt.ylabel('cumulative successes')
+    plt.xlabel('episodes')
     plt.title('Cumulative successes during training')
     #vertical lines at subtask switching
     for switch_ep in subtask_switch_episodes:
-        plt.axvline(x=switch_ep)
+        plt.axvline(x=switch_ep, ls='dashed', color='r')
     plot_file = os.path.join(dir_path, 'cumul_successes.svg')
     fig.savefig(plot_file, bbox_inches='tight')
     plt.close()
@@ -55,7 +55,7 @@ CURRICULUM_INCREASING_JOINT_NUMBER = 2
 
 ################# CHOOSE ################
 
-curriculum = CURRICULUM_INCREASING_JOINT_NUMBER ##############
+curriculum = CURRICULUM_DECREASING_SPEED ##############
 task = TASK_REACH_CUBE #########
 testing_scripts = True  # set to True test scripts for a few episodes/steps
 
@@ -98,8 +98,9 @@ targetRelativePos = (0.0, 0.5) #relative x, y in metres
 
 subt_initial_step = 0
 cl_switching_eps = []
-cl_cumul_successes = np.array([])
-cl_test_success_rates = [0.0]
+cl_switching_steps = []
+cl_cumul_successes = np.array([0])
+cl_test_success_rates = np.array([0.0])
 cl_test_steps = [0]
 cl_total_time = 0.0
 
@@ -160,14 +161,18 @@ for vel in Velocities:
 
         # update switching steps
         last_abs_step = subt_total_steps + subt_initial_step
-        cl_switching_eps.append(last_abs_step)
+        cl_switching_steps.append(last_abs_step)
 
         # update cumulative successes
         abs_subt_cumul_successes = np.array(subt_cumul_successes) + cl_cumul_successes[-1]  # subtask counter to cl counter
         cl_cumul_successes = np.concatenate((cl_cumul_successes, abs_subt_cumul_successes), axis=0)
 
+        # update switching episodes
+        last_abs_ep = len(cl_cumul_successes) - 1
+        cl_switching_eps.append(last_abs_ep)
+
         # update test success rates
-        cl_test_success_rates += subt_test_success_rates  # list concatenation
+        cl_test_success_rates = np.concatenate((cl_test_success_rates, np.array(subt_test_success_rates)), axis=0)
 
         # update test steps
         abs_subt_test_steps = np.array(subt_test_steps) + last_abs_step  # subtask step to cl step
@@ -177,20 +182,22 @@ for vel in Velocities:
         cl_total_time += st_time # in hours
 
         os.makedirs(experiment_dir_path, exist_ok=True)
+        del cl_switching_eps[-1]
+        del cl_switching_steps[-1]
         plot_cl_cumul_successes(experiment_dir_path, cl_switching_eps, cl_cumul_successes)
-        plot_cl_success_rate(experiment_dir_path, cl_switching_eps, cl_test_success_rates, cl_test_steps)
+        plot_cl_success_rate(experiment_dir_path, cl_switching_steps, cl_test_success_rates, cl_test_steps)
 
         subt_initial_step = last_abs_step
 
         stats_dict = {"number_of_steps_executed_curriculum_so_far":last_abs_step}
-        stats_dict["number_of_episodes_executed_curriculum_so_far"] = len(cl_cumul_successes)
+        stats_dict["number_of_episodes_executed_curriculum_so_far"] = last_abs_ep
         stats_dict["training_time_in_hours_curriculum_so_far"] = cl_total_time
         stats_file_path = os.path.join(experiment_dir_path, "stats_sub_task_" + str(st_num) + ".txt")
         with open(stats_file_path, "w") as stats_file:
             json.dump(stats_dict, stats_file, sort_keys=True, indent=4)
 
 end_stats_dict = {"total_number_of_steps_executed_curriculum":last_abs_step}
-end_stats_dict["total_number_of_episodes_executed_curriculum"] = len(cl_cumul_successes)
+end_stats_dict["total_number_of_episodes_executed_curriculum"] = last_abs_ep
 end_stats_dict["total_training_time_in_hours_curriculum"] = cl_total_time
 stats_file_path = os.path.join(experiment_dir_path, "end_stats.txt")
 with open(stats_file_path, "w") as stats_file:

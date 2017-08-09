@@ -506,12 +506,12 @@ def trainDQL(experiment_dir_path,
                                 #Update the primary network with our target values.
                                 _ = sess.run(mainDQN.updateModel, feed_dict={mainDQN.inState:states0, mainDQN.Qtargets:allJQtargets, mainDQN.chosenActions:actions0})
                                 updateTarget(targetOps,sess) #Set the target network to be equal to the primary network.
-
+                    
+                    maxQvalues2 = np.reshape(maxQvalues, (nAJoints, 1))
+                    stateToSave = np.reshape(initialState, (stateSize, 1))
                     if not testing_policy:
                         # end of step, save tracked statistics
                         undisc_return += r
-                        maxQvalues2 = np.reshape(maxQvalues, (nAJoints, 1))
-                        stateToSave = np.reshape(initialState, (stateSize, 1))
                         sum_of_maxQ += maxQvalues2
                         subtask_total_steps += 1
                     else:
@@ -560,7 +560,7 @@ def trainDQL(experiment_dir_path,
                     statesArray = np.array([]).reshape(stateSize, 0)  # reset q values logs
                     maxQvaluesArray = np.array([]).reshape(nAJoints, 0)
 
-                    if success_rate_for_subtask_completion:
+                    if success_rate_for_subtask_completion and len(subt_test_success_rates)>2:
                         if subt_test_success_rates[-1] < subt_test_success_rates[-2]:
                             no_progress_count += 1
                         else:
@@ -609,7 +609,7 @@ def trainDQL(experiment_dir_path,
     # save total time and steps to txt file
     total_training_time_in_secs = end_time - start_time #in seconds
     total_training_time_in_hours = total_training_time_in_secs / 3600
-    print('\nTotal training time:', total_training_time)
+    print('\nTotal training time:', total_training_time_in_hours)
     subt_total_eps = i
     end_stats_dict = {"total_number_of_steps_executed_subtask":subtask_total_steps}
     end_stats_dict["total_number_of_episodes_executed_subtask"] = subt_total_eps
