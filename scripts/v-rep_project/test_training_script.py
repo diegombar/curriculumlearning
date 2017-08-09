@@ -59,7 +59,7 @@ for nASJoints in range(1, 7):
                               policy_test_period=5,
                               test_success_rate_list=saved_test_success_rate_list,
                               test_step_numbers=saved_test_step_numbers,
-                              success_rate_for_subtask_completion=False,  # change with/without CL
+                              success_rate_for_subtask_completion=True,  # change with/without CL
                               nSJoints=nASJoints,
                               nAJoints=nASJoints
                               )
