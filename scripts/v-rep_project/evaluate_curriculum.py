@@ -1,6 +1,7 @@
 import training_independent_joints as training
 import time
 import os
+import numpy as np
 from matplotlib import pyplot as plt
 
 
@@ -32,6 +33,9 @@ def plot_cl_cumul_successes(dir_path, subtask_switch_episodes, cumul_successes):
     fig.savefig(plot_file, bbox_inches='tight')
     plt.close()
 
+
+
+
 timestr = time.strftime("%Y-%b-%d_%H-%M-%S",time.gmtime()) #or time.localtime()
 current_dir_path = os.path.dirname(os.path.realpath(__file__))
 all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
@@ -49,8 +53,12 @@ CURRICULUM_DECREASING_SPEED = 1
 CURRICULUM_INCREASING_JOINT_NUMBER = 2
 #CURRICULUM_STARTING_AWAY_FROM_TARGET = 3
 
-############ CHOOSE CURRICULUM ##########
-curriculum = CURRICULUM_INCREASING_JOINT_NUMBER
+################# CHOOSE ################
+
+curriculum = CURRICULUM_INCREASING_JOINT_NUMBER ##############
+task = TASK_REACH_CUBE #########
+testing_scripts = True  # set to True test scripts for a few episodes/steps
+
 #########################################
 
 episodes = 5000
@@ -58,19 +66,24 @@ Velocities = [0.25]
 NumOfJoints = [6]
 if curriculum == NO_CURRICULUM_VEL_025:
     experiment_name = "no_curriculum_vel_025"
+    success_rate_for_subtask_completion = False
 elif curriculum == NO_CURRICULUM_VEL_1:
     experiment_name = "no_curriculum_vel_1"
     Velocities = [1.0]
+    success_rate_for_subtask_completion = False
 elif curriculum == CURRICULUM_DECREASING_SPEED:
     experiment_name = "cl_decreasing_speeds"
     Velocities = [1, 0.5, 0.25]
     episodes = episodes // len(Velocities)
+    success_rate_for_subtask_completion = True
 elif curriculum == CURRICULUM_INCREASING_JOINT_NUMBER:
     experiment_name = "cl_increasing_num_of_joints"
     NumOfJoints = range(1, 7)
     episodes = episodes // len(NumOfJoints)
+    success_rate_for_subtask_completion = True
 
-experiment_name = "TEST"
+if testing_scripts:
+    experiment_name = "TEST"
 
 max_steps = 200
 
@@ -81,7 +94,7 @@ experiment_dir_path = os.path.join(all_models_dir_path, folder_name)
 #    current_dir_path,"trained_models_and_results",
 #    "decreasing_speed","model_and_results_2017-Jul-27_02-49-34_vel=025","trained_model","final_model-400")
 
-#targetRelativePos = (0.0, 0.5) #relative x, y in metres
+targetRelativePos = (0.0, 0.5) #relative x, y in metres
 
 subt_initial_step = 0
 cl_switching_eps = []
@@ -92,60 +105,59 @@ cl_total_time = 0.0
 
 model_path = None
 st_num = 0
+
+trainDQL_args = dict(
+                    experiment_dir_path=experiment_dir_path,
+                    num_hidden_layers=2,
+                    num_neurons_per_hidden=50,
+                    num_episodes=episodes,  #400
+                    max_steps_per_episode=max_steps,  #200
+                    e_min=0.01,
+                    task=task,
+                    model_saving_period=episodes // 5,
+                    lrate=1E-3,  # 1E-3 seems to work fine
+                    batch_size=32,
+                    replay_start_size=50000,
+                    replay_memory_size=500000,
+                    showGUI=True,
+                    velocity=0,  # 1.0 seems to work fine
+                    model_to_load_file_path=model_path,
+                    use_variable_names=True,
+                    skip_training=False,
+                    notes=experiment_name,
+                    previous_norm=False,
+                    targetRelativePos=targetRelativePos,
+                    policy_test_period=100,  # episodes
+                    success_rate_for_subtask_completion=success_rate_for_subtask_completion,  # change with/without CL
+                    nSJoints=6,
+                    nAJoints=6
+                    )
+
+if testing_scripts:
+    trainDQL_args.update(dict(
+                              num_episodes=10,
+                              max_steps_per_episode=2,
+                              model_saving_period=2,
+                              batch_size=1,
+                              replay_start_size=6,
+                              replay_memory_size=10,
+                              policy_test_period=5,
+                             )
+                        )
+
 for vel in Velocities:
     for nASJoints in NumOfJoints:
         st_num += 1
+        trainDQL_args.update(dict(
+                              velocity=vel,
+                              nSJoints=nASJoints,
+                              nAJoints=nASJoints,
+                              model_to_load_file_path=model_path,
+                             )
+                        )
 
-        # trainDQL_args = {'experiment_dir_path',
-        #                  'num_hidden_layers':, 
-        #                  'num_neurons_per_hidden':,
-        #                  'num_episodes':,
-        #                  'max_steps_per_episode':,
-        #                  'e_min':,
-        #                  'task':,
-        #                  'model_saving_period':=100,
-        #                  'lrate':=1E-6,
-        #                  'batch_size':=32,
-        #                  'replay_start_size':=50000,
-        #                  'replay_memory_size':=500000,
-        #                  'showGUI':=True,
-        #                  'velocity':=0.3,
-        #                  'model_to_load_file_path':=None,
-        #                  'use_variable_names':=True,
-        #                  'skip_training':=False,
-        #                  'notes':=None,
-        #                  'previous_norm':=False,
-        #                  'targetRelativePos':=0,
-        #                  'policy_test_period':=100,  # episodes
-        #                  'success_rate_for_subtask_completion':=False,
-        #                  'nSJoints':=6,
-        #                  'nAJoints':=6
-        model_path, subt_total_steps, subt_cumul_successes, subt_test_success_rates, subt_test_steps, st_time = training.trainDQL(
-                                  experiment_dir_path=experiment_dir_path,
-                                  num_hidden_layers=2,
-                                  num_neurons_per_hidden=50,
-                                  num_episodes=episodes,#400
-                                  max_steps_per_episode=max_steps, #200
-                                  e_min=0.01,
-                                  task=TASK_REACH_CUBE,
-                                  model_saving_period=episodes // 5,
-                                  lrate=1E-3,  # 1E-3 seems to work fine
-                                  batch_size=32,
-                                  replay_start_size=50000,
-                                  replay_memory_size=500000,
-                                  showGUI=True,
-                                  velocity=vel,  # 1.0 seems to work fine
-                                  model_to_load_file_path=model_path,
-                                  use_variable_names=True,
-                                  skip_training=False,
-                                  notes=experiment_name,
-                                  previous_norm=False,
-                                  #targetRelativePos=targetRelativePos,
-                                  policy_test_period=100,
-                                  success_rate_for_subtask_completion=True,  # change with/without CL
-                                  nSJoints=nASJoints,
-                                  nAJoints=nASJoints
-                                  )
+        model_path, subt_total_steps, subt_cumul_successes, subt_test_success_rates, subt_test_steps, st_time = training.trainDQL(**trainDQL_args)
+
         # update switching steps
         last_abs_step = subt_total_steps + subt_initial_step
         cl_switching_eps.append(last_abs_step)
