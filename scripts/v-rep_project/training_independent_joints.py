@@ -1,6 +1,5 @@
 # coding: utf-8
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 import numpy as np
 # import random
 import tensorflow as tf
@@ -12,11 +11,12 @@ import os.path
 import json
 import subprocess
 import socket
-
 # Load environment
 from robotenv import RobotEnv
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-h_params = {} # params to save in txt file:
+h_params = {}  # params to save in txt file:
+
 
 def saveRewardFunction(robotenv, dir_path):
     fig = plt.figure()
@@ -30,10 +30,11 @@ def saveRewardFunction(robotenv, dir_path):
     fig.savefig(plot_file, bbox_inches='tight')
     plt.close()
 
+
 def savePlot(dir_path, var_value_per_ep, ylabel_str, title_str, name):
     fig = plt.figure()
-    episodes = range(1, len(var_value_per_ep) + 1) # start at episode 1
-    plt.plot(var_value_per_ep, linewidth=0.5)
+    episodes = range(1, len(var_value_per_ep) + 1)  # start at episode 1
+    plt.plot(episodes, var_value_per_ep, linewidth=0.5)
     plt.xlabel('episode')
     plt.ylabel(ylabel_str)
     plt.title(title_str)
@@ -41,22 +42,24 @@ def savePlot(dir_path, var_value_per_ep, ylabel_str, title_str, name):
     fig.savefig(plot_file, bbox_inches='tight')
     plt.close()
 
+
 def saveQvaluesPlot(dir_path, statesArray, maxQvaluesArray, nJoints=6):
     # statesArray = maxQvaluesArray = nJoints x ?
-    for i in range(nJoints): #first state elements have to be the joint angles
+    for i in range(nJoints):  # first state elements are the joint angles
         normalized_angles = statesArray[i]
         maxQvalues = maxQvaluesArray[i]
         fig = plt.figure()
         plt.scatter(normalized_angles, maxQvalues)
         plt.xlabel('normalized angle')
         plt.ylabel('max Q-value')
-        plt.title('Max Q-values for angles observed, joint'+ str(i + 1))
+        plt.title('Max Q-values for angles observed, joint' + str(i + 1))
         plot_file = os.path.join(dir_path, 'angles_Q_values_joint' + str(i + 1) + '.svg')
         fig.savefig(plot_file, bbox_inches='tight')
         plt.close()
 
+
 def savePlots(
-  dir_path, undisc_returns, num_steps, 
+  dir_path, undisc_returns, num_steps,
   successes, epsilons, avg_maxQs):
     #note: "per_ep" in variable names were omitted
     # discounted returns for each episode
@@ -94,14 +97,18 @@ class experience_dataset():
         self.data.extend(experience) 
 
     # randomly sample an array of transitions (s,a,r,s',done)
-    def sample(self,sample_size):
+    def sample(self, sample_size):
         sample = np.array(random.sample(self.data,sample_size))
-        return np.reshape(sample, [sample_size,5])
+        return np.reshape(sample, [sample_size, 5])
+
 
 class DQN():
-    def __init__(self, nActions, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names=True, previous_norm=False):
-        self.nJoints = 6
-        self.nActionsPerJoint = nActions // self.nJoints
+    def __init__(self, nAJoints, nSJoints, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names=True, previous_norm=False):
+        self.nAJoints = nAJoints
+        self.nSJoints = nSJoints
+        self.stateSize = stateSize
+        self.nActionsPerJoint = 3
+        self.nActions = self.nAJoints * self.nActionsPerJoint
         self.inState = tf.placeholder(shape=[None,stateSize], dtype=tf.float32, name='state') #batch_size x stateSize
 
         self.variable_dict = {}
@@ -111,7 +118,7 @@ class DQN():
         if use_variable_names:
             # list of layer sizes
             neuronsPerLayer = [num_neurons_per_hidden] * (num_hidden_layers + 2)
-            neuronsPerLayer[0] = stateSize
+            neuronsPerLayer[0] = self.nJoints + 2  #big state for CL, weights are adapted to stateSize below
             neuronsPerLayer[-1] = nActions
 
             # initialize params
@@ -129,6 +136,8 @@ class DQN():
                     self.variable_dict[weight_name] = self.weights[-1]
                     self.variable_dict[bias_name] = self.biases[-1]
                     if i == 0:
+                        # ignore some weights to adapt to the stateSize (for CL)
+                        effective_weight = tf.slice(self.weights[0], [inputSize, 0], [-1, -1])
                         if previous_norm:
                             h_layer1 = tf.nn.relu(tf.matmul(2 * self.inState, self.weights[0]) + self.biases[0], name="neuron_activations" + str(i))
                         else:
@@ -218,33 +227,36 @@ def updateTargetGraph(tfTrainables,tau):
         op_holder.append(op)
     return op_holder
 
-def updateTarget(op_holder,sess):
+
+def updateTarget(op_holder, sess):
     for op in op_holder:
         sess.run(op)
 
-def trainDQL(
-  experiment_folder_name,
-  num_hidden_layers, num_neurons_per_hidden,
-  num_episodes, max_steps_per_episode, e_min,
-  task,
-  model_saving_period=100,
-  lrate=1E-6,
-  batch_size=32,
-  replay_start_size=50000,
-  replay_memory_size=500000,
-  showGUI=True,
-  velocity=0.3,
-  model_to_load_file_path=None,
-  use_variable_names=True,
-  skip_training=False,
-  notes=None,
-  previous_norm=False,
-  targetRelativePos=0,
-  policy_test_period=100, # episodes
-  test_success_rate_list=None, # policy success rate list
-  test_step_numbers=None, # track number of steps before each test
-  success_rate_for_subtask_completion=False
-  ):
+
+def trainDQL(experiment_folder_name,
+             num_hidden_layers, num_neurons_per_hidden,
+             num_episodes, max_steps_per_episode, e_min,
+             task,
+             model_saving_period=100,
+             lrate=1E-6,
+             batch_size=32,
+             replay_start_size=50000,
+             replay_memory_size=500000,
+             showGUI=True,
+             velocity=0.3,
+             model_to_load_file_path=None,
+             use_variable_names=True,
+             skip_training=False,
+             notes=None,
+             previous_norm=False,
+             targetRelativePos=0,
+             policy_test_period=100,  # episodes
+             test_success_rate_list=None,  # policy success rate list
+             test_step_numbers=None,  # track number of steps before each test
+             success_rate_for_subtask_completion=False,
+             nAJoints=6,
+             nSJoints=6
+             ):
 
     # hyper params to save to txt file
     h_params["experiment_folder_name"] = experiment_folder_name
@@ -267,6 +279,9 @@ def trainDQL(
     h_params['test_success_rate_list'] = test_success_rate_list is not None
     h_params['test_step_numbers'] = test_step_numbers is not None
     h_params['success_rate_for_subtask_completion'] = success_rate_for_subtask_completion
+
+    h_params['nAJoints'] = nAJoints
+    h_params['nSJoints'] = nSJoints
 
     h_params['hostname'] = socket.gethostname()
 
@@ -300,7 +315,7 @@ def trainDQL(
     checkpoint_model_file_path = os.path.join(checkpoints_dir_path, "checkpoint_model")
     trained_model_file_path = os.path.join(trained_model_dir_path, "final_model")
     log_file_path = os.path.join(current_model_dir_path,"logs")
-    
+
     for new_directory in [trained_model_plots_dir_path, checkpoints_dir_path, trained_model_dir_path, log_file_path]:
         os.makedirs(new_directory, exist_ok=True)
 
@@ -325,13 +340,15 @@ def trainDQL(
     h_params['policy_test_period'] = policy_test_period #episodes
     h_params['policy_test_num_of_test_episodes '] = policy_test_episodes = 20 # episodes
 
-
     with RobotEnv(task=task,
-        targetPosition=targetRelativePos,
-        rewards_normalizer=rewards_normalizer,
-        rewards_decay_rate=rewards_decay_rate,
-        showGUI=showGUI,
-        velocity=velocity) as env:
+                  targetPosition=targetRelativePos,
+                  rewards_normalizer=rewards_normalizer,
+                  rewards_decay_rate=rewards_decay_rate,
+                  showGUI=showGUI,
+                  velocity=velocity,
+                  nAJoints=nAJoints,
+                  nSJoints=nSJoints
+                  ) as env:
         tf.reset_default_graph()
         nActionsPerJoint = 3
         h_params['state_size'] = stateSize = env.observation_space_size
@@ -340,8 +357,8 @@ def trainDQL(
 
         saveRewardFunction(env, current_model_dir_path)
 
-        mainDQN = DQN(nActions, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names, previous_norm)
-        targetDQN = DQN(nActions, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names, previous_norm)
+        mainDQN = DQN(nActions, nAJoints, nSJoints, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names, previous_norm)
+        targetDQN = DQN(nActions, nAJoints, nSJoints, stateSize, num_hidden_layers, num_neurons_per_hidden, lrate, use_variable_names, previous_norm)
 
         # save txt file with hyper parameters
         h_params_file_path = os.path.join(current_model_dir_path, "hyper_params.txt")
