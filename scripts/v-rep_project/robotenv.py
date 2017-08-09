@@ -268,11 +268,14 @@ class RobotEnv():
             # newJPositions2 = newJPositions / np.pi # previous version (mistake), convert to ]0, 2]
             newJPositions2 = newJPositions / (2 * np.pi)  # convert to ]0, 1]
             # try:
-            self.state = newJPositions2.reshape(self.nSJoints)
+            newJPositions3 = newJPositions2.reshape(6)
             # except:
             #     pass
             # get reward from distance reading and check goal
             # print("Reading distance...")
+
+            # select the first relevant joints
+            self.state = newJPositions3[0:self.nSJoints]
 
             returnCode, goalCubeRelPos = vrep.simxGetObjectPosition(self.clientID, self.goalCube, self.robotBase, vrep.simx_opmode_blocking)
             x, y, z = goalCubeRelPos  #works, z doesnt change in the plane
