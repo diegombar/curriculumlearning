@@ -55,14 +55,14 @@ CURRICULUM_INCREASING_JOINT_NUMBER = 2
 
 ################# CHOOSE ################
 
-curriculum = CURRICULUM_INCREASING_JOINT_NUMBER ##############
+curriculum = CURRICULUM_DECREASING_SPEED ##############
 task = TASK_REACH_CUBE #########
-testing_scripts = False  # set to True test scripts for a few episodes/steps
+testing_scripts = True  # set to True test scripts for a few episodes/steps
 
 #########################################
 
 episodes = 5000
-Velocities = [0.25]
+Velocities = [1]
 NumOfJoints = [6]
 if curriculum == NO_CURRICULUM_VEL_025:
     experiment_name = "no_curriculum_vel_025"
