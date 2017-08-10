@@ -55,7 +55,7 @@ CURRICULUM_INCREASING_JOINT_NUMBER = 2
 
 ################# CHOOSE ################
 
-curriculum = NO_CURRICULUM_VEL_025 ##############
+curriculum = NO_CURRICULUM_VEL_1 ##############
 task = TASK_REACH_CUBE #########
 testing_scripts = False  # set to True test scripts for a few episodes/steps
 
