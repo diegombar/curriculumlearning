@@ -57,7 +57,7 @@ CURRICULUM_INCREASING_JOINT_NUMBER = 2
 
 curriculum = CURRICULUM_DECREASING_SPEED ##############
 task = TASK_REACH_CUBE #########
-testing_scripts = False  # set to True test scripts for a few episodes/steps
+testing_scripts = True  # set to True test scripts for a few episodes/steps
 
 #########################################
 
@@ -101,7 +101,7 @@ cl_switching_eps = []
 cl_switching_steps = []
 cl_cumul_successes = np.array([0])
 cl_test_success_rates = np.array([0.0])
-cl_test_steps = [0]
+cl_test_steps = np.array([0])
 cl_total_time = 0.0
 
 model_path = None
@@ -203,9 +203,12 @@ with open(stats_file_path, "w") as stats_file:
     json.dump(end_stats_dict, stats_file, sort_keys=True, indent=4)
 
 # save lists of results for later plots
-lists_to_serialize = ['cl_switching_eps', 'cl_cumul_successes', 'cl_switching_steps', 'cl_test_success_rates', 'cl_test_steps']
+cl_cumul_successes_list = cl_cumul_successes.tolist()
+cl_test_success_rates_list = cl_test_success_rates.tolist()
+cl_test_steps_list = cl_test_steps.tolist()
+
+lists_to_serialize = ['cl_switching_eps', 'cl_cumul_successes_list', 'cl_switching_steps', 'cl_test_success_rates_list', 'cl_test_steps_list'] # have to be lists
 for list_to_serialize in lists_to_serialize:
-    list_json_file = os.path.join(current_model_dir_path, list_to_serialize + '.json')
+    list_json_file = os.path.join(experiment_dir_path, list_to_serialize + '.json')
     with open(list_json_file, "w") as json_file:
         json.dump(eval(list_to_serialize), json_file)
-
