@@ -14,7 +14,7 @@ def plot_cl_success_rate(dir_path, subtask_switch_steps, test_success_rate, test
     plt.title('Success rate in test conditions')
     #vertical lines at subtask switching
     for switch_ep in subtask_switch_steps:
-        plt.axvline(x=switch_ep, ls='.', color='r')
+        plt.axvline(x=switch_ep, ls='dashed', color='r')
     plot_file = os.path.join(dir_path, 'success_rate.svg')
     fig.savefig(plot_file, bbox_inches='tight')
     plt.close()
@@ -57,7 +57,7 @@ CURRICULUM_INCREASING_JOINT_NUMBER = 2
 
 curriculum = CURRICULUM_DECREASING_SPEED ##############
 task = TASK_REACH_CUBE #########
-testing_scripts = True  # set to True test scripts for a few episodes/steps
+testing_scripts = False  # set to True test scripts for a few episodes/steps
 
 #########################################
 
@@ -173,17 +173,16 @@ for vel in Velocities:
 
         # update test success rates
         cl_test_success_rates = np.concatenate((cl_test_success_rates, np.array(subt_test_success_rates)), axis=0)
-
         # update test steps
-        abs_subt_test_steps = np.array(subt_test_steps) + last_abs_step  # subtask step to cl step
+        abs_subt_test_steps = np.array(subt_test_steps) + subt_initial_step  # subtask step to cl step
         cl_test_steps = np.concatenate((cl_test_steps, abs_subt_test_steps), axis=0)
 
         # update curriculum time
         cl_total_time += st_time # in hours
 
         os.makedirs(experiment_dir_path, exist_ok=True)
-        del cl_switching_eps[-1]
-        del cl_switching_steps[-1]
+        # del cl_switching_eps[-1]
+        # del cl_switching_steps[-1]
         plot_cl_cumul_successes(experiment_dir_path, cl_switching_eps, cl_cumul_successes)
         plot_cl_success_rate(experiment_dir_path, cl_switching_steps, cl_test_success_rates, cl_test_steps)
 
@@ -202,3 +201,11 @@ end_stats_dict["total_training_time_in_hours_curriculum"] = cl_total_time
 stats_file_path = os.path.join(experiment_dir_path, "end_stats.txt")
 with open(stats_file_path, "w") as stats_file:
     json.dump(end_stats_dict, stats_file, sort_keys=True, indent=4)
+
+# save lists of results for later plots
+lists_to_serialize = ['cl_switching_eps', 'cl_cumul_successes', 'cl_switching_steps', 'cl_test_success_rates', 'cl_test_steps']
+for list_to_serialize in lists_to_serialize:
+    list_json_file = os.path.join(current_model_dir_path, list_to_serialize + '.json')
+    with open(list_json_file, "w") as json_file:
+        json.dump(eval(list_to_serialize), json_file)
+

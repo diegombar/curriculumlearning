@@ -438,7 +438,10 @@ def trainDQL(experiment_dir_path,
 
             i = 1
             while i <= num_episodes:
-                print("\nepisode number ", i)
+                if testing_policy:
+                    print("\nTesting episode number ", testing_policy_episode)
+                else:
+                    print("\nTraining episode number ", i)
 
                 if skip_training:
                     epsilon = e_min
@@ -455,7 +458,7 @@ def trainDQL(experiment_dir_path,
 
                 j = 1
                 while j <= max_steps_per_episode:
-                    print("\nstep:", j)
+                    # print("\nstep:", j)
 
                     # pick action from the DQN, epsilon greedy
                     chosenActions, allJQValues = sess.run(
