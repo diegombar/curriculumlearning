@@ -55,9 +55,9 @@ CURRICULUM_INCREASING_JOINT_NUMBER = 2
 
 ################# CHOOSE ################
 
-curriculum = NO_CURRICULUM_VEL_025 ##############
+curriculum = CURRICULUM_DECREASING_SPEED ##############
 task = TASK_REACH_CUBE #########
-testing_scripts = False  # set to True test scripts for a few episodes/steps
+testing_scripts = True  # set to True test scripts for a few episodes/steps
 
 #########################################
 
@@ -109,8 +109,8 @@ st_num = 0
 
 trainDQL_args = dict(
                     experiment_dir_path=experiment_dir_path,
-                    num_hidden_layers=2,
-                    num_neurons_per_hidden=50,
+                    num_hidden_layers=3,
+                    num_neurons_per_hidden=100,
                     num_episodes=episodes,  #400
                     max_steps_per_episode=max_steps,  #200
                     e_min=0.01,
@@ -128,8 +128,8 @@ trainDQL_args = dict(
                     notes=experiment_name,
                     previous_norm=False,
                     targetRelativePos=targetRelativePos,
-                    policy_test_period=100,  # episodes
-                    success_rate_for_subtask_completion=success_rate_for_subtask_completion,  # change with/without CL
+                    # policy_test_period=100,  # episodes
+                    # success_rate_for_subtask_completion=success_rate_for_subtask_completion,  # change with/without CL
                     nSJoints=6,
                     nAJoints=6
                     )
@@ -142,7 +142,7 @@ if testing_scripts:
                               batch_size=1,
                               replay_start_size=6,
                               replay_memory_size=10,
-                              policy_test_period=5,
+                              # policy_test_period=5,
                              )
                         )
 
@@ -157,7 +157,8 @@ for vel in Velocities:
                              )
                         )
 
-        model_path, subt_total_steps, subt_cumul_successes, subt_test_success_rates, subt_test_steps, st_time = training.trainDQL(**trainDQL_args)
+        # model_path, subt_total_steps, subt_cumul_successes, subt_test_success_rates, subt_test_steps, st_time = training.trainDQL(**trainDQL_args)
+        model_path, subt_total_steps, subt_cumul_successes, st_time = training.trainDQL(**trainDQL_args)
 
         # update switching steps
         last_abs_step = subt_total_steps + subt_initial_step
@@ -172,10 +173,10 @@ for vel in Velocities:
         cl_switching_eps.append(last_abs_ep)
 
         # update test success rates
-        cl_test_success_rates = np.concatenate((cl_test_success_rates, np.array(subt_test_success_rates)), axis=0)
+        # cl_test_success_rates = np.concatenate((cl_test_success_rates, np.array(subt_test_success_rates)), axis=0)
         # update test steps
-        abs_subt_test_steps = np.array(subt_test_steps) + subt_initial_step  # subtask step to cl step
-        cl_test_steps = np.concatenate((cl_test_steps, abs_subt_test_steps), axis=0)
+        # abs_subt_test_steps = np.array(subt_test_steps) + subt_initial_step  # subtask step to cl step
+        # cl_test_steps = np.concatenate((cl_test_steps, abs_subt_test_steps), axis=0)
 
         # update curriculum time
         cl_total_time += st_time # in hours
@@ -184,7 +185,7 @@ for vel in Velocities:
         # del cl_switching_eps[-1]
         # del cl_switching_steps[-1]
         plot_cl_cumul_successes(experiment_dir_path, cl_switching_eps, cl_cumul_successes)
-        plot_cl_success_rate(experiment_dir_path, cl_switching_steps, cl_test_success_rates, cl_test_steps)
+        # plot_cl_success_rate(experiment_dir_path, cl_switching_steps, cl_test_success_rates, cl_test_steps)
 
         subt_initial_step = last_abs_step
 
@@ -205,9 +206,11 @@ with open(stats_file_path, "w") as stats_file:
 # save lists of results for later plots
 cl_cumul_successes_list = cl_cumul_successes.tolist()
 cl_test_success_rates_list = cl_test_success_rates.tolist()
-cl_test_steps_list = cl_test_steps.tolist()
+# cl_test_steps_list = cl_test_steps.tolist()
 
-lists_to_serialize = ['cl_switching_eps', 'cl_cumul_successes_list', 'cl_switching_steps', 'cl_test_success_rates_list', 'cl_test_steps_list'] # have to be lists
+# lists_to_serialize = ['cl_switching_eps', 'cl_cumul_successes_list', 'cl_switching_steps', 'cl_test_success_rates_list', 'cl_test_steps_list'] # have to be lists
+lists_to_serialize = ['cl_switching_eps', 'cl_cumul_successes_list'] # have to be lists
+
 for list_to_serialize in lists_to_serialize:
     list_json_file = os.path.join(experiment_dir_path, list_to_serialize + '.json')
     with open(list_json_file, "w") as json_file:

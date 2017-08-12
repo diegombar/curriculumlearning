@@ -249,10 +249,11 @@ def trainDQL(experiment_dir_path,
              notes=None,
              previous_norm=False,
              targetRelativePos=0,
-             policy_test_period=100,  # episodes
-             success_rate_for_subtask_completion=False,
+             # policy_test_period=100,  # episodes
+             # success_rate_for_subtask_completion=False,
              nSJoints=6,
-             nAJoints=6
+             nAJoints=6,
+             portNb=1998
              ):
 
     # hyper params to save to txt file
@@ -272,8 +273,8 @@ def trainDQL(experiment_dir_path,
     h_params["joint_velocity"] = velocity
     h_params['use_variable_names'] = use_variable_names #use non-default names for variables
 
-    h_params['policy_test_period'] = policy_test_period
-    h_params['success_rate_for_subtask_completion'] = success_rate_for_subtask_completion
+    # h_params['policy_test_period'] = policy_test_period
+    # h_params['success_rate_for_subtask_completion'] = success_rate_for_subtask_completion
 
     h_params['nAJoints'] = nAJoints
     h_params['nSJoints'] = nSJoints
@@ -332,8 +333,8 @@ def trainDQL(experiment_dir_path,
     h_params['update_target_net_rate_tau'] = tau = 0.001 # rate to update target network toward main network
     h_params['learning_rate'] = lrate #= 1E-6
     h_params['discount_factor'] = y = 0.99 # mnih:0.99
-    h_params['policy_test_period'] = policy_test_period #episodes
-    h_params['policy_test_num_of_test_episodes '] = policy_test_episodes = 20 # episodes
+    # h_params['policy_test_period'] = policy_test_period #episodes
+    # h_params['policy_test_num_of_test_episodes '] = policy_test_episodes = 20 # episodes
 
     with RobotEnv(task=task,
                   targetPosition=targetRelativePos,
@@ -342,7 +343,8 @@ def trainDQL(experiment_dir_path,
                   showGUI=showGUI,
                   velocity=velocity,
                   nSJoints=nSJoints,
-                  nAJoints=nAJoints
+                  nAJoints=nAJoints,
+                  portNb=portNb
                   ) as env:
         tf.reset_default_graph()
         nActionsPerJoint = 3
@@ -428,20 +430,20 @@ def trainDQL(experiment_dir_path,
             maxQvaluesArray = np.array([]).reshape(nAJoints, 0)
 
             # test success initialization:
-            subt_test_success_rates = []
-            subt_test_steps = []
-            testing_policy_episode = 0
-            testing_policy = False
-            epsilon_backup = 0
-            no_progress_count = 0
-            current_test_success_count = 0
+            # subt_test_success_rates = []
+            # subt_test_steps = []
+            # testing_policy_episode = 0
+            # testing_policy = False
+            # epsilon_backup = 0
+            # no_progress_count = 0
+            # current_test_success_count = 0
 
             i = 1
             while i <= num_episodes:
-                if testing_policy:
-                    print("\nTesting episode number ", testing_policy_episode)
-                else:
-                    print("\nTraining episode number ", i)
+                # if testing_policy:
+                #     print("\nTesting episode number ", testing_policy_episode)
+                # else:
+                print("\nTraining episode number ", i)
 
                 if skip_training:
                     epsilon = e_min
@@ -512,95 +514,106 @@ def trainDQL(experiment_dir_path,
                     
                     maxQvalues2 = np.reshape(maxQvalues, (nAJoints, 1))
                     stateToSave = np.reshape(initialState, (stateSize, 1))
-                    if not testing_policy:
-                        # end of step, save tracked statistics
-                        undisc_return += r
-                        sum_of_maxQ += maxQvalues2
-                        subtask_total_steps += 1
-                    else:
+                    # if not testing_policy:
+                    # end of step, save tracked statistics
+                    undisc_return += r
+                    sum_of_maxQ += maxQvalues2
+                    subtask_total_steps += 1
+                    # else:
                         # save q values for training logs
-                        # if subtask_total_steps % q_values_log_period == 0:
-                        statesArray = np.concatenate((statesArray, stateToSave), axis=1)
-                        maxQvaluesArray = np.concatenate((maxQvaluesArray, maxQvalues2), axis=1)
+                    # if subtask_total_steps % q_values_log_period == 0:
+                    statesArray = np.concatenate((statesArray, stateToSave), axis=1)
+                    maxQvaluesArray = np.concatenate((maxQvaluesArray, maxQvalues2), axis=1)
 
                     initialState = newState
                     j += 1
 
                     if done:
-                        if testing_policy:
-                            current_test_success_count += 1
-                        else:
-                            success_count += 1
+                        # if testing_policy:
+                        #     current_test_success_count += 1
+                        # else:
+                        success_count += 1
                         break
 
                 #episode ended
 
-                if i % policy_test_period == 0 and not skip_training and not testing_policy:
-                    # pause training and test current policy for some episodes
-                    print("\nTesting policy...")
-                    subt_test_steps.append(subtask_total_steps)
-                    current_test_success_count = 0
-                    testing_policy = True
-                    skip_training = True
-                    testing_policy_episode = 1
-                    epsilon_backup = epsilon
+                # if i % policy_test_period == 0 and not skip_training and not testing_policy:
+                #     # pause training and test current policy for some episodes
+                #     print("\nTesting policy...")
+                #     subt_test_steps.append(subtask_total_steps)
+                #     current_test_success_count = 0
+                #     testing_policy = True
+                #     skip_training = True
+                #     testing_policy_episode = 1
+                #     epsilon_backup = epsilon
 
-                if testing_policy_episode == policy_test_episodes:
-                    # back to training
-                    print("\nBack to training.")
-                    testing_policy = False
-                    skip_training = False
-                    epsilon = epsilon_backup
-                    testing_policy_episode = 0
+                # if testing_policy_episode == policy_test_episodes:
+                #     # back to training
+                #     print("\nBack to training.")
+                #     testing_policy = False
+                #     skip_training = False
+                #     epsilon = epsilon_backup
+                #     testing_policy_episode = 0
 
-                    current_success_rate = current_test_success_count / policy_test_episodes
-                    subt_test_success_rates.append(current_success_rate)
+                #     current_success_rate = current_test_success_count / policy_test_episodes
+                #     subt_test_success_rates.append(current_success_rate)
 
-                    # plot Q plots
-                    Qplots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
-                    os.makedirs(Qplots_dir_path, exist_ok=True)
-                    saveQvaluesPlot(Qplots_dir_path, statesArray, maxQvaluesArray, nAJoints)
-                    statesArray = np.array([]).reshape(stateSize, 0)  # reset q values logs
-                    maxQvaluesArray = np.array([]).reshape(nAJoints, 0)
+                #     # plot Q plots
+                #     Qplots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
+                #     os.makedirs(Qplots_dir_path, exist_ok=True)
+                #     saveQvaluesPlot(Qplots_dir_path, statesArray, maxQvaluesArray, nAJoints)
+                #     statesArray = np.array([]).reshape(stateSize, 0)  # reset q values logs
+                #     maxQvaluesArray = np.array([]).reshape(nAJoints, 0)
 
-                    if success_rate_for_subtask_completion and len(subt_test_success_rates)>2:
-                        if subt_test_success_rates[-1] < subt_test_success_rates[-2]:
-                            no_progress_count += 1
-                        else:
-                            no_progress_count = 0
+                #     if success_rate_for_subtask_completion and len(subt_test_success_rates)>2:
+                #         if subt_test_success_rates[-1] < subt_test_success_rates[-2]:
+                #             no_progress_count += 1
+                #         else:
+                #             no_progress_count = 0
 
-                        if no_progress_count == 5:
-                            print("\nSuccess rate did not improve, moving on to next task.")
-                            break
+                #         if no_progress_count == 5:
+                #             print("\nSuccess rate did not improve, moving on to next task.")
+                #             break
 
                 # add current episode's list of transitions to dataset
                 if not skip_training:
                     dataset.add(episodeBuffer.data)
 
-                if testing_policy:
-                    testing_policy_episode += 1
-                else:
-                    # save tracked statistics
-                    num_steps_per_ep.append(j)
-                    undisc_return_per_ep.append(undisc_return)
-                    subt_cumul_successes.append(success_count)
-                    epsilon_per_ep.append(epsilon)
+                # if testing_policy:
+                #     testing_policy_episode += 1
+                # else:
+                # save tracked statistics
+                num_steps_per_ep.append(j)
+                undisc_return_per_ep.append(undisc_return)
+                subt_cumul_successes.append(success_count)
+                epsilon_per_ep.append(epsilon)
 
-                    averageMaxQ = sum_of_maxQ / j #nJoints x 1
-                    print("averageMaxQ for each joint:\n", averageMaxQ.T)
-                    average_maxQ_per_ep = np.concatenate((average_maxQ_per_ep, averageMaxQ), axis=1)
+                averageMaxQ = sum_of_maxQ / j #nJoints x 1
+                print("averageMaxQ for each joint:\n", averageMaxQ.T)
+                average_maxQ_per_ep = np.concatenate((average_maxQ_per_ep, averageMaxQ), axis=1)
 
-                    #save the model and log training
-                    if i % model_saving_period == 0:
-                        print("Saving model and results")
-                        save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
-                        print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(i, j, undisc_return, done))
-                        checkpoints_plots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
-                        os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
-                        savePlots(checkpoints_plots_dir_path, undisc_return_per_ep, num_steps_per_ep,
-                                  subt_cumul_successes, epsilon_per_ep, average_maxQ_per_ep)
+                #save the model and log training
+                if i % model_saving_period == 0:
+                    print("Saving model and results")
+                    save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
+                    print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(i, j, undisc_return, done))
+                    checkpoints_plots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
+                    os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
+                    savePlots(checkpoints_plots_dir_path, undisc_return_per_ep, num_steps_per_ep,
+                              subt_cumul_successes, epsilon_per_ep, average_maxQ_per_ep)
 
-                    i += 1
+                if i % (max(model_saving_period//5,1)) ==0:
+                     # plot Q plots
+                    Qplots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
+                    os.makedirs(Qplots_dir_path, exist_ok=True)
+                    startidx = max(max(model_saving_period//5,1)//4, 1)
+                    lastStatesArray = statesArray[-startidx:-1]
+                    lastMaxQvaluesArray = maxQvaluesArray[-startidx:-1]
+                    saveQvaluesPlot(Qplots_dir_path, statesArray, maxQvaluesArray, nAJoints)
+                    statesArray = np.array([]).reshape(stateSize, 0)  # reset q values logs
+                    maxQvaluesArray = np.array([]).reshape(nAJoints, 0)
+
+                i += 1
 
             #training ended, save results
             end_time = time.time()
@@ -630,4 +643,5 @@ def trainDQL(experiment_dir_path,
 
     savePlots(trained_model_plots_dir_path, undisc_return_per_ep, num_steps_per_ep, subt_cumul_successes, epsilon_per_ep, average_maxQ_per_ep)
 
-    return save_path, subtask_total_steps, subt_cumul_successes, subt_test_success_rates, subt_test_steps, total_training_time_in_hours  # for visualization and curriculum learning
+    # return save_path, subtask_total_steps, subt_cumul_successes, subt_test_success_rates, subt_test_steps, total_training_time_in_hours  # for visualization and curriculum learning
+    return save_path, subtask_total_steps, subt_cumul_successes, total_training_time_in_hours  # for visualization and curriculum learning
