@@ -55,9 +55,9 @@ CURRICULUM_INCREASING_JOINT_NUMBER = 2
 
 ################# CHOOSE ################
 
-curriculum = CURRICULUM_DECREASING_SPEED ##############
+curriculum = CURRICULUM_INCREASING_JOINT_NUMBER ##############
 task = TASK_REACH_CUBE #########
-testing_scripts = True  # set to True test scripts for a few episodes/steps
+testing_scripts = False  # set to True test scripts for a few episodes/steps
 
 #########################################
 
@@ -66,21 +66,21 @@ Velocities = [1]
 NumOfJoints = [6]
 if curriculum == NO_CURRICULUM_VEL_025:
     experiment_name = "no_curriculum_vel_025"
-    success_rate_for_subtask_completion = False
+    # success_rate_for_subtask_completion = False
 elif curriculum == NO_CURRICULUM_VEL_1:
     experiment_name = "no_curriculum_vel_1"
     Velocities = [1.0]
-    success_rate_for_subtask_completion = False
+    # success_rate_for_subtask_completion = False
 elif curriculum == CURRICULUM_DECREASING_SPEED:
     experiment_name = "cl_decreasing_speeds"
     Velocities = [1, 0.5, 0.25]
     episodes = episodes // len(Velocities)
-    success_rate_for_subtask_completion = True
+    # success_rate_for_subtask_completion = True
 elif curriculum == CURRICULUM_INCREASING_JOINT_NUMBER:
     experiment_name = "cl_increasing_num_of_joints"
     NumOfJoints = range(1, 7)
     episodes = episodes // len(NumOfJoints)
-    success_rate_for_subtask_completion = True
+    # success_rate_for_subtask_completion = True
 
 if testing_scripts:
     experiment_name = "TEST"
