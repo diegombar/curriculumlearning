@@ -31,7 +31,7 @@ TASK_REACH_CUBE = 1
 TASK_PUSH_CUBE_TO_TARGET_POSITION = 2
 
 class RobotEnv():
-    portNb = 19998
+    # portNb = 19998
     vrepPath = os.path.join(home_path, "V-REP_PRO_EDU_V3_4_0_Linux", "vrep.sh")
     #blade "/home/diego/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
     #doc lab : "/homes/dam416/V-REP_PRO_EDU_V3_3_1_64_Linux/vrep.sh"
@@ -48,13 +48,15 @@ class RobotEnv():
                  showGUI=True,
                  velocity=1,
                  nSJoints=6,
-                 nAJoints=6
+                 nAJoints=6,
+                 portNb = 19998
                  ):
         #actions/states/reward/done
         self.task = task #see tasks 1, 2 above
         self.nSJoints = nSJoints  #num of joints to include in state vector (starts at base)
         self.nAJoints = nAJoints  #num of actionable joints (starts at base)
-
+        self.portNb = portNb
+        
         if self.task == TASK_REACH_CUBE:
             self.observation_space_size = self.nSJoints  # 6 joint angles
         elif self.task == TASK_PUSH_CUBE_TO_TARGET_POSITION:
