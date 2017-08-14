@@ -20,7 +20,7 @@ targetRelativePos = (0.0, 0.7) #relative x, y in metres
 ###### CHOOSE
 
 task = TASK_REACH_CUBE
-vel = 1.0
+vel = 1
 
 
 #model to load
@@ -110,7 +110,16 @@ cl_decreasing_speeds = os.path.join(experiments_dir_path,
    "cl_decreasing_speeds_2017-Aug-10_21-22-07/model_and_results_2017-Aug-10_21-22-07/trained_model",
    "final_model-1666")
 
-model_to_load = cl_decreasing_speeds
+no_cl_5000_vel025 = os.path.join(experiments_dir_path,
+   "no_curriculum_vel_025_2017-Aug-12_19-01-58/model_and_results_2017-Aug-12_19-01-58/trained_model",
+   "final_model-5000") #3 hlayers x 100 neurons
+
+no_cl_5000_vel1 = os.path.join(experiments_dir_path,
+   "no_curriculum_vel_1_2017-Aug-10_22-39-08/model_and_results_2017-Aug-10_22-39-08/trained_model",
+   "final_model-5000") #2 hlayers x 50 neurons
+
+
+model_to_load = no_cl_5000_vel1
 
 #load model
 
@@ -120,7 +129,7 @@ trainDQL_args = dict(
                     num_neurons_per_hidden=50,
                     num_episodes=10,  #400
                     max_steps_per_episode=200,  #200
-                    e_min=0.1,
+                    e_min=0.01,
                     task=task,
                     model_saving_period=100,
                     lrate=1E-3,  # 1E-3 seems to work fine
@@ -135,8 +144,6 @@ trainDQL_args = dict(
                     notes=experiment_name,
                     previous_norm=False,
                     targetRelativePos=targetRelativePos,
-                    policy_test_period=10000,  # episodes
-                    success_rate_for_subtask_completion=False,  # change with/without CL
                     nSJoints=6,
                     nAJoints=6,
                     portNb=1997
