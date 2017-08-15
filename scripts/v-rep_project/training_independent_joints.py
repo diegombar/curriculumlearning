@@ -101,7 +101,8 @@ class DQN():
     def __init__(self, nAJoints, nSJoints, stateSize,
                  num_hidden_layers, num_neurons_per_hidden, lrate,
                  use_variable_names=True,
-                 previous_norm=False):
+                 previous_norm=False,
+                 old_bias=False):
         self.nAJoints = nAJoints
         self.nSJoints = nSJoints
         self.stateSize = stateSize
@@ -127,7 +128,10 @@ class DQN():
                     weight_name = "weight" + str(i)
                     bias_name = "bias" + str(i)
                     w = tf.Variable(tf.truncated_normal([neuronsPerLayer[i], neuronsPerLayer[i+1]], mean=0.0, stddev=0.1), name=weight_name)
-                    b = tf.Variable(tf.constant(0.1, shape=[neuronsPerLayer[i+1]]), name=bias_name)
+                    if old_bias:
+                        b = tf.Variable(tf.constant(0.1, shape=[1]), name=bias_name)
+                    else:
+                        b = tf.Variable(tf.constant(0.1, shape=[neuronsPerLayer[i+1]]), name=bias_name)
                     self.weights.append(w)
                     self.biases.append(b)
                     self.variable_dict[weight_name] = self.weights[-1]
@@ -253,7 +257,8 @@ def trainDQL(experiment_dir_path,
              # success_rate_for_subtask_completion=False,
              nSJoints=6,
              nAJoints=6,
-             portNb=1998
+             portNb=1998,
+             old_bias=False
              ):
 
     # hyper params to save to txt file
@@ -357,11 +362,11 @@ def trainDQL(experiment_dir_path,
 
         mainDQN = DQN(nAJoints, nSJoints, stateSize,
                       num_hidden_layers, num_neurons_per_hidden, lrate,
-                      use_variable_names, previous_norm)
+                      use_variable_names, previous_norm, old_bias)
 
         targetDQN = DQN(nAJoints, nSJoints, stateSize,
                         num_hidden_layers, num_neurons_per_hidden, lrate,
-                        use_variable_names, previous_norm)
+                        use_variable_names, previous_norm, old_bias)
 
         # save txt file with hyper parameters
         h_params_file_path = os.path.join(current_model_dir_path,

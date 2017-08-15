@@ -110,16 +110,20 @@ cl_decreasing_speeds = os.path.join(experiments_dir_path,
    "cl_decreasing_speeds_2017-Aug-10_21-22-07/model_and_results_2017-Aug-10_21-22-07/trained_model",
    "final_model-1666")
 
-no_cl_5000_vel025 = os.path.join(experiments_dir_path,
+no_cl_5000_vel025_new = os.path.join(experiments_dir_path,
    "no_curriculum_vel_025_2017-Aug-12_19-01-58/model_and_results_2017-Aug-12_19-01-58/trained_model",
    "final_model-5000") #3 hlayers x 100 neurons
 
+no_cl_5000_vel025_old = os.path.join(experiments_dir_path,
+   "no_curriculum_vel_025_2017-Aug-11_16-24-22/model_and_results_2017-Aug-11_16-24-22/trained_model",
+   "final_model-5000") #2 hlayers x 50 neurons
+
 no_cl_5000_vel1 = os.path.join(experiments_dir_path,
-   "no_curriculum_vel_1_2017-Aug-10_22-39-08/model_and_results_2017-Aug-10_22-39-08/trained_model",
+   "no_curriculum_vel_025_2017-Aug-11_16-24-22/model_and_results_2017-Aug-11_16-24-22/trained_model",
    "final_model-5000") #2 hlayers x 50 neurons
 
 
-model_to_load = no_cl_5000_vel1
+model_to_load = cl_decreasing_speeds
 
 #load model
 
@@ -129,7 +133,7 @@ trainDQL_args = dict(
                     num_neurons_per_hidden=50,
                     num_episodes=10,  #400
                     max_steps_per_episode=200,  #200
-                    e_min=0.01,
+                    e_min=0.1,
                     task=task,
                     model_saving_period=100,
                     lrate=1E-3,  # 1E-3 seems to work fine
@@ -137,7 +141,7 @@ trainDQL_args = dict(
                     replay_start_size=50000,
                     replay_memory_size=500000,
                     showGUI=True,
-                    velocity=vel,  # 1.0 seems to work fine
+                    velocity=0.25,  # 1.0 seems to work fine
                     model_to_load_file_path=model_to_load,
                     use_variable_names=True,
                     skip_training=True,
@@ -146,7 +150,8 @@ trainDQL_args = dict(
                     targetRelativePos=targetRelativePos,
                     nSJoints=6,
                     nAJoints=6,
-                    portNb=1997
+                    portNb=1997,
+                    old_bias=False
                     )
 
 training.trainDQL(**trainDQL_args)
