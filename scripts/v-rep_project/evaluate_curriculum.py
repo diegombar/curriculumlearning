@@ -58,11 +58,12 @@ CURRICULUM_INCREASING_JOINT_NUMBER = 2
 curriculum = NO_CURRICULUM_VEL_025 ##############
 task = TASK_REACH_CUBE #########
 max_steps_per_episode = 100
-testing_scripts = True  # set to True test scripts for a few episodes/steps
+episodes = 5000
+testing_scripts = False  # set to True test scripts for a few episodes/steps
 
 #########################################
 
-episodes = 5000
+
 Velocities = [1]
 NumOfJoints = [6]
 if curriculum == NO_CURRICULUM_VEL_025:
