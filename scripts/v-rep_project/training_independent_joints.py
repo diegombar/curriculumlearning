@@ -449,6 +449,7 @@ def trainDQL(experiment_dir_path,
                 #     print("\nTesting episode number ", testing_policy_episode)
                 # else:
                 print("\nTraining episode number ", i)
+                task_completed = False
 
                 if skip_training:
                     epsilon = e_min
@@ -534,11 +535,12 @@ def trainDQL(experiment_dir_path,
                     j += 1
 
                     # dont stop the ep. when done, so that the robot stays in the target position
-                    # if done:
+                    if done and not task_completed:
                     #     # if testing_policy:
                     #     #     current_test_success_count += 1
                     #     # else:
-                    #     success_count += 1
+                        task_completed = True
+                        success_count += 1
                     #     break
 
                 #episode ended
