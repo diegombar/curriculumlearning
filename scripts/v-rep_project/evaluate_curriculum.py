@@ -68,6 +68,7 @@ Velocities = [1]
 NumOfJoints = [6]
 if curriculum == NO_CURRICULUM_VEL_025:
     experiment_name = "no_curriculum_vel_025"
+    Velocities = [0.25]
     # success_rate_for_subtask_completion = False
 elif curriculum == NO_CURRICULUM_VEL_1:
     experiment_name = "no_curriculum_vel_1"
@@ -88,7 +89,7 @@ if testing_scripts:
     experiment_name = "TEST"
 
 
-folder_name =  experiment_name + '_' + timestr
+folder_name =  timestr + '_' + experiment_name
 experiment_dir_path = os.path.join(all_models_dir_path, folder_name)
 
 # vel025 = os.path.join(
