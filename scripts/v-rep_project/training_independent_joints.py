@@ -533,12 +533,13 @@ def trainDQL(experiment_dir_path,
                     initialState = newState
                     j += 1
 
-                    if done:
-                        # if testing_policy:
-                        #     current_test_success_count += 1
-                        # else:
-                        success_count += 1
-                        break
+                    # dont stop the ep. when done, so that the robot stays in the target position
+                    # if done:
+                    #     # if testing_policy:
+                    #     #     current_test_success_count += 1
+                    #     # else:
+                    #     success_count += 1
+                    #     break
 
                 #episode ended
 

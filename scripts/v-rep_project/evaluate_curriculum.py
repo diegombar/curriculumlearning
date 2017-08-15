@@ -57,7 +57,8 @@ CURRICULUM_INCREASING_JOINT_NUMBER = 2
 
 curriculum = NO_CURRICULUM_VEL_025 ##############
 task = TASK_REACH_CUBE #########
-testing_scripts = False  # set to True test scripts for a few episodes/steps
+max_steps_per_episode = 100
+testing_scripts = True  # set to True test scripts for a few episodes/steps
 
 #########################################
 
@@ -85,7 +86,6 @@ elif curriculum == CURRICULUM_INCREASING_JOINT_NUMBER:
 if testing_scripts:
     experiment_name = "TEST"
 
-max_steps = 200
 
 folder_name =  experiment_name + '_' + timestr
 experiment_dir_path = os.path.join(all_models_dir_path, folder_name)
@@ -110,18 +110,18 @@ st_num = 0
 trainDQL_args = dict(
                     experiment_dir_path=experiment_dir_path,
                     num_hidden_layers=3,
-                    num_neurons_per_hidden=100,
+                    num_neurons_per_hidden=50,
                     num_episodes=episodes,  #400
-                    max_steps_per_episode=max_steps,  #200
+                    max_steps_per_episode=max_steps_per_episode,  #200
                     e_min=0.01,
                     task=task,
                     model_saving_period=episodes // 5,
-                    lrate=1E-3,  # 1E-3 seems to work fine
+                    lrate=1E-5,  # 1E-3 seems to work fine
                     batch_size=32,
                     replay_start_size=50000,
                     replay_memory_size=500000,
                     showGUI=True,
-                    velocity=0,  # 1.0 seems to work fine
+                    # velocity=0.25,  # 1.0 seems to work fine
                     model_to_load_file_path=model_path,
                     use_variable_names=True,
                     skip_training=False,
@@ -130,8 +130,8 @@ trainDQL_args = dict(
                     targetRelativePos=targetRelativePos,
                     # policy_test_period=100,  # episodes
                     # success_rate_for_subtask_completion=success_rate_for_subtask_completion,  # change with/without CL
-                    nSJoints=6,
-                    nAJoints=6
+                    # nSJoints=6,
+                    # nAJoints=6
                     )
 
 if testing_scripts:
