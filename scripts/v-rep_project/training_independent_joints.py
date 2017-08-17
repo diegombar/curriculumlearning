@@ -505,12 +505,12 @@ def trainDQL(experiment_dir_path,
                                 dones = np.reshape(dones, (batch_size, 1))
 
                                 allJBestActions = sess.run(mainDQN.allJointsBestActions, feed_dict={mainDQN.inState:states1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a')) #batch_size x 1
-                                allJQvalues = sess.run(targetDQN.allJointsQvalues3D, feed_dict={targetDQN.inState:states1}) #feed btach of s' and get batch of Q2(a') # batch_size x 3
+                                allJQvalues = sess.run(targetDQN.allJointsQvalues3D, feed_dict={targetDQN.inState:states1}) #feed batch of s' and get batch of Q2(a') # batch_size x 3
 
                                 #get Q values of best actions
                                 allJBestActions_one_hot = np.arange(nActionsPerJoint) == allJBestActions[:, :, None]
                                 allJBestActionsQValues = np.sum(np.multiply(allJBestActions_one_hot, allJQvalues), axis=2) # batch_size x nJoints
-                                end_multiplier = -(dones - 1) # batch_size x 1
+                                end_multiplier = -(dones - 1) # batch_size x 1 ,  equals zero if end of succesful episode
 
                                 allJQtargets = np.reshape(rewards + y * allJBestActionsQValues * end_multiplier, (batch_size,nAJoints)) #batch_size x nJoints
 
