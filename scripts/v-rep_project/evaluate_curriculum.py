@@ -58,7 +58,7 @@ CURRICULUM_INCREASING_JOINT_NUMBER = 2
 curriculum = NO_CURRICULUM_VEL_025 ##############
 task = TASK_REACH_CUBE #########
 max_steps_per_episode = 200
-episodes = 5000
+episodes = 2000
 testing_scripts = False  # set to True test scripts for a few episodes/steps
 
 #########################################
