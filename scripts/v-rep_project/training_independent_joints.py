@@ -260,7 +260,7 @@ def trainDQL(experiment_dir_path,
              # success_rate_for_subtask_completion=False,
              nSJoints=6,
              nAJoints=6,
-             portNb=1998,
+             portNb=19998,
              old_bias=False
              ):
 
