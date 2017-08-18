@@ -55,14 +55,16 @@ CURRICULUM_INCREASING_JOINT_NUMBER = 2
 
 ################# CHOOSE ################
 
-curriculum = NO_CURRICULUM_VEL_1 ##############
+curriculum = NO_CURRICULUM_VEL_025 ##############
 task = TASK_REACH_CUBE #########
 max_steps_per_episode = 200
-num_episodes = 3000
-num_hidden_layers = 2
+num_episodes = 5000
+num_hidden_layers = 3
 num_neurons_per_hidden = 50
+batch_size = 32
+lrate=1e-4
 testing_scripts = False  # set to True test scripts for a few episodes/steps
-max_updates_per_env_step = 10
+# max_updates_per_env_step = 10
 
 #########################################
 
@@ -121,8 +123,8 @@ trainDQL_args = dict(
                     e_min=0.01,
                     task=task,
                     model_saving_period=model_saving_period,
-                    lrate=1e-4,  # 1e-3 seems to work fine
-                    batch_size=100,
+                    lrate=lrate,  # 1e-3 seems to work fine
+                    batch_size=batch_size,
                     replay_start_size=50000,
                     replay_memory_size=500000,
                     showGUI=True,
@@ -137,7 +139,7 @@ trainDQL_args = dict(
                     # success_rate_for_subtask_completion=success_rate_for_subtask_completion,  # change with/without CL
                     nSJoints=6,
                     nAJoints=6,
-                    max_updates_per_env_step=max_updates_per_env_step,
+                    # max_updates_per_env_step=max_updates_per_env_step,
                     )
 
 if testing_scripts:

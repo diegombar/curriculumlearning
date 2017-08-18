@@ -57,12 +57,11 @@ class RobotEnv():
         self.nSJoints = nSJoints  #num of joints to include in state vector (starts at base)
         self.nAJoints = nAJoints  #num of actionable joints (starts at base)
         self.portNb = portNb
+
+        self.observation_space_size = self.nSJoints + 3 + 3  # FOR NOW #8 # 6 joint angles, cube position and end effector position
         
-        if self.task == TASK_REACH_CUBE:
-            self.observation_space_size = self.nSJoints  # 6 joint angles
-        elif self.task == TASK_PUSH_CUBE_TO_TARGET_POSITION:
+        if self.task == TASK_PUSH_CUBE_TO_TARGET_POSITION:
             self.targetPosition = targetPosition #tuple (x,y) target position relative to robot base
-            self.observation_space_size = self.nSJoints + 2  # FOR NOW #8 # 6 joint angles, cube.x, cube.y
         self.action_space_size = 3 * self.nAJoints  # (+Vel, -Vel, 0) for 6 joints
         self.action_space = range(0,self.action_space_size)
         self.observation_space = np.zeros((1,self.observation_space_size))
@@ -146,10 +145,11 @@ class RobotEnv():
             printlog('simxGetObjectHandle', returnCode)
             returnCode, self.fingersH1 = vrep.simxGetObjectHandle(self.clientID, 'MicoHand_fingers12_motor1', vrep.simx_opmode_blocking)
             returnCode, self.fingersH2 = vrep.simxGetObjectHandle(self.clientID, 'MicoHand_fingers12_motor2', vrep.simx_opmode_blocking)
-            returnCode, self.goalCube = vrep.simxGetObjectHandle(self.clientID, 'GoalCube', vrep.simx_opmode_blocking)
-            returnCode, self.robotBase = vrep.simxGetObjectHandle(self.clientID, 'Mico_link1_visible', vrep.simx_opmode_blocking)
+            returnCode, self.goalCubeH = vrep.simxGetObjectHandle(self.clientID, 'GoalCube', vrep.simx_opmode_blocking)
+            returnCode, self.robotBaseH = vrep.simxGetObjectHandle(self.clientID, 'Mico_link1_visible', vrep.simx_opmode_blocking)
             returnCode, self.jointsCollectionHandle = vrep.simxGetCollectionHandle(self.clientID, "sixJoints#", vrep.simx_opmode_blocking)
             returnCode, self.distToGoalHandle = vrep.simxGetDistanceHandle(self.clientID, "distanceToGoal#", vrep.simx_opmode_blocking)
+            returnCode, self.endEffectorH = vrep.simxGetObjectHandle(self.clientID, "DummyFinger#", vrep.simx_opmode_blocking)
             # returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_streaming) #start streaming
             # returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_streaming) #start streaming
 
@@ -280,19 +280,22 @@ class RobotEnv():
             # select the first relevant joints
             self.state = newJPositions3[0:self.nSJoints]
 
-            returnCode, goalCubeRelPos = vrep.simxGetObjectPosition(self.clientID, self.goalCube, self.robotBase, vrep.simx_opmode_blocking)
-            x, y, z = goalCubeRelPos  #works, z doesnt change in the plane
+            returnCode, self.goalCubeRelPos = vrep.simxGetObjectPosition(self.clientID, self.goalCubeH, self.robotBaseH, vrep.simx_opmode_blocking)
+            returnCode, self.endEffectorRelPos = vrep.simxGetObjectPosition(self.clientID, self.endEffectorH, self.robotBaseH, vrep.simx_opmode_blocking)
+
+            self.state = np.concatenate((self.state, self.endEffectorRelPos))
+            self.state = np.concatenate((self.state, self.goalCubeRelPos)) #(x,y,z), z doesnt change in the plane
 
             if self.task == TASK_REACH_CUBE:
-                returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking) #dist in metres #vrep.simx_opmode_buffer after streaming start
-                self.reward = self.distance2reward(self.distanceToGoal)
+                returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking) #dist in metres #vrep.simx_opmode_buffer after streaming start 
             elif self.task == TASK_PUSH_CUBE_TO_TARGET_POSITION:
                 target_x, target_y = self.targetPosition
-                self.state = np.concatenate(self.state, [x, y]) #add object position
-                self.distanceToGoal = np.sqrt((target_x - x)**2 + (target_y - y)**2)
-                print('\n Distance to Target Position: ', self.distanceToGoal)
+                self.distanceToGoal = np.sqrt((target_x - x)**2 + (target_y - y)**2)  
             else:
                 print('ERROR: Invalid Task')
+
+            # print('\n Distance to Target Position: ', self.distanceToGoal)
+            self.reward = self.distance2reward(self.distanceToGoal)
 
             if self.distanceToGoal < self.minDistance:
                 self.goalReached = True

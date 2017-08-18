@@ -65,7 +65,7 @@ class DQN():
         if use_variable_names:
             # list of layer sizes
             neuronsPerLayer = [num_neurons_per_hidden] * (num_hidden_layers + 2)
-            neuronsPerLayer[0] = 10  # large state for CL, weights are adapted to stateSize below
+            neuronsPerLayer[0] = 30  # large state for CL, weights are adapted to stateSize below
             neuronsPerLayer[-1] = 6 * self.nActionsPerJoint  # same as above for actions
 
             # initialize params
@@ -192,9 +192,9 @@ class DQLAlgorithm():
         # success_rate_for_subtask_completion=False,
         nSJoints=6,
         nAJoints=6,
-        portNb=1998,
+        portNb=19998,
         old_bias=False,
-        max_updates_per_env_step=10
+        # max_updates_per_env_step=10
         ):
 
         self.experiment_dir_path = experiment_dir_path
@@ -223,7 +223,7 @@ class DQLAlgorithm():
         self.nAJoints = nAJoints
         self.portNb = portNb
         self.old_bias = old_bias
-        self.max_updates_per_env_step = max_updates_per_env_step
+        # self.max_updates_per_env_step = max_updates_per_env_step
 
         self.h_params = {}
         self.end_stats_dict = {}
@@ -480,6 +480,7 @@ class DQLAlgorithm():
                         epsilon = self.e_min + addE
 
                     initialState = env.reset() # reset environment and get first observation
+                    print("\ninitialState: ", initialState)
                     undisc_return = 0
                     sum_of_maxQ = np.zeros((self.nAJoints, 1))
                     done = False
@@ -507,7 +508,9 @@ class DQLAlgorithm():
 
                         # perform action and get new state and reward
                         newState, r, done = env.step(chosenActions)
-
+                        print("\newState: ", newState)
+                        print("\nr: ", r)
+                        print("\ndone: ", done)
                         #add experience to buffer
                         end_multiplier = 0 if j == self.max_steps_per_episode else 1
                         transition = np.array([initialState, chosenActions, r, newState, end_multiplier])
