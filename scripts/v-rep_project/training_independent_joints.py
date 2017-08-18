@@ -236,7 +236,6 @@ class DQLAlgorithm():
         self.h_params['num_episodes'] = self.num_episodes
         self.h_params['max_steps_per_episode'] = self.max_steps_per_episode
         self.h_params['model_saving_period'] = self.model_saving_period
-        self.h_params['q_values_log_period'] = self.q_values_log_period = max(model_saving_period // 5, 1)
         self.h_params['e_min'] = self.e_min
         self.h_params['task'] = self.task
         self.h_params['batch_size'] = self.batch_size #mnih=32
@@ -442,15 +441,17 @@ class DQLAlgorithm():
                     addE = self.e_max - self.e_min
                     epsilon = self.e_min + addE
 
-                num_steps_per_ep = []
-                undisc_return_per_ep = []
+                self.num_steps_per_ep = []
+                self.undisc_return_per_ep = []
                 success_count = 0
-                subt_cumul_successes = []
-                epsilon_per_ep = []
-                average_maxQ_per_ep = np.array([]).reshape(self.nAJoints, 0)
-                statesArray = np.array([]).reshape(stateSize, 0)
-                maxQvaluesArray = np.array([]).reshape(self.nAJoints, 0)
-                success_steps = []
+                self.subt_cumul_successes = []
+                self.epsilon_per_ep = []
+                self.average_maxQ_per_ep = np.array([]).reshape(self.nAJoints, 0)
+                self.statesArray = np.array([]).reshape(stateSize, 0)
+                self.maxQvaluesArray = np.array([]).reshape(self.nAJoints, 0)
+                self.success_steps = []
+                self.is_saving = False
+                total_saving_time = 0
 
                 # test success initialization:
                 # subt_test_success_rates = []
@@ -486,7 +487,7 @@ class DQLAlgorithm():
 
                     j = 1
                     while j <= self.max_steps_per_episode:
-                        # print("\nstep:", j)
+                        print("\nstep:", j)
 
                         # pick action from the DQN, epsilon greedy
                         chosenActions, allJQValues = sess.run(
@@ -547,8 +548,8 @@ class DQLAlgorithm():
                         # else:
                             # save q values for training logs
                         # if subtask_total_steps % q_values_log_period == 0:
-                        statesArray = np.concatenate((statesArray, stateToSave), axis=1)
-                        maxQvaluesArray = np.concatenate((maxQvaluesArray, maxQvalues2), axis=1)
+                        self.statesArray = np.concatenate((self.statesArray, stateToSave), axis=1)
+                        self.maxQvaluesArray = np.concatenate((self.maxQvaluesArray, maxQvalues2), axis=1)
 
                         initialState = newState
                         j += 1
@@ -559,7 +560,7 @@ class DQLAlgorithm():
                         #     #     current_test_success_count += 1
                         #     # else:
                             task_completed = True
-                            success_steps.append(j)
+                            self.success_steps.append(j)
                             success_count += 1
                         #     break
 
@@ -605,7 +606,7 @@ class DQLAlgorithm():
 
                     # add current episode's list of transitions to dataset
                     if not task_completed:
-                        success_steps.append(self.max_steps_per_episode)
+                        self.success_steps.append(self.max_steps_per_episode)
 
                     self.dataset.add(episodeBuffer.data)
 
@@ -613,38 +614,45 @@ class DQLAlgorithm():
                     #     testing_policy_episode += 1
                     # else:
                     # save tracked statistics
-                    num_steps_per_ep.append(j)
-                    undisc_return_per_ep.append(undisc_return)
-                    subt_cumul_successes.append(success_count)
-                    epsilon_per_ep.append(epsilon)
+                    self.num_steps_per_ep.append(j)
+                    self.undisc_return_per_ep.append(undisc_return)
+                    self.subt_cumul_successes.append(success_count)
+                    self.epsilon_per_ep.append(epsilon)
 
                     averageMaxQ = sum_of_maxQ / j #nJoints x 1
                     print("averageMaxQ for each joint:\n", averageMaxQ.T)
-                    average_maxQ_per_ep = np.concatenate((average_maxQ_per_ep, averageMaxQ), axis=1)
+                    self.average_maxQ_per_ep = np.concatenate((self.average_maxQ_per_ep, averageMaxQ), axis=1)
 
                     #save the model and log training
+                    self.is_saving = True
+                    saving_start_time = time.time()
                     if self.current_episode % self.model_saving_period == 0:
-                        print("Saving model and results")
+                        print("Saving model and plots")
                         save_path = saver.save(sess, self.checkpoint_model_file_path, global_step=self.current_episode)
-                        print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(self.current_episode, j, undisc_return, done))
+                        # print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(self.current_episode, j, undisc_return, done))
                         checkpoints_plots_dir_path = os.path.join(self.current_model_dir_path, "checkpoint_results_ep_" + str(self.current_episode))
                         os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
-                        self.savePlots(checkpoints_plots_dir_path, undisc_return_per_ep, num_steps_per_ep,
-                                  subt_cumul_successes, epsilon_per_ep, success_steps, average_maxQ_per_ep)
+                        self.savePlots(checkpoints_plots_dir_path)
 
                     if self.current_episode % (max(self.model_saving_period//5,1)) ==0:
                          # plot Q plots
-                        Qplots_dir_path = os.path.join(self.current_model_dir_path, "checkpoint_results_ep_" + str(self.current_episode))
+                        print("Saving Q-plots")
+                        Qplots_dir_path = os.path.join(self.current_model_dir_path, "q_plots_ep_" + str(self.current_episode))
                         os.makedirs(Qplots_dir_path, exist_ok=True)
                         startidx = max(max(self.model_saving_period//5,1)//4, 1)
-                        lastStatesArray = statesArray[-startidx:-1]
-                        lastMaxQvaluesArray = maxQvaluesArray[-startidx:-1]
-                        self.saveQvaluesPlot(Qplots_dir_path, statesArray, maxQvaluesArray)
-                        statesArray = np.array([]).reshape(stateSize, 0)  # reset q values logs
-                        maxQvaluesArray = np.array([]).reshape(self.nAJoints, 0)
+                        self.lastStatesArray = self.statesArray[:, -startidx:-1]
+                        self.lastMaxQvaluesArray = self.maxQvaluesArray[:, -startidx:-1]
+                        self.saveQvaluesPlot(Qplots_dir_path)
+                        self.statesArray = np.array([]).reshape(stateSize, 0)  # reset q values logs
+                        self.maxQvaluesArray = np.array([]).reshape(self.nAJoints, 0)
 
+                    self.is_saving = False
+
+                    saving_end_time = time.time()
+                    ep_saving_time = saving_end_time - saving_start_time
+
+                    total_saving_time += ep_saving_time
                     self.current_episode += 1
-
 
                 collector_end_time = time.time()
                 if not self.skip_training:
@@ -658,7 +666,7 @@ class DQLAlgorithm():
                 print("Trained model saved in file: %s" % save_path)
 
         # save total time and steps to txt file
-        collecting_time = collector_end_time - collector_start_time
+        collecting_time = collector_end_time - collector_start_time - total_saving_time
 
         total_training_time_in_secs = end_time - start_time #in seconds
         total_training_time_in_hours = total_training_time_in_secs / 3600
@@ -669,6 +677,7 @@ class DQLAlgorithm():
         self.end_stats_dict["COLLECTOR_total_number_of_episodes_executed_subtask"] = subt_total_eps
         self.end_stats_dict["COLLECTOR__experience_collecting_time_in_sec"] = collecting_time
         self.end_stats_dict["COLLECTOR_env_steps_per_sec"] = collector_freq
+        self.end_stats_dict["COLLECTOR_total_saving_time_in_sec"] = total_saving_time
 
         self.end_stats_dict["total_training_time_in_sec"] = total_training_time_in_secs
         self.end_stats_dict["total_training_time_in_hours"] = total_training_time_in_hours
@@ -679,16 +688,16 @@ class DQLAlgorithm():
             json.dump(self.end_stats_dict, stats_file, sort_keys=True, indent=4)
 
         # save lists of results for later plots
-        lists_to_serialize = ['undisc_return_per_ep', 'num_steps_per_ep', 'subt_cumul_successes', 'epsilon_per_ep', 'success_steps']
+        lists_to_serialize = ['self.undisc_return_per_ep', 'self.num_steps_per_ep', 'self.subt_cumul_successes', 'self.epsilon_per_ep', 'self.success_steps']
         for list_to_serialize in lists_to_serialize:
             list_json_file = os.path.join(self.current_model_dir_path, list_to_serialize + '.json')
             with open(list_json_file, "w") as json_file:
                 json.dump(eval(list_to_serialize), json_file)
 
-        self.savePlots(self.trained_model_plots_dir_path, undisc_return_per_ep, num_steps_per_ep, subt_cumul_successes, epsilon_per_ep, success_steps, average_maxQ_per_ep)
+        self.savePlots(self.trained_model_plots_dir_path)
 
         # return save_path, subtask_total_steps, subt_cumul_successes, subt_test_success_rates, subt_test_steps, total_training_time_in_hours  # for visualization and curriculum learning
-        return save_path, self.subtask_total_steps, subt_cumul_successes, total_training_time_in_hours  # for visualization and curriculum learning
+        return save_path, self.subtask_total_steps, self.subt_cumul_successes, total_training_time_in_hours  # for visualization and curriculum learning
 
         # # Main thread
         # coord = tf.train.Coordinator()
@@ -715,38 +724,40 @@ class DQLAlgorithm():
 
         training_loop_start_time = time.time()
         total_network_updates = 0
-        while (not self.coord.should_stop()) and (self.current_episode =< self.num_episodes):
-            last_step = self.subtask_total_steps
-            current_update_counter = 0
-            while last_step == self.subtask_total_steps:
-                if current_update_counter < self.max_updates_per_env_step:
-                    batch = self.dataset.sample(self.batch_size)
-                    # states0, actions0, rewards, states1, dones = batch.T
-                    states0, actions0, rewards, states1, end_multipliers = batch.T
-                    states0 = np.vstack(states0)
-                    actions0 = np.vstack(actions0)
-                    states1 = np.vstack(states1)
-                    rewards = np.reshape(rewards, (self.batch_size, 1))
-                    # dones = np.reshape(dones, (batch_size, 1))
-                    end_multipliers = np.reshape(end_multipliers, (self.batch_size, 1))
+        while not self.coord.should_stop():
+        # while (not self.coord.should_stop()) and (self.current_episode <= self.num_episodes):
+        # last_step = self.subtask_total_steps
+        # current_update_counter = 0
+            if not self.is_saving:
+            # while (not self.coord.should_stop()) and (last_step == self.subtask_total_steps):
+                # if current_update_counter < self.max_updates_per_env_step:
+                batch = self.dataset.sample(self.batch_size)
+                # states0, actions0, rewards, states1, dones = batch.T
+                states0, actions0, rewards, states1, end_multipliers = batch.T
+                states0 = np.vstack(states0)
+                actions0 = np.vstack(actions0)
+                states1 = np.vstack(states1)
+                rewards = np.reshape(rewards, (self.batch_size, 1))
+                # dones = np.reshape(dones, (batch_size, 1))
+                end_multipliers = np.reshape(end_multipliers, (self.batch_size, 1))
 
-                    allJBestActions = sess.run(self.trainer_mainDQN.allJointsBestActions, feed_dict={self.trainer_mainDQN.inState:states1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a')) #batch_size x 1
-                    allJQvalues = sess.run(self.trainer_targetDQN.allJointsQvalues3D, feed_dict={self.trainer_targetDQN.inState:states1}) #feed batch of s' and get batch of Q2(a') # batch_size x 3
+                allJBestActions = sess.run(self.trainer_mainDQN.allJointsBestActions, feed_dict={self.trainer_mainDQN.inState:states1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a')) #batch_size x 1
+                allJQvalues = sess.run(self.trainer_targetDQN.allJointsQvalues3D, feed_dict={self.trainer_targetDQN.inState:states1}) #feed batch of s' and get batch of Q2(a') # batch_size x 3
 
-                    #get Q values of best actions
-                    allJBestActions_one_hot = np.arange(self.nActionsPerJoint) == allJBestActions[:, :, None]
-                    allJBestActionsQValues = np.sum(np.multiply(allJBestActions_one_hot, allJQvalues), axis=2) # batch_size x nJoints
-                    # end_multiplier = -(dones - 1) # batch_size x 1 ,  equals zero if end of succesful episode
+                #get Q values of best actions
+                allJBestActions_one_hot = np.arange(self.nActionsPerJoint) == allJBestActions[:, :, None]
+                allJBestActionsQValues = np.sum(np.multiply(allJBestActions_one_hot, allJQvalues), axis=2) # batch_size x nJoints
+                # end_multiplier = -(dones - 1) # batch_size x 1 ,  equals zero if end of succesful episode
 
-                    allJQtargets = np.reshape(rewards + self.y * allJBestActionsQValues * end_multipliers, (self.batch_size, self.nAJoints)) #batch_size x nJoints
+                allJQtargets = np.reshape(rewards + self.y * allJBestActionsQValues * end_multipliers, (self.batch_size, self.nAJoints)) #batch_size x nJoints
 
-                    #Update the primary network with our target values.
-                    _ = sess.run(self.trainer_mainDQN.updateModel, feed_dict={self.trainer_mainDQN.inState:states0,
-                                                                              self.trainer_mainDQN.Qtargets:allJQtargets,
-                                                                              self.trainer_mainDQN.chosenActions:actions0})
-                    self.softUpdateTarget(sess) #Soft update of the target network towards the main network.
-                    current_update_counter +=1
-                    total_network_updates +=1
+                #Update the primary network with our target values.
+                _ = sess.run(self.trainer_mainDQN.updateModel, feed_dict={self.trainer_mainDQN.inState:states0,
+                                                                          self.trainer_mainDQN.Qtargets:allJQtargets,
+                                                                          self.trainer_mainDQN.chosenActions:actions0})
+                self.softUpdateTarget(sess) #Soft update of the target network towards the main network.
+                # current_update_counter +=1
+                total_network_updates +=1
                 #else: wait for the next environment step
 
         training_loop_end_time = time.time()
@@ -786,13 +797,11 @@ class DQLAlgorithm():
         plt.close()
 
 
-    def saveQvaluesPlot(self, dir_path, statesArray, maxQvaluesArray):
+    def saveQvaluesPlot(self, dir_path):
         # statesArray = maxQvaluesArray = nJoints x ?
         for i in range(self.nAJoints):  # first state elements are the joint angles
-            normalized_angles = statesArray[i]
-            maxQvalues = maxQvaluesArray[i]
             fig = plt.figure()
-            plt.scatter(normalized_angles, maxQvalues)
+            plt.scatter(self.lastStatesArray[i], self.lastMaxQvaluesArray[i]) # (normalized_angles, maxQvalues)
             plt.xlabel('normalized angle')
             plt.ylabel('max Q-value')
             plt.title('Max Q-values for angles observed, joint' + str(i + 1))
@@ -801,27 +810,25 @@ class DQLAlgorithm():
             plt.close()
 
 
-    def savePlots(
-      self, dir_path, undisc_returns, num_steps,
-      successes, epsilons, success_steps, avg_maxQs):
+    def savePlots(self, dir_path):
         #note: "per_ep" in variable names were omitted
         # discounted returns for each episode
-        self.savePlot(dir_path, undisc_returns, "undisc. return", "Undiscounted return obtained", "undisc_returns.svg")
+        self.savePlot(dir_path, self.undisc_return_per_ep, "undisc. return", "Undiscounted return obtained", "undisc_returns.svg")
 
         # steps performed in each episode
-        self.savePlot(dir_path, num_steps, "steps", "Steps performed per episode", "steps.svg")
+        self.savePlot(dir_path, self.num_steps_per_ep, "steps", "Steps performed per episode", "steps.svg")
 
         # number of success so far, for each episode
-        self.savePlot(dir_path, successes, "successes", "Number of successes", "successes.svg")
+        self.savePlot(dir_path, self.subt_cumul_successes, "successes", "Number of successes", "successes.svg")
         
         # epsilon evolution
-        self.savePlot(dir_path, epsilons, "epsilon value", "Epsilon updates", "epsilons.svg")
+        self.savePlot(dir_path, self.epsilon_per_ep, "epsilon value", "Epsilon updates", "epsilons.svg")
 
         # success steps
-        self.savePlot(dir_path, success_steps, "success step", "Step of first success", "success_steps.svg")
+        self.savePlot(dir_path, self.success_steps, "success step", "Step of first success", "success_steps.svg")
 
         # average (over steps, for each episode) of maxQ
-        for i in range(0, avg_maxQs.shape[0]):
-            self.savePlot(dir_path, avg_maxQs[i], "average maxQ", "Average maxQ per episode, joint" + str(i + 1), "average_q" + str(i + 1) + ".svg")
+        for i in range(0, self.average_maxQ_per_ep.shape[0]):
+            self.savePlot(dir_path, self.average_maxQ_per_ep[i], "average maxQ", "Average maxQ per episode, joint" + str(i + 1), "average_q" + str(i + 1) + ".svg")
 
     # def collector(self, sess):

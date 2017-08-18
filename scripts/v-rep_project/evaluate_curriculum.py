@@ -58,8 +58,10 @@ CURRICULUM_INCREASING_JOINT_NUMBER = 2
 curriculum = NO_CURRICULUM_VEL_1 ##############
 task = TASK_REACH_CUBE #########
 max_steps_per_episode = 200
-num_episodes = 2000
-testing_scripts = True  # set to True test scripts for a few episodes/steps
+num_episodes = 3000
+num_hidden_layers = 2
+num_neurons_per_hidden = 50
+testing_scripts = False  # set to True test scripts for a few episodes/steps
 max_updates_per_env_step = 10
 
 #########################################
@@ -112,8 +114,8 @@ st_num = 0
 
 trainDQL_args = dict(
                     experiment_dir_path=experiment_dir_path,
-                    num_hidden_layers=2,
-                    num_neurons_per_hidden=50,
+                    num_hidden_layers=num_hidden_layers,
+                    num_neurons_per_hidden=num_neurons_per_hidden,
                     num_episodes=num_episodes,  #400
                     max_steps_per_episode=max_steps_per_episode,  #200
                     e_min=0.01,
@@ -133,8 +135,8 @@ trainDQL_args = dict(
                     targetRelativePos=targetRelativePos,
                     # policy_test_period=100,  # episodes
                     # success_rate_for_subtask_completion=success_rate_for_subtask_completion,  # change with/without CL
-                    # nSJoints=6,
-                    # nAJoints=6,
+                    nSJoints=6,
+                    nAJoints=6,
                     max_updates_per_env_step=max_updates_per_env_step,
                     )
 
