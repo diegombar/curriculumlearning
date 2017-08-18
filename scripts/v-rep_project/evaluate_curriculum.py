@@ -160,7 +160,10 @@ for vel in Velocities:
                         )
 
         # model_path, subt_total_steps, subt_cumul_successes, subt_test_success_rates, subt_test_steps, st_time = training.trainDQL(**trainDQL_args)
-        model_path, subt_total_steps, subt_cumul_successes, st_time = training.trainDQL(**trainDQL_args)
+
+        dql = training.DQLAlgorithm(**trainDQL_args)
+
+        model_path, subt_total_steps, subt_cumul_successes, st_time = dql.run()
 
         # update switching steps
         last_abs_step = subt_total_steps + subt_initial_step
