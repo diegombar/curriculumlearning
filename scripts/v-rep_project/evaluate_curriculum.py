@@ -55,11 +55,12 @@ CURRICULUM_INCREASING_JOINT_NUMBER = 2
 
 ################# CHOOSE ################
 
-curriculum = NO_CURRICULUM_VEL_025 ##############
+curriculum = NO_CURRICULUM_VEL_1 ##############
 task = TASK_REACH_CUBE #########
 max_steps_per_episode = 200
-episodes = 2000
-testing_scripts = False  # set to True test scripts for a few episodes/steps
+num_episodes = 2000
+testing_scripts = True  # set to True test scripts for a few episodes/steps
+max_updates_per_env_step = 10
 
 #########################################
 
@@ -97,7 +98,7 @@ experiment_dir_path = os.path.join(all_models_dir_path, folder_name)
 #    "decreasing_speed","model_and_results_2017-Jul-27_02-49-34_vel=025","trained_model","final_model-400")
 
 targetRelativePos = (0.0, 0.5) #relative x, y in metres
-
+model_saving_period = num_episodes // 5
 subt_initial_step = 0
 cl_switching_eps = []
 cl_switching_steps = []
@@ -113,13 +114,13 @@ trainDQL_args = dict(
                     experiment_dir_path=experiment_dir_path,
                     num_hidden_layers=2,
                     num_neurons_per_hidden=50,
-                    num_episodes=episodes,  #400
+                    num_episodes=num_episodes,  #400
                     max_steps_per_episode=max_steps_per_episode,  #200
                     e_min=0.01,
                     task=task,
-                    model_saving_period=episodes // 5,
-                    lrate=1E-5,  # 1E-3 seems to work fine
-                    batch_size=32,
+                    model_saving_period=model_saving_period,
+                    lrate=1e-4,  # 1e-3 seems to work fine
+                    batch_size=100,
                     replay_start_size=50000,
                     replay_memory_size=500000,
                     showGUI=True,
@@ -133,7 +134,8 @@ trainDQL_args = dict(
                     # policy_test_period=100,  # episodes
                     # success_rate_for_subtask_completion=success_rate_for_subtask_completion,  # change with/without CL
                     # nSJoints=6,
-                    # nAJoints=6
+                    # nAJoints=6,
+                    max_updates_per_env_step=max_updates_per_env_step,
                     )
 
 if testing_scripts:

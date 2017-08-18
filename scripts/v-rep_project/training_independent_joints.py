@@ -23,85 +23,26 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 #                     )
 
 
-def saveRewardFunction(robotenv, dir_path):
-    fig = plt.figure()
-    distance = np.arange(0., 3., 0.05)
-    rewards = robotenv.distance2reward(distance)
-    plt.plot(distance, rewards, linewidth=0.5)
-    plt.ylabel('reward')
-    plt.xlabel('distance to goal (m)')
-    plt.title('Reward function')
-    plot_file = os.path.join(dir_path, 'reward_function.svg')
-    fig.savefig(plot_file, bbox_inches='tight')
-    plt.close()
-
-
-def savePlot(dir_path, var_value_per_ep, ylabel_str, title_str, name):
-    fig = plt.figure()
-    episodes = range(1, len(var_value_per_ep) + 1)  # start at episode 1
-    plt.plot(episodes, var_value_per_ep, linewidth=0.5)
-    plt.xlabel('episode')
-    plt.ylabel(ylabel_str)
-    plt.title(title_str)
-    plot_file = os.path.join(dir_path, name)
-    fig.savefig(plot_file, bbox_inches='tight')
-    plt.close()
-
-
-def saveQvaluesPlot(dir_path, statesArray, maxQvaluesArray, nAJoints):
-    # statesArray = maxQvaluesArray = nJoints x ?
-    for i in range(nAJoints):  # first state elements are the joint angles
-        normalized_angles = statesArray[i]
-        maxQvalues = maxQvaluesArray[i]
-        fig = plt.figure()
-        plt.scatter(normalized_angles, maxQvalues)
-        plt.xlabel('normalized angle')
-        plt.ylabel('max Q-value')
-        plt.title('Max Q-values for angles observed, joint' + str(i + 1))
-        plot_file = os.path.join(dir_path, 'angles_Q_values_joint' + str(i + 1) + '.svg')
-        fig.savefig(plot_file, bbox_inches='tight')
-        plt.close()
-
-
-def savePlots(
-  dir_path, undisc_returns, num_steps,
-  successes, epsilons, success_steps, avg_maxQs):
-    #note: "per_ep" in variable names were omitted
-    # discounted returns for each episode
-    savePlot(dir_path, undisc_returns, "undisc. return", "Undiscounted return obtained", "undisc_returns.svg")
-
-    # steps performed in each episode
-    savePlot(dir_path, num_steps, "steps", "Steps performed per episode", "steps.svg")
-
-    # number of success so far, for each episode
-    savePlot(dir_path, successes, "successes", "Number of successes", "successes.svg")
-    
-    # epsilon evolution
-    savePlot(dir_path, epsilons, "epsilon value", "Epsilon updates", "epsilons.svg")
-
-    # success steps
-    savePlot(dir_path, success_steps, "success step", "Step of first success", "success_steps.svg")
-
-    # average (over steps, for each episode) of maxQ
-    for i in range(0, avg_maxQs.shape[0]):
-        savePlot(dir_path, avg_maxQs[i], "average maxQ", "Average maxQ per episode, joint" + str(i + 1), "average_q" + str(i + 1) + ".svg")
-
 # experience replay dataset, experience = (s,a,r,s',done)
 class experience_dataset():
+
     def __init__(self, size):
         self.data = []
         self.size = size
+        self.datalock = threading.Lock()
 
     #add experience = list of transitions, freeing space if needed
     def add(self, experience):
-        excess = len(self.data) + len(experience) - self.size
-        if excess > 0:
-            self.data[0:excess] = []
-        self.data.extend(experience) 
+        with self.datalock:
+            excess = len(self.data) + len(experience) - self.size
+            if excess > 0:
+                self.data[0:excess] = []
+            self.data.extend(experience)
 
     # randomly sample an array of transitions (s,a,r,s',done)
     def sample(self, sample_size):
-        sample = np.array(random.sample(self.data,sample_size))
+        with self.datalock:
+            sample = np.array(random.sample(self.data,sample_size))
         return np.reshape(sample, [sample_size, 5])
 
 
@@ -252,7 +193,8 @@ class DQLAlgorithm():
         nSJoints=6,
         nAJoints=6,
         portNb=1998,
-        old_bias=False
+        old_bias=False,
+        max_updates_per_env_step=10
         ):
 
         self.experiment_dir_path = experiment_dir_path
@@ -281,9 +223,10 @@ class DQLAlgorithm():
         self.nAJoints = nAJoints
         self.portNb = portNb
         self.old_bias = old_bias
+        self.max_updates_per_env_step = max_updates_per_env_step
 
-        self.self.h_params = {}
-        self.self.end_stats_dict = {}
+        self.h_params = {}
+        self.end_stats_dict = {}
 
         # hyper params to save to txt file
         self.h_params["experiment_dir_path"] = self.experiment_dir_path
@@ -308,7 +251,7 @@ class DQLAlgorithm():
         self.h_params['number_of_state_joints'] = nSJoints
         self.h_params['number_of_action_joints'] = nAJoints
 
-        self.h_params['hostname'] = socket.gethostname()self.
+        self.h_params['hostname'] = socket.gethostname()
 
         # load model if path is specified
         self.load_model = False
@@ -333,15 +276,15 @@ class DQLAlgorithm():
         # all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
         # experiment_dir_path = os.path.join(all_models_dir_path, experiment_folder_name)
         timestr = time.strftime("%Y-%b-%d_%H-%M-%S",time.gmtime()) #or time.localtime()
-        current_model_dir_path = os.path.join(self.experiment_dir_path, "model_and_results_" + timestr)
-        trained_model_plots_dir_path = os.path.join(current_model_dir_path, "trained_model_results")
-        checkpoints_dir_path = os.path.join(current_model_dir_path, "saved_checkpoints")
-        trained_model_dir_path = os.path.join(current_model_dir_path, "trained_model")
-        checkpoint_model_file_path = os.path.join(checkpoints_dir_path, "checkpoint_model")
-        trained_model_file_path = os.path.join(trained_model_dir_path, "final_model")
-        log_file_path = os.path.join(current_model_dir_path,"logs")
+        self.current_model_dir_path = os.path.join(self.experiment_dir_path, "model_and_results_" + timestr)
+        self.trained_model_plots_dir_path = os.path.join(self.current_model_dir_path, "trained_model_results")
+        self.checkpoints_dir_path = os.path.join(self.current_model_dir_path, "saved_checkpoints")
+        self.trained_model_dir_path = os.path.join(self.current_model_dir_path, "trained_model")
+        self.checkpoint_model_file_path = os.path.join(self.checkpoints_dir_path, "checkpoint_model")
+        self.trained_model_file_path = os.path.join(self.trained_model_dir_path, "final_model")
+        self.log_file_path = os.path.join(self.current_model_dir_path,"logs")
 
-        for new_directory in [trained_model_plots_dir_path, checkpoints_dir_path, trained_model_dir_path, log_file_path]:
+        for new_directory in [self.trained_model_plots_dir_path, self.checkpoints_dir_path, self.trained_model_dir_path, self.log_file_path]:
             os.makedirs(new_directory, exist_ok=True)
 
         # save git commit hash
@@ -354,41 +297,58 @@ class DQLAlgorithm():
         self.h_params['rewards_decay_rate'] = self.rewards_decay_rate = 1.0/ (distanceOfRewardCloseToZero / 5) #=1/0.33 i.e. near 0 at 5 * 0.33 = 1.65m away
 
         # recursive exponential decay for epsilon
-        self.h_params['e_max'] = e_max = 1.0 #P(random action in at least one joint) = 1- (1 - epsilon)**nJoints
-        self.h_params['e_tau'] = e_tau = (num_episodes - (replay_start_size // max_steps_per_episode)) / 5 # time constant in episodes, close to final value at 5 e_tau
-        addEFactor = 1.0 - (1.0 / e_tau)
+        self.h_params['e_max'] = self.e_max = 1.0 #P(random action in at least one joint) = 1- (1 - epsilon)**nJoints
+        self.h_params['e_tau'] = e_tau = (self.num_episodes - (self.replay_start_size // self.max_steps_per_episode)) / 5 # time constant in episodes, close to final value at 5 e_tau
+        self.addEFactor = 1.0 - (1.0 / e_tau)
 
         self.h_params['train_model_steps_period'] = train_model_steps_period = 4 # mnih = 4, period of mini-batch sampling and training
-        self.h_params['update_target_net_rate_tau'] = tau = 0.001 # rate to update target network toward main network
+        self.h_params['update_target_net_rate_tau'] = self.tau = 0.001 # rate to update target network toward main network
         self.h_params['learning_rate'] = lrate #= 1E-6
-        self.h_params['discount_factor'] = y = 0.99 # mnih:0.99
+        self.h_params['discount_factor'] = self.y = 0.99 # mnih:0.99
         # self.h_params['policy_test_period'] = policy_test_period #episodes
         # self.h_params['policy_test_num_of_test_episodes '] = policy_test_episodes = 20 # episodes
 
         self.dataset = experience_dataset(self.replay_memory_size)
+        self.graphlock = threading.Lock()
 
 
-    def get_graphs_ops(tfTrainables,tau):
-        total_vars = len(tfTrainables)
+    def get_graphs_ops(self):
+        total_vars = len(self.trainables)
         one_net_vars_length = total_vars // 3
-        trainer_target_op_holder = []
+        trainer_target_soft_op_holder = []
+        trainer_target_copy_op_holder = []
         collector_main_op_holder = []
 
-        # tfTrainables thirds: 1st= trainer_main_net, 2nd=trainer_target_net, 3rd=collector_main_net
-        for idx, trainer_main_net_var in enumerate(tfTrainables[0:one_net_vars_length]):
-            trainer_target_net_var = tfTrainables[idx + one_net_vars_length]
-            collector_main_net_var = tfTrainables[2 * idx + one_net_vars_length]
-            trainer_target_update_op = trainer_target_net_var.assign(tau * trainer_main_net_var.value() + (1 - tau)*trainer_target_net_var.value())
+        # trainables thirds: 1st= trainer_main_net, 2nd=trainer_target_net, 3rd=collector_main_net
+        for idx, trainer_main_net_var in enumerate(self.trainables[0:one_net_vars_length]):
+            trainer_target_net_var = self.trainables[idx + one_net_vars_length]
+            collector_main_net_var = self.trainables[idx + 2 * one_net_vars_length]
+            trainer_target_soft_op = trainer_target_net_var.assign(self.tau * trainer_main_net_var.value() + (1 - self.tau)*trainer_target_net_var.value())
+            trainer_target_copy_op = trainer_target_net_var.assign(trainer_main_net_var.value())
             collector_main_update_op = collector_main_net_var.assign(trainer_main_net_var.value())
-            trainer_target_op_holder.append(trainer_target_update_op)
+            trainer_target_soft_op_holder.append(trainer_target_soft_op)
+            trainer_target_copy_op_holder.append(trainer_target_copy_op)
             collector_main_op_holder.append(collector_main_update_op)
-        return trainer_target_op_holder, collector_main_op_holder
+        return trainer_target_soft_op_holder, collector_main_op_holder, trainer_target_copy_op_holder
 
 
-    # def updateTarget(op_holder, sess):
-    def run_ops(op_holder, sess):
-        for op in op_holder:
-            sess.run(op)
+    def updateCollectorNetParams(self,sess):
+        self.run_ops(self.collector_main_ops,sess)
+
+
+    def copyLearnerMainToTarget(self,sess):
+        self.run_ops(self.trainer_target_copy_ops,sess)
+
+
+    def softUpdateTarget(self,sess):
+        self.run_ops(self.trainer_target_soft_ops,sess)
+
+
+    def run_ops(self, op_holder, sess):
+        with self.graphlock:
+            for op in op_holder:
+                sess.run(op)
+
 
     def run(self):
         with RobotEnv(task=self.task,
@@ -403,11 +363,11 @@ class DQLAlgorithm():
                       ) as env:
             tf.reset_default_graph()
 
-            nActionsPerJoint = 3
+            self.nActionsPerJoint = 3
             self.h_params['state_size'] = stateSize = env.observation_space_size
             self.h_params['number_of_actions'] = nActions = env.action_space_size
 
-            saveRewardFunction(env, current_model_dir_path)
+            self.saveRewardFunction(env, self.current_model_dir_path)
 
             self.trainer_mainDQN = DQN(self.nAJoints, self.nSJoints, stateSize,
                                       self.num_hidden_layers, self.num_neurons_per_hidden, self.lrate,
@@ -422,7 +382,7 @@ class DQLAlgorithm():
                                         self.use_variable_names, self.previous_norm, self.old_bias)
 
             # save txt file with hyper parameters
-            h_params_file_path = os.path.join(current_model_dir_path,
+            h_params_file_path = os.path.join(self.current_model_dir_path,
                                               "hyper_params.txt")
             with open(h_params_file_path, "w") as h_params_file:
                 json.dump(self.h_params, h_params_file, sort_keys=True, indent=4)
@@ -454,43 +414,42 @@ class DQLAlgorithm():
 
             saver = tf.train.Saver(self.trainer_mainDQN.variable_dict)
             self.trainables = tf.trainable_variables()
-            self.trainer_target_ops, self.collector_main_ops = get_graphs_ops(self.trainables, tau)
+            self.trainer_target_soft_ops, self.collector_main_ops, self.trainer_target_copy_ops = self.get_graphs_ops()
 
             with tf.Session() as sess:                
                 start_time = time.time()
-                # summary data logs for TensorBoard
-                training_writer = tf.summary.FileWriter(log_file_path + '/training', sess.graph)
+                training_writer = tf.summary.FileWriter(self.log_file_path + '/training', sess.graph) #TensorBoard
                 sess.run(init)
 
                 if self.load_model:
                     print('\n################ LOADING SAVED MODEL ###############')
-                    saver.restore(sess, model_to_load_file_path)
+                    saver.restore(sess, self.model_to_load_file_path)
                     print('\n######## SAVED MODEL WAS SUCCESSFULLY LOADED #######')
 
-                if not skip_training:
-                    trainer_thread = threading.Thread(name='trainer', target=trainer, args=(sess,))
-                    print("trainer thread created.")
+                self.subtask_total_steps = 0
+
+                if not self.skip_training:
+                    trainer_thread = threading.Thread(name='trainer', target=self.trainer, args=(sess,))
+                    print("\nTrainer thread created.")
                     trainer_thread.start()
 
-                run_ops(trainer_target_ops, sess)  # Set the target network to be equal to the primary network. #soft update
 
+                self.copyLearnerMainToTarget(sess)  # Set the target network to be equal to the primary network.
+                # self.run_ops(self.trainer_target_ops, sess)  #soft update
                 # initialize epsilon
-                epsilon = e_min
-                if not skip_training:
-                    addE = e_max - e_min
-                    epsilon = e_min + addE              
+                epsilon = self.e_min
+                if not self.skip_training:
+                    addE = self.e_max - self.e_min
+                    epsilon = self.e_min + addE
 
-                subtask_total_steps = 0
                 num_steps_per_ep = []
                 undisc_return_per_ep = []
-
                 success_count = 0
                 subt_cumul_successes = []
-
                 epsilon_per_ep = []
-                average_maxQ_per_ep = np.array([]).reshape(nAJoints, 0)
+                average_maxQ_per_ep = np.array([]).reshape(self.nAJoints, 0)
                 statesArray = np.array([]).reshape(stateSize, 0)
-                maxQvaluesArray = np.array([]).reshape(nAJoints, 0)
+                maxQvaluesArray = np.array([]).reshape(self.nAJoints, 0)
                 success_steps = []
 
                 # test success initialization:
@@ -502,54 +461,54 @@ class DQLAlgorithm():
                 # no_progress_count = 0
                 # current_test_success_count = 0
 
-                i = 1
+                self.current_episode = 1
                 collector_start_time = time.time()
-                while i <= num_episodes:
-                    run_ops(self.collector_main_ops, sess) #copy the trainer main net to the collector main net
+                while self.current_episode <= self.num_episodes:
+                    self.updateCollectorNetParams(sess) #copy the trainer main net to the collector main net
                     # if testing_policy:
                     #     print("\nTesting episode number ", testing_policy_episode)
                     # else:
-                    print("\nTraining episode number ", i)
+                    print("\nTraining episode number ", self.current_episode)
                     task_completed = False
 
-                    if skip_training:
-                        epsilon = e_min
-                    elif subtask_total_steps > replay_start_size:
+                    if self.skip_training:
+                        epsilon = self.e_min
+                    elif self.subtask_total_steps > self.replay_start_size:
                         # decay epsilon
-                        addE *= addEFactor
-                        epsilon = e_min + addE
+                        addE *= self.addEFactor
+                        epsilon = self.e_min + addE
 
                     initialState = env.reset() # reset environment and get first observation
                     undisc_return = 0
-                    sum_of_maxQ = np.zeros((nAJoints, 1))
+                    sum_of_maxQ = np.zeros((self.nAJoints, 1))
                     done = False
-                    if not skip_training: episodeBuffer = experience_dataset(self.replay_memory_size) # temporary buffer
+                    if not self.skip_training: episodeBuffer = experience_dataset(self.replay_memory_size) # temporary buffer
 
                     j = 1
-                    while j <= max_steps_per_episode:
+                    while j <= self.max_steps_per_episode:
                         # print("\nstep:", j)
 
                         # pick action from the DQN, epsilon greedy
                         chosenActions, allJQValues = sess.run(
-                            [mainDQN.allJointsBestActions, mainDQN.allJointsQvalues3D],
-                            feed_dict={mainDQN.inState:np.reshape(initialState, (1, stateSize))}
+                            [self.collector_mainDQN.allJointsBestActions, self.collector_mainDQN.allJointsQvalues3D],
+                            feed_dict={self.collector_mainDQN.inState:np.reshape(initialState, (1, stateSize))}
                         )
 
-                        chosenActions = np.reshape(np.array(chosenActions), nAJoints)
-                        allJQValues = np.reshape(np.array(allJQValues), (nAJoints, nActionsPerJoint))
-                        maxQvalues = allJQValues[range(nAJoints), chosenActions] # 1 x nJoints
+                        chosenActions = np.reshape(np.array(chosenActions), self.nAJoints)
+                        allJQValues = np.reshape(np.array(allJQValues), (self.nAJoints, self.nActionsPerJoint))
+                        maxQvalues = allJQValues[range(self.nAJoints), chosenActions] # 1 x nJoints
 
-                        if subtask_total_steps <= replay_start_size and not skip_training:
-                            chosenActions = np.random.randint(0, nActionsPerJoint, nAJoints)
+                        if self.subtask_total_steps <= self.replay_start_size and not self.skip_training:
+                            chosenActions = np.random.randint(0, self.nActionsPerJoint, self.nAJoints)
                         else:
-                            indices = np.random.rand(nAJoints) < epsilon
-                            chosenActions[indices] = np.random.randint(0, nActionsPerJoint, sum(indices))
+                            indices = np.random.rand(self.nAJoints) < epsilon
+                            chosenActions[indices] = np.random.randint(0, self.nActionsPerJoint, sum(indices))
 
                         # perform action and get new state and reward
                         newState, r, done = env.step(chosenActions)
 
                         #add experience to buffer
-                        end_multiplier = 0 if j == max_steps_per_episode else 1
+                        end_multiplier = 0 if j == self.max_steps_per_episode else 1
                         transition = np.array([initialState, chosenActions, r, newState, end_multiplier])
                         transition = np.reshape(transition, [1, 5]) # 1 x 5
                         episodeBuffer.add(transition) # add step to episode buffer
@@ -567,30 +526,24 @@ class DQLAlgorithm():
                             #         rewards = np.reshape(rewards, (batch_size, 1))
                             #         # dones = np.reshape(dones, (batch_size, 1))
                             #         end_multipliers = np.reshape(end_multipliers, (batch_size, 1))
-
                             #         allJBestActions = sess.run(mainDQN.allJointsBestActions, feed_dict={mainDQN.inState:states1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a')) #batch_size x 1
                             #         allJQvalues = sess.run(targetDQN.allJointsQvalues3D, feed_dict={targetDQN.inState:states1}) #feed batch of s' and get batch of Q2(a') # batch_size x 3
-
                             #         #get Q values of best actions
                             #         allJBestActions_one_hot = np.arange(nActionsPerJoint) == allJBestActions[:, :, None]
                             #         allJBestActionsQValues = np.sum(np.multiply(allJBestActions_one_hot, allJQvalues), axis=2) # batch_size x nJoints
                             #         # end_multiplier = -(dones - 1) # batch_size x 1 ,  equals zero if end of succesful episode
-
-
-
                             #         allJQtargets = np.reshape(rewards + y * allJBestActionsQValues * end_multipliers, (batch_size, nAJoints)) #batch_size x nJoints
-
                             #         #Update the primary network with our target values.
                             #         _ = sess.run(mainDQN.updateModel, feed_dict={mainDQN.inState:states0, mainDQN.Qtargets:allJQtargets, mainDQN.chosenActions:actions0})
                             #         run_ops(targetOps,sess) #Set the target network to be equal to the primary network.
                         
-                        maxQvalues2 = np.reshape(maxQvalues, (nAJoints, 1))
+                        maxQvalues2 = np.reshape(maxQvalues, (self.nAJoints, 1))
                         stateToSave = np.reshape(initialState, (stateSize, 1))
                         # if not testing_policy:
                         # end of step, save tracked statistics
                         undisc_return += r
                         sum_of_maxQ += maxQvalues2
-                        subtask_total_steps += 1
+                        self.subtask_total_steps += 1
                         # else:
                             # save q values for training logs
                         # if subtask_total_steps % q_values_log_period == 0:
@@ -652,7 +605,7 @@ class DQLAlgorithm():
 
                     # add current episode's list of transitions to dataset
                     if not task_completed:
-                        success_steps.append(max_steps_per_episode)
+                        success_steps.append(self.max_steps_per_episode)
 
                     self.dataset.add(episodeBuffer.data)
 
@@ -670,38 +623,38 @@ class DQLAlgorithm():
                     average_maxQ_per_ep = np.concatenate((average_maxQ_per_ep, averageMaxQ), axis=1)
 
                     #save the model and log training
-                    if i % model_saving_period == 0:
+                    if self.current_episode % self.model_saving_period == 0:
                         print("Saving model and results")
-                        save_path = saver.save(sess, checkpoint_model_file_path, global_step=i)
-                        print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(i, j, undisc_return, done))
-                        checkpoints_plots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
+                        save_path = saver.save(sess, self.checkpoint_model_file_path, global_step=self.current_episode)
+                        print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(self.current_episode, j, undisc_return, done))
+                        checkpoints_plots_dir_path = os.path.join(self.current_model_dir_path, "checkpoint_results_ep_" + str(self.current_episode))
                         os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
-                        savePlots(checkpoints_plots_dir_path, undisc_return_per_ep, num_steps_per_ep,
+                        self.savePlots(checkpoints_plots_dir_path, undisc_return_per_ep, num_steps_per_ep,
                                   subt_cumul_successes, epsilon_per_ep, success_steps, average_maxQ_per_ep)
 
-                    if i % (max(model_saving_period//5,1)) ==0:
+                    if self.current_episode % (max(self.model_saving_period//5,1)) ==0:
                          # plot Q plots
-                        Qplots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
+                        Qplots_dir_path = os.path.join(self.current_model_dir_path, "checkpoint_results_ep_" + str(self.current_episode))
                         os.makedirs(Qplots_dir_path, exist_ok=True)
-                        startidx = max(max(model_saving_period//5,1)//4, 1)
+                        startidx = max(max(self.model_saving_period//5,1)//4, 1)
                         lastStatesArray = statesArray[-startidx:-1]
                         lastMaxQvaluesArray = maxQvaluesArray[-startidx:-1]
-                        saveQvaluesPlot(Qplots_dir_path, statesArray, maxQvaluesArray, nAJoints)
+                        self.saveQvaluesPlot(Qplots_dir_path, statesArray, maxQvaluesArray)
                         statesArray = np.array([]).reshape(stateSize, 0)  # reset q values logs
-                        maxQvaluesArray = np.array([]).reshape(nAJoints, 0)
+                        maxQvaluesArray = np.array([]).reshape(self.nAJoints, 0)
 
-                    i += 1
+                    self.current_episode += 1
 
 
                 collector_end_time = time.time()
                 if not self.skip_training:
                     self.coord.request_stop()
-                    self.coord.join([trainer_thread, collector_thread])
+                    self.coord.join([trainer_thread])
                 #training ended, save results
                 end_time = time.time()
                 print("Training ended")
 
-                save_path = saver.save(sess, trained_model_file_path, global_step=num_episodes) #save the trained model
+                save_path = saver.save(sess, self.trained_model_file_path, global_step=self.num_episodes) #save the trained model
                 print("Trained model saved in file: %s" % save_path)
 
         # save total time and steps to txt file
@@ -710,33 +663,32 @@ class DQLAlgorithm():
         total_training_time_in_secs = end_time - start_time #in seconds
         total_training_time_in_hours = total_training_time_in_secs / 3600
         print('\nTotal training time:', total_training_time_in_hours)
-        subt_total_eps = i
-        self.end_stats_dict["COLLECTOR_total_number_of_steps_executed_subtask"] = subtask_total_steps
+        subt_total_eps = self.current_episode
+        collector_freq = self.subtask_total_steps / collecting_time
+        self.end_stats_dict["COLLECTOR_total_number_of_steps_executed_subtask"] = self.subtask_total_steps
         self.end_stats_dict["COLLECTOR_total_number_of_episodes_executed_subtask"] = subt_total_eps
         self.end_stats_dict["COLLECTOR__experience_collecting_time_in_sec"] = collecting_time
-        self.end_stats_dict["COLLECTOR_frequency_ie_env_steps_per_second"] = subtask_total_steps / collecting_time
+        self.end_stats_dict["COLLECTOR_env_steps_per_sec"] = collector_freq
 
         self.end_stats_dict["total_training_time_in_sec"] = total_training_time_in_secs
         self.end_stats_dict["total_training_time_in_hours"] = total_training_time_in_hours
+        self.end_stats_dict["network_updates_per_env_step"] = self.end_stats_dict["TRAINER_network_updates_per_sec"] / collector_freq
 
-        stats_file_path = os.path.join(current_model_dir_path, "end_stats.txt")
+        stats_file_path = os.path.join(self.current_model_dir_path, "end_stats.txt")
         with open(stats_file_path, "w") as stats_file:
             json.dump(self.end_stats_dict, stats_file, sort_keys=True, indent=4)
 
         # save lists of results for later plots
         lists_to_serialize = ['undisc_return_per_ep', 'num_steps_per_ep', 'subt_cumul_successes', 'epsilon_per_ep', 'success_steps']
         for list_to_serialize in lists_to_serialize:
-            list_json_file = os.path.join(current_model_dir_path, list_to_serialize + '.json')
+            list_json_file = os.path.join(self.current_model_dir_path, list_to_serialize + '.json')
             with open(list_json_file, "w") as json_file:
                 json.dump(eval(list_to_serialize), json_file)
 
-        savePlots(trained_model_plots_dir_path, undisc_return_per_ep, num_steps_per_ep, subt_cumul_successes, epsilon_per_ep, success_steps, average_maxQ_per_ep)
+        self.savePlots(self.trained_model_plots_dir_path, undisc_return_per_ep, num_steps_per_ep, subt_cumul_successes, epsilon_per_ep, success_steps, average_maxQ_per_ep)
 
         # return save_path, subtask_total_steps, subt_cumul_successes, subt_test_success_rates, subt_test_steps, total_training_time_in_hours  # for visualization and curriculum learning
-        return save_path, subtask_total_steps, subt_cumul_successes, total_training_time_in_hours  # for visualization and curriculum learning
-
-
-
+        return save_path, self.subtask_total_steps, subt_cumul_successes, total_training_time_in_hours  # for visualization and curriculum learning
 
         # # Main thread
         # coord = tf.train.Coordinator()
@@ -757,51 +709,119 @@ class DQLAlgorithm():
     def trainer(self, sess):
         trainer_start_time = time.time()
         while self.subtask_total_steps < self.replay_start_size:
-            sleep(1)
+            time.sleep(1)
 
-        print("Dataset has minimum size, trainer thread starts..")
+        print("\n[TRAINER] Dataset has minimum size, training starts..")
 
         training_loop_start_time = time.time()
         total_network_updates = 0
+        while (not self.coord.should_stop()) and (self.current_episode =< self.num_episodes):
+            last_step = self.subtask_total_steps
+            current_update_counter = 0
+            while last_step == self.subtask_total_steps:
+                if current_update_counter < self.max_updates_per_env_step:
+                    batch = self.dataset.sample(self.batch_size)
+                    # states0, actions0, rewards, states1, dones = batch.T
+                    states0, actions0, rewards, states1, end_multipliers = batch.T
+                    states0 = np.vstack(states0)
+                    actions0 = np.vstack(actions0)
+                    states1 = np.vstack(states1)
+                    rewards = np.reshape(rewards, (self.batch_size, 1))
+                    # dones = np.reshape(dones, (batch_size, 1))
+                    end_multipliers = np.reshape(end_multipliers, (self.batch_size, 1))
 
-        while not self.coord.should_stop():
-            batch = self.dataset.sample(self.batch_size)
-            # states0, actions0, rewards, states1, dones = batch.T
-            states0, actions0, rewards, states1, end_multipliers = batch.T
-            states0 = np.vstack(states0)
-            actions0 = np.vstack(actions0)
-            states1 = np.vstack(states1)
-            rewards = np.reshape(rewards, (self.batch_size, 1))
-            # dones = np.reshape(dones, (batch_size, 1))
-            end_multipliers = np.reshape(end_multipliers, (self.batch_size, 1))
+                    allJBestActions = sess.run(self.trainer_mainDQN.allJointsBestActions, feed_dict={self.trainer_mainDQN.inState:states1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a')) #batch_size x 1
+                    allJQvalues = sess.run(self.trainer_targetDQN.allJointsQvalues3D, feed_dict={self.trainer_targetDQN.inState:states1}) #feed batch of s' and get batch of Q2(a') # batch_size x 3
 
-            allJBestActions = sess.run(self.trainer_mainDQN.allJointsBestActions, feed_dict={self.trainer_mainDQN.inState:states1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a')) #batch_size x 1
-            allJQvalues = sess.run(self.trainer_targetDQN.allJointsQvalues3D, feed_dict={self.trainer_targetDQN.inState:states1}) #feed batch of s' and get batch of Q2(a') # batch_size x 3
+                    #get Q values of best actions
+                    allJBestActions_one_hot = np.arange(self.nActionsPerJoint) == allJBestActions[:, :, None]
+                    allJBestActionsQValues = np.sum(np.multiply(allJBestActions_one_hot, allJQvalues), axis=2) # batch_size x nJoints
+                    # end_multiplier = -(dones - 1) # batch_size x 1 ,  equals zero if end of succesful episode
 
-            #get Q values of best actions
-            allJBestActions_one_hot = np.arange(self.nActionsPerJoint) == allJBestActions[:, :, None]
-            allJBestActionsQValues = np.sum(np.multiply(allJBestActions_one_hot, allJQvalues), axis=2) # batch_size x nJoints
-            # end_multiplier = -(dones - 1) # batch_size x 1 ,  equals zero if end of succesful episode
+                    allJQtargets = np.reshape(rewards + self.y * allJBestActionsQValues * end_multipliers, (self.batch_size, self.nAJoints)) #batch_size x nJoints
 
-            allJQtargets = np.reshape(rewards + y * allJBestActionsQValues * end_multipliers, (self.batch_size, self.nAJoints)) #batch_size x nJoints
-
-            #Update the primary network with our target values.
-            _ = sess.run(self.trainer_mainDQN.updateModel, feed_dict={self.trainer_mainDQN.inState:states0,
-                                                                      self.trainer_mainDQN.Qtargets:allJQtargets,
-                                                                      self.trainer_mainDQN.chosenActions:actions0})
-            run_ops(self.trainer_target_ops, sess) #Soft update of the target network towards the main network.
-            total_network_updates +=1
+                    #Update the primary network with our target values.
+                    _ = sess.run(self.trainer_mainDQN.updateModel, feed_dict={self.trainer_mainDQN.inState:states0,
+                                                                              self.trainer_mainDQN.Qtargets:allJQtargets,
+                                                                              self.trainer_mainDQN.chosenActions:actions0})
+                    self.softUpdateTarget(sess) #Soft update of the target network towards the main network.
+                    current_update_counter +=1
+                    total_network_updates +=1
+                #else: wait for the next environment step
 
         training_loop_end_time = time.time()
-        print("Trainer thread ended.")
+        print("\n[TRAINER] Thread ended.")
         waiting_time = training_loop_start_time - trainer_start_time
         training_time = training_loop_end_time - training_loop_start_time
-
+        trainer_freq = total_network_updates / training_time
 
         self.end_stats_dict["TRAINER_total_network_updates"] = total_network_updates
         self.end_stats_dict["TRAINER_waiting_time_in_sec"] = waiting_time
         self.end_stats_dict["TRAINER_training_time_after_min_dataset_in_sec"] = training_time
-        self.end_stats_dict["TRAINER_network_update_frequency_in_Hz"] = total_network_updates / training_time
+        self.end_stats_dict["TRAINER_network_updates_per_sec"] = trainer_freq
 
+
+    def saveRewardFunction(self, robotenv, dir_path):
+        fig = plt.figure()
+        distance = np.arange(0., 3., 0.05)
+        rewards = robotenv.distance2reward(distance)
+        plt.plot(distance, rewards, linewidth=0.5)
+        plt.ylabel('reward')
+        plt.xlabel('distance to goal (m)')
+        plt.title('Reward function')
+        plot_file = os.path.join(dir_path, 'reward_function.svg')
+        fig.savefig(plot_file, bbox_inches='tight')
+        plt.close()
+
+
+    def savePlot(self, dir_path, var_value_per_ep, ylabel_str, title_str, name):
+        fig = plt.figure()
+        episodes = range(1, len(var_value_per_ep) + 1)  # start at episode 1
+        plt.plot(episodes, var_value_per_ep, linewidth=0.5)
+        plt.xlabel('episode')
+        plt.ylabel(ylabel_str)
+        plt.title(title_str)
+        plot_file = os.path.join(dir_path, name)
+        fig.savefig(plot_file, bbox_inches='tight')
+        plt.close()
+
+
+    def saveQvaluesPlot(self, dir_path, statesArray, maxQvaluesArray):
+        # statesArray = maxQvaluesArray = nJoints x ?
+        for i in range(self.nAJoints):  # first state elements are the joint angles
+            normalized_angles = statesArray[i]
+            maxQvalues = maxQvaluesArray[i]
+            fig = plt.figure()
+            plt.scatter(normalized_angles, maxQvalues)
+            plt.xlabel('normalized angle')
+            plt.ylabel('max Q-value')
+            plt.title('Max Q-values for angles observed, joint' + str(i + 1))
+            plot_file = os.path.join(dir_path, 'angles_Q_values_joint' + str(i + 1) + '.svg')
+            fig.savefig(plot_file, bbox_inches='tight')
+            plt.close()
+
+
+    def savePlots(
+      self, dir_path, undisc_returns, num_steps,
+      successes, epsilons, success_steps, avg_maxQs):
+        #note: "per_ep" in variable names were omitted
+        # discounted returns for each episode
+        self.savePlot(dir_path, undisc_returns, "undisc. return", "Undiscounted return obtained", "undisc_returns.svg")
+
+        # steps performed in each episode
+        self.savePlot(dir_path, num_steps, "steps", "Steps performed per episode", "steps.svg")
+
+        # number of success so far, for each episode
+        self.savePlot(dir_path, successes, "successes", "Number of successes", "successes.svg")
+        
+        # epsilon evolution
+        self.savePlot(dir_path, epsilons, "epsilon value", "Epsilon updates", "epsilons.svg")
+
+        # success steps
+        self.savePlot(dir_path, success_steps, "success step", "Step of first success", "success_steps.svg")
+
+        # average (over steps, for each episode) of maxQ
+        for i in range(0, avg_maxQs.shape[0]):
+            self.savePlot(dir_path, avg_maxQs[i], "average maxQ", "Average maxQ per episode, joint" + str(i + 1), "average_q" + str(i + 1) + ".svg")
 
     # def collector(self, sess):
