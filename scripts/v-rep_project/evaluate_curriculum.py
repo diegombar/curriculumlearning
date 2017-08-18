@@ -111,7 +111,7 @@ st_num = 0
 
 trainDQL_args = dict(
                     experiment_dir_path=experiment_dir_path,
-                    num_hidden_layers=3,
+                    num_hidden_layers=2,
                     num_neurons_per_hidden=50,
                     num_episodes=episodes,  #400
                     max_steps_per_episode=max_steps_per_episode,  #200

@@ -60,7 +60,7 @@ def saveQvaluesPlot(dir_path, statesArray, maxQvaluesArray, nAJoints):
 
 def savePlots(
   dir_path, undisc_returns, num_steps,
-  successes, epsilons, avg_maxQs):
+  successes, epsilons, success_steps, avg_maxQs):
     #note: "per_ep" in variable names were omitted
     # discounted returns for each episode
     savePlot(dir_path, undisc_returns, "undisc. return", "Undiscounted return obtained", "undisc_returns.svg")
@@ -73,6 +73,9 @@ def savePlots(
     
     # epsilon evolution
     savePlot(dir_path, epsilons, "epsilon value", "Epsilon updates", "epsilons.svg")
+
+    # success steps
+    savePlot(dir_path, success_steps, "success step", "Step of first success", "success_steps.svg")
 
     # average (over steps, for each episode) of maxQ
     for i in range(0, avg_maxQs.shape[0]):
@@ -433,6 +436,7 @@ def trainDQL(experiment_dir_path,
             average_maxQ_per_ep = np.array([]).reshape(nAJoints, 0)
             statesArray = np.array([]).reshape(stateSize, 0)
             maxQvaluesArray = np.array([]).reshape(nAJoints, 0)
+            success_steps = []
 
             # test success initialization:
             # subt_test_success_rates = []
@@ -489,7 +493,8 @@ def trainDQL(experiment_dir_path,
 
                     if not skip_training:
                         #add experience to buffer
-                        transition = np.array([initialState, chosenActions, r, newState, done])
+                        end_multiplier = 0 if j == max_steps_per_episode else 1
+                        transition = np.array([initialState, chosenActions, r, newState, end_multiplier])
                         transition = np.reshape(transition, [1, 5]) # 1 x 5
                         episodeBuffer.add(transition) # add step to episode buffer
 
@@ -497,12 +502,14 @@ def trainDQL(experiment_dir_path,
                             if subtask_total_steps % train_model_steps_period == 0:
                                 #train model
                                 batch = dataset.sample(batch_size)
-                                states0, actions0, rewards, states1, dones = batch.T
+                                # states0, actions0, rewards, states1, dones = batch.T
+                                states0, actions0, rewards, states1, end_multipliers = batch.T
                                 states0 = np.vstack(states0)
                                 actions0 = np.vstack(actions0)
                                 states1 = np.vstack(states1)
                                 rewards = np.reshape(rewards, (batch_size, 1))
-                                dones = np.reshape(dones, (batch_size, 1))
+                                # dones = np.reshape(dones, (batch_size, 1))
+                                end_multipliers = np.reshape(end_multipliers, (batch_size, 1))
 
                                 allJBestActions = sess.run(mainDQN.allJointsBestActions, feed_dict={mainDQN.inState:states1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a')) #batch_size x 1
                                 allJQvalues = sess.run(targetDQN.allJointsQvalues3D, feed_dict={targetDQN.inState:states1}) #feed batch of s' and get batch of Q2(a') # batch_size x 3
@@ -510,9 +517,11 @@ def trainDQL(experiment_dir_path,
                                 #get Q values of best actions
                                 allJBestActions_one_hot = np.arange(nActionsPerJoint) == allJBestActions[:, :, None]
                                 allJBestActionsQValues = np.sum(np.multiply(allJBestActions_one_hot, allJQvalues), axis=2) # batch_size x nJoints
-                                end_multiplier = -(dones - 1) # batch_size x 1 ,  equals zero if end of succesful episode
+                                # end_multiplier = -(dones - 1) # batch_size x 1 ,  equals zero if end of succesful episode
 
-                                allJQtargets = np.reshape(rewards + y * allJBestActionsQValues * end_multiplier, (batch_size,nAJoints)) #batch_size x nJoints
+
+
+                                allJQtargets = np.reshape(rewards + y * allJBestActionsQValues * end_multipliers, (batch_size, nAJoints)) #batch_size x nJoints
 
                                 #Update the primary network with our target values.
                                 _ = sess.run(mainDQN.updateModel, feed_dict={mainDQN.inState:states0, mainDQN.Qtargets:allJQtargets, mainDQN.chosenActions:actions0})
@@ -540,6 +549,7 @@ def trainDQL(experiment_dir_path,
                     #     #     current_test_success_count += 1
                     #     # else:
                         task_completed = True
+                        success_steps.append(j)
                         success_count += 1
                     #     break
 
@@ -608,7 +618,7 @@ def trainDQL(experiment_dir_path,
                     checkpoints_plots_dir_path = os.path.join(current_model_dir_path, "checkpoint_results_ep_" + str(i))
                     os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
                     savePlots(checkpoints_plots_dir_path, undisc_return_per_ep, num_steps_per_ep,
-                              subt_cumul_successes, epsilon_per_ep, average_maxQ_per_ep)
+                              subt_cumul_successes, epsilon_per_ep, success_steps, average_maxQ_per_ep)
 
                 if i % (max(model_saving_period//5,1)) ==0:
                      # plot Q plots
@@ -643,13 +653,13 @@ def trainDQL(experiment_dir_path,
         json.dump(end_stats_dict, stats_file, sort_keys=True, indent=4)
 
     # save lists of results for later plots
-    lists_to_serialize = ['undisc_return_per_ep', 'num_steps_per_ep', 'subt_cumul_successes', 'epsilon_per_ep']
+    lists_to_serialize = ['undisc_return_per_ep', 'num_steps_per_ep', 'subt_cumul_successes', 'epsilon_per_ep', 'success_steps']
     for list_to_serialize in lists_to_serialize:
         list_json_file = os.path.join(current_model_dir_path, list_to_serialize + '.json')
         with open(list_json_file, "w") as json_file:
             json.dump(eval(list_to_serialize), json_file)
 
-    savePlots(trained_model_plots_dir_path, undisc_return_per_ep, num_steps_per_ep, subt_cumul_successes, epsilon_per_ep, average_maxQ_per_ep)
+    savePlots(trained_model_plots_dir_path, undisc_return_per_ep, num_steps_per_ep, subt_cumul_successes, epsilon_per_ep, success_steps, average_maxQ_per_ep)
 
     # return save_path, subtask_total_steps, subt_cumul_successes, subt_test_success_rates, subt_test_steps, total_training_time_in_hours  # for visualization and curriculum learning
     return save_path, subtask_total_steps, subt_cumul_successes, total_training_time_in_hours  # for visualization and curriculum learning
