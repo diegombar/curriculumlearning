@@ -68,7 +68,7 @@ class RobotEnv():
         self.state = np.zeros((1,self.observation_space_size))
         self.reward = 0
         self.goalReached = False
-        self.minDistance = 0.05  #3 cm
+        self.minDistance = 0.03  #3 cm
         #v-rep
         self.vrepProcess = None
         self.clientID = None
