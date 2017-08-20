@@ -55,7 +55,8 @@ class DQN():
         learning_rate,
         use_variable_names=True,
         previous_norm=False,
-        old_bias=False
+        old_bias=False,
+        add_summary=False,
         ):
         self.nAJoints = nAJoints
         self.nSJoints = nSJoints
@@ -63,7 +64,7 @@ class DQN():
         self.nActionsPerJoint = 3
         self.nActions = self.nAJoints * self.nActionsPerJoint
         self.inState = tf.placeholder(shape=[None, self.stateSize], dtype=tf.float32, name='state')  #batch_size x stateSize
-
+        self.add_summary = add_summary
         self.variable_dict = {}
 
         # architecture
@@ -80,9 +81,10 @@ class DQN():
             self.bias_names = []
             self.hidden_layers = []
             for i in range(len(neuronsPerLayer) - 1):
-                with tf.name_scope('layer' + str(i)) as scope:
-                    weight_name = "weight" + str(i)
-                    bias_name = "bias" + str(i)
+                layer_name = 'layer' + str(i)
+                weight_name = "weight" + str(i)
+                bias_name = "bias" + str(i)
+                with tf.name_scope(layer_name) as scope:
                     self.variable_dict[weight_name] = tf.Variable(tf.truncated_normal([neuronsPerLayer[i], neuronsPerLayer[i+1]], mean=0.0, stddev=0.1), name=weight_name)
                     bias_shape = [1] if old_bias else [neuronsPerLayer[i+1]]
                     self.variable_dict[bias_name] = tf.Variable(tf.constant(0.1, shape=bias_shape), name=bias_name)
@@ -94,21 +96,22 @@ class DQN():
                         input_multiplier = 2 if previous_norm else 1
                         first_layer_input = input_multiplier * self.inState
                         self.hidden_layers.append(tf.nn.relu(tf.matmul(first_layer_input, weight_input) + self.variable_dict[bias_name], name="neuron_activations" + str(i)))
-                        tf.summary.histogram('activations', self.hidden_layers[-1])
+                        self.variable_summaries('activations', self.hidden_layers[-1])
+                        # tf.summary.histogram('activations', self.hidden_layers[-1])
                     elif i < (len(neuronsPerLayer) - 2):
                         self.hidden_layers.append(tf.nn.relu(tf.matmul(self.hidden_layers[-1], self.variable_dict[weight_name]) + self.variable_dict[bias_name], name="neuron_activations" + str(i)))
-                        tf.summary.histogram('activations', self.hidden_layers[-1])
+                        self.variable_summaries('activations', self.hidden_layers[-1])
+                        # tf.summary.histogram('activations', self.hidden_layers[-1])
                     else:
                         # last layer
                         weight_output = tf.slice(self.variable_dict[weight_name], [0, 0], [-1, self.nActions], name='weight_output')
                         bias_output = tf.slice(self.variable_dict[bias_name], [0], [self.nActions], name='bias_output')
                         self.allJointsQvalues = tf.add(tf.matmul(self.hidden_layers[-1], weight_output), bias_output, name="q_values")  # Q values for all actions given inState, #batch_size x nActions
-                        tf.summary.histogram('activations', self.allJointsQvalues)
+                        self.variable_summaries('activations', self.allJointsQvalues)
+                        # tf.summary.histogram('activations', self.allJointsQvalues)
                     # summaries
-                    variable_summaries(self.variable_dict[weight_name])
-                    variable_summaries(self.variable_dict[bias_name])
-                    
-
+                    self.variable_summaries('weights', self.variable_dict[weight_name])
+                    self.variable_summaries('biases', self.variable_dict[bias_name])
 
             # self.variable_dict = {
             #                 "weight0":self.weights[0],
@@ -162,21 +165,22 @@ class DQN():
         with tf.name_scope('training') as scope:
             self.error = tf.square(self.Qtargets - self.chosenActionsQvalues, name='error') #element-wise
             self.loss = tf.reduce_sum(self.error, name='loss')
-            tf.summary.scalar('loss', self.loss)
+            if self.add_summary:
+                tf.summary.scalar('loss', self.loss)
             self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
             self.updateModel = self.optimizer.minimize(self.loss)
 
-    def variable_summaries(var):
-        """TensorBoard visualization"""
-        with tf.name_scope('summaries'):
-            mean = tf.reduce_mean(var)
-            tf.summary.scalar('mean', mean)
-        with tf.name_scope('stddev'):
-            stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-            tf.summary.scalar('stddev', stddev)
-            tf.summary.scalar('max', tf.reduce_max(var))
-            tf.summary.scalar('min', tf.reduce_min(var))
-            tf.summary.histogram('histogram', var)
+    def variable_summaries(self, name, var):
+        if self.add_summary:
+            """TensorBoard visualization"""
+            with tf.name_scope(name + '_summaries'):
+                mean = tf.reduce_mean(var)
+                tf.summary.scalar('mean', mean)
+                stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+                tf.summary.scalar('stddev', stddev)
+                tf.summary.scalar('max', tf.reduce_max(var))
+                tf.summary.scalar('min', tf.reduce_min(var))
+                tf.summary.histogram('histogram', var)
 
 
 
@@ -249,7 +253,7 @@ class DQLAlgorithm():
         self.h_params['model_saving_period'] = self.model_saving_period #in eps
         self.h_params['q_plots_period'] = self.q_plots_period = max(self.model_saving_period//5, 1) #in eps
         self.h_params['q_plots_num_of_points'] = self.q_plots_num_of_points = max(self.q_plots_period//4, 1) #in eps
-        self.h_params['tensorboard_log_period'] = self.tensorboard_log_period = max(self.model_saving_period//10, 1) * self.max_steps_per_episode # in network updates ~ env steps
+        self.h_params['tensorboard_log_period'] = self.tensorboard_log_period = max(self.model_saving_period//10, 1) * self.max_steps_per_episode * 10 # in network updates ~ env steps
         self.h_params['e_min'] = self.e_min
         self.h_params['task'] = self.task
         self.h_params['batch_size'] = self.batch_size #mnih=32
@@ -392,9 +396,12 @@ class DQLAlgorithm():
                             use_variable_names=self.use_variable_names,
                             previous_norm=self.previous_norm,
                             old_bias=self.old_bias,
+                            add_summary=False,
                             )
 
-            self.trainer_mainDQN = DQN(**dqn_params)
+            main_dqn_params = dqn_params.copy()
+            main_dqn_params.update(dict(add_summary=True))
+            self.trainer_mainDQN = DQN(**main_dqn_params)
 
             self.trainer_targetDQN = DQN(**dqn_params)
 
@@ -501,7 +508,7 @@ class DQLAlgorithm():
                         epsilon = self.e_min + addE
 
                     initialState = env.reset() # reset environment and get first observation
-                    print("\ninitialState: ", initialState)
+                    # print("\ninitialState: ", initialState)
                     undisc_return = 0
                     sum_of_maxQ = np.zeros((self.nAJoints, 1))
                     done = False
@@ -529,9 +536,9 @@ class DQLAlgorithm():
 
                         # perform action and get new state and reward
                         newState, r, done = env.step(chosenActions)
-                        print("\newState: ", newState)
-                        print("\nr: ", r)
-                        print("\ndone: ", done)
+                        # print("\newState: ", newState)
+                        # print("\nr: ", r)
+                        # print("\ndone: ", done)
                         #add experience to buffer
                         end_multiplier = 0 if self.current_step == self.max_steps_per_episode else 1
                         transition = np.array([initialState, chosenActions, r, newState, end_multiplier])
@@ -571,7 +578,7 @@ class DQLAlgorithm():
                         self.subtask_total_steps += 1
                         # else:
                             # save q values for training logs
-                        if (subtask_total_steps % self.q_plots_period) >= (self.q_plots_period - self.q_plots_num_of_points):
+                        if (self.subtask_total_steps % self.q_plots_period) >= (self.q_plots_period - self.q_plots_num_of_points):
                             self.statesArray = np.concatenate((self.statesArray, stateToSave), axis=1)
                             self.maxQvaluesArray = np.concatenate((self.maxQvaluesArray, maxQvalues2), axis=1)
 
@@ -706,7 +713,8 @@ class DQLAlgorithm():
 
         self.end_stats_dict["total_training_time_in_sec"] = total_training_time_in_secs
         self.end_stats_dict["total_training_time_in_hours"] = total_training_time_in_hours
-        self.end_stats_dict["network_updates_per_env_step"] = self.end_stats_dict["TRAINER_network_updates_per_sec"] / collector_freq
+        if self.end_stats_dict["TRAINER_network_updates_per_sec"]:
+            self.end_stats_dict["network_updates_per_env_step"] = self.end_stats_dict["TRAINER_network_updates_per_sec"] / collector_freq
 
         stats_file_path = os.path.join(self.current_model_dir_path, "end_stats.txt")
         with open(stats_file_path, "w") as stats_file:
@@ -754,6 +762,7 @@ class DQLAlgorithm():
         # last_step = self.subtask_total_steps
         # current_update_counter = 0
             if not self.is_saving:
+                print("\nUpdate_number: ", total_network_updates)
             # while (not self.coord.should_stop()) and (last_step == self.subtask_total_steps):
                 # if current_update_counter < self.max_updates_per_env_step:
                 batch = self.dataset.sample(self.batch_size)
@@ -777,20 +786,22 @@ class DQLAlgorithm():
                 allJQtargets = np.reshape(rewards + self.y * allJBestActionsQValues * end_multipliers, (self.batch_size, self.nAJoints)) #batch_size x nJoints
 
                 #Update the primary network with our target values.
-                update_dict = {self.trainer_mainDQN.inState:states0,
-                               self.trainer_mainDQN.Qtargets:allJQtargets,
-                               self.trainer_mainDQN.chosenActions:actions0}
+                # update_dict = 
                 if total_network_updates % self.tensorboard_log_period == 0:
                     run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
                     run_metadata = tf.RunMetadata()
                     summary, _ = sess.run([self.merged, self.trainer_mainDQN.updateModel],
-                                          feed_dict=update_dict,
+                                          feed_dict={self.trainer_mainDQN.inState:states0,self.trainer_mainDQN.Qtargets:allJQtargets,self.trainer_mainDQN.chosenActions:actions0},
                                           options=run_options,
                                           run_metadata=run_metadata)
-                    self.train_writer.add_run_metadata(run_metadata, 'step%d' % self.subtask_total_steps)
+                    log_last_step = self.subtask_total_steps
+                    if log_last_step != self.subtask_total_steps:
+                        self.training_writer.add_run_metadata(run_metadata, 'step%d' % self.subtask_total_steps)
                     self.training_writer.add_summary(summary, self.subtask_total_steps)
                 else:
-                    _ = sess.run(self.trainer_mainDQN.updateModel, feed_dict=update_dict)
+                    _ = sess.run(self.trainer_mainDQN.updateModel, feed_dict={self.trainer_mainDQN.inState:states0,
+                                                                               self.trainer_mainDQN.Qtargets:allJQtargets,
+                                                                               self.trainer_mainDQN.chosenActions:actions0})
                 self.softUpdateTarget(sess) #Soft update of the target network towards the main network.
                 # current_update_counter +=1
                 total_network_updates +=1
@@ -801,7 +812,6 @@ class DQLAlgorithm():
         waiting_time = training_loop_start_time - trainer_start_time
         training_time = training_loop_end_time - training_loop_start_time
         trainer_freq = total_network_updates / training_time
-
         self.end_stats_dict["TRAINER_total_network_updates"] = total_network_updates
         self.end_stats_dict["TRAINER_waiting_time_in_sec"] = waiting_time
         self.end_stats_dict["TRAINER_training_time_after_min_dataset_in_sec"] = training_time

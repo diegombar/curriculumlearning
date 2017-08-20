@@ -191,7 +191,7 @@ class RobotEnv():
             returnCode, serverState = vrep.simxGetInMessageInfo(self.clientID, vrep.simx_headeroffset_server_state)
             stopped = not (serverState & 1)
             if stopped:
-                print("\nSimulation stopped.")
+                print("\n[ROBOTENV] Simulation stopped.")
                 break
 
         # close the scene
@@ -219,7 +219,7 @@ class RobotEnv():
                 # print('\nServer state: ', serverState)
                 stopped = not (serverState & 1)
                 if stopped:
-                    print("\nSimulation stopped.")
+                    print("\n[ROBOTENV] Simulation stopped.")
                     break
             #NOTE: if synchronous mode is needed, check http://www.forum.coppeliarobotics.com/viewtopic.php?f=5&t=6603&sid=7939343e5e04b699af2d46f8d6efe7ba
 

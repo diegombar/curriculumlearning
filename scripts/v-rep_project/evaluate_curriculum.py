@@ -55,11 +55,11 @@ CURRICULUM_INCREASING_JOINT_NUMBER = 2
 
 ################# CHOOSE ################
 
-curriculum = NO_CURRICULUM_VEL_025 ##############
+curriculum = NO_CURRICULUM_VEL_1 ##############
 task = TASK_REACH_CUBE #########
 max_steps_per_episode = 200
-num_episodes = 5000
-num_hidden_layers = 3
+num_episodes = 2000
+num_hidden_layers = 2
 num_neurons_per_hidden = 50
 batch_size = 32
 lrate=1e-4
