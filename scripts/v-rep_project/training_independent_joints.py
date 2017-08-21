@@ -276,7 +276,7 @@ class DQLAlgorithm():
             # model_to_load_file_path = os.path.join(all_models_dir_path,"model_and_results_2017-Jul-07_20-22-44","trained_model","final_model-2000")
             self.h_params["model_to_load_file_path"] = self.model_to_load_file_path  # absolute path
             self.load_model = True
-        else
+        else:
             self.load_model = False
         self.h_params['load_model'] = self.load_model
         self.h_params['skip_training'] = self.skip_training #skip for visualization, do not skip for curriculum learning/pre-training
@@ -523,7 +523,7 @@ class DQLAlgorithm():
 
                     self.current_step = 1
                     while self.current_step <= self.max_steps_per_episode:
-                        print("\nstep:", self.current_step)
+                        # print("\nstep:", self.current_step)
                         # pick action from the DQN, epsilon greedy
                         chosenActions, allJQValues = sess.run(
                             [self.collector_mainDQN.allJointsBestActions, self.collector_mainDQN.allJointsQvalues3D],
@@ -630,7 +630,7 @@ class DQLAlgorithm():
                             success_count += 1
                             success_step = episode_success_step
                         else:
-                            self.max_steps_per_episode
+                            success_step = self.max_steps_per_episode
 
                         self.success_steps.append(success_step)
                         self.dataset.add(episodeBuffer.data)
@@ -661,7 +661,7 @@ class DQLAlgorithm():
                             os.makedirs(Qplots_dir_path, exist_ok=True)
                             # self.lastStatesArray = self.statesArray[:, -self.q_plots_num_of_points:-1]
                             # self.lastMaxQvaluesArray = self.maxQvaluesArray[:, -self.q_plots_num_of_points:-1]
-                            self.saveQvaluesPlot(Qplots_dir_path, self.statesArray, self.maxQvaluesArray):
+                            self.saveQvaluesPlot(Qplots_dir_path, self.statesArray, self.maxQvaluesArray)
                             self.statesArray = np.array([]).reshape(self.stateSize, 0)  # reset q values logs
                             self.maxQvaluesArray = np.array([]).reshape(self.nAJoints, 0)
 
@@ -670,8 +670,7 @@ class DQLAlgorithm():
                         ep_saving_time = saving_end_time - saving_start_time
                         total_saving_time += ep_saving_time
 
-                        if ((self.current_episode % policy_test_period == 0) or (self.current_episode == self.num_episodes))
-                           and not (self.skip_training or self.testing_policy):
+                        if ((self.current_episode % self.policy_test_period == 0) or (self.current_episode == self.num_episodes)) and not (self.skip_training or self.testing_policy):
                             # pause training and test current policy for some episodes
                             self.testing_policy = True
                             print("\nTesting policy...")
@@ -694,13 +693,13 @@ class DQLAlgorithm():
                 print("Trained model saved in file: %s" % save_path)
 
         # save total time and steps to txt file
-        total_time_in_secs = end_time - start_time #in seconds
-        total_time_in_hours = total_training_time_in_secs / 3600
+        total_training_time_in_secs = end_time - start_time #in seconds
+        total_training_time_in_hours = total_training_time_in_secs / 3600
         print('\nTotal training time (in hours):', total_training_time_in_hours)
         subt_total_eps = self.current_episode
+        collecting_time = collector_end_time - collector_start_time - total_saving_time
         collector_freq = self.subtask_total_steps / collecting_time
 
-        collecting_time = collector_end_time - collector_start_time - total_saving_time
         collector_end_stats_dict = dict(COLLECTOR_total_number_of_steps_executed_subtask=self.subtask_total_steps,
                                         COLLECTOR_total_number_of_episodes_executed_subtask=subt_total_eps,
                                         COLLECTOR__experience_collecting_time_in_sec=collecting_time,
@@ -711,7 +710,7 @@ class DQLAlgorithm():
                                         )
         self.end_stats_dict.update(collector_end_stats_dict)
 
-        if not skip_training:
+        if not self.skip_training:
             training_time = self.training_loop_end_time - self.training_loop_start_time - total_saving_time
             trainer_waiting_time = self.training_loop_start_time - self.trainer_start_time
             trainer_freq = self.total_network_updates / training_time
@@ -765,7 +764,6 @@ class DQLAlgorithm():
             if (not self.is_saving) and (not self.testing_policy):
                 last_step = self.subtask_total_steps
                 updates_per_step_counter = 0
-                # print("\nUpdate_number: ", self.total_network_updates)
                 while last_step == self.subtask_total_steps:
                     if updates_per_step_counter < self.max_updates_per_env_step:
                         batch = self.dataset.sample(self.batch_size)
@@ -862,7 +860,7 @@ class DQLAlgorithm():
 
 
     def savePlots(self, dir_path):
-        episodes = range(1, len(var_value_per_ep) + 1)
+        episodes = range(1, len(self.undisc_return_per_ep) + 1)
         #note: "per_ep" in variable names were omitted
         # discounted returns for each episode
         self.savePlot(dir_path, 'episodes', episodes, "undisc. return", self.undisc_return_per_ep, "Undiscounted return obtained", "undisc_returns")
@@ -881,7 +879,7 @@ class DQLAlgorithm():
 
         # average (over steps, for each episode) of maxQ
         for i in range(0, self.average_maxQ_per_ep.shape[0]):
-            self.savePlot(dir_path, 'episodes', episodes, self.average_maxQ_per_ep[i], "average maxQ", "Average maxQ per episode, joint" + str(i + 1), "average_q" + str(i + 1) + ".svg")
+            self.savePlot(dir_path, 'episodes', episodes, "average maxQ", self.average_maxQ_per_ep[i], "Average maxQ per episode, joint" + str(i + 1), "average_q" + str(i + 1) + ".svg")
 
     def saveTestPlots(self, dir_path):
         steps = range(1, len(net_updates_per_step) + 1)
