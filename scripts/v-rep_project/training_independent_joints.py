@@ -175,13 +175,12 @@ class DQN():
             """TensorBoard visualization"""
             with tf.name_scope(name + '_summaries'):
                 mean = tf.reduce_mean(var)
-                tf.summary.scalar('mean', mean)
                 stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+                tf.summary.scalar('mean', mean)
                 tf.summary.scalar('stddev', stddev)
                 tf.summary.scalar('max', tf.reduce_max(var))
                 tf.summary.scalar('min', tf.reduce_min(var))
                 tf.summary.histogram('histogram', var)
-
 
 
 class DQLAlgorithm():
@@ -401,21 +400,18 @@ class DQLAlgorithm():
 
             main_dqn_params = dqn_params.copy()
             main_dqn_params.update(dict(add_summary=True))
+
             self.trainer_mainDQN = DQN(**main_dqn_params)
-
             self.trainer_targetDQN = DQN(**dqn_params)
-
             self.collector_mainDQN = DQN(**dqn_params)
 
             # save txt file with hyper parameters
-            h_params_file_path = os.path.join(self.current_model_dir_path,
-                                              "hyper_params.txt")
+            h_params_file_path = os.path.join(self.current_model_dir_path, "hyper_params.txt")
             with open(h_params_file_path, "w") as h_params_file:
                 json.dump(self.h_params, h_params_file, sort_keys=True, indent=4)
 
             # initialize and create variables saver
             init = tf.global_variables_initializer()
-
             self.coord = tf.train.Coordinator()
 
             # variable_dict = mainDQN.variable_dict
@@ -427,7 +423,6 @@ class DQLAlgorithm():
             #                     "bias1":mainDQN.biases[1],
             #                     "bias2":mainDQN.biases[2],
             #                 }
-
             # if not use_variable_names:
             #     variable_dict = {
             #                         "Variable":mainDQN.W0,
@@ -452,14 +447,12 @@ class DQLAlgorithm():
                     print('\n################ LOADING SAVED MODEL ###############')
                     saver.restore(sess, self.model_to_load_file_path)
                     print('\n######## SAVED MODEL WAS SUCCESSFULLY LOADED #######')
-
                 self.subtask_total_steps = 0
 
                 if not self.skip_training:
                     trainer_thread = threading.Thread(name='trainer', target=self.trainer, args=(sess,))
                     print("\nTrainer thread created.")
                     trainer_thread.start()
-
 
                 self.copyLearnerMainToTarget(sess)  # Set the target network to be equal to the primary network.
                 # self.run_ops(self.trainer_target_ops, sess)  #soft update
@@ -480,7 +473,6 @@ class DQLAlgorithm():
                 self.success_steps = []
                 self.is_saving = False
                 total_saving_time = 0
-
                 # test success initialization:
                 # subt_test_success_rates = []
                 # subt_test_steps = []
@@ -517,7 +509,6 @@ class DQLAlgorithm():
                     self.current_step = 1
                     while self.current_step <= self.max_steps_per_episode:
                         print("\nstep:", self.current_step)
-
                         # pick action from the DQN, epsilon greedy
                         chosenActions, allJQValues = sess.run(
                             [self.collector_mainDQN.allJointsBestActions, self.collector_mainDQN.allJointsQvalues3D],
@@ -536,9 +527,6 @@ class DQLAlgorithm():
 
                         # perform action and get new state and reward
                         newState, r, done = env.step(chosenActions)
-                        # print("\newState: ", newState)
-                        # print("\nr: ", r)
-                        # print("\ndone: ", done)
                         #add experience to buffer
                         end_multiplier = 0 if self.current_step == self.max_steps_per_episode else 1
                         transition = np.array([initialState, chosenActions, r, newState, end_multiplier])
@@ -640,7 +628,6 @@ class DQLAlgorithm():
                         self.success_steps.append(self.max_steps_per_episode)
 
                     self.dataset.add(episodeBuffer.data)
-
                     # if testing_policy:
                     #     testing_policy_episode += 1
                     # else:
@@ -679,10 +666,8 @@ class DQLAlgorithm():
                         self.maxQvaluesArray = np.array([]).reshape(self.nAJoints, 0)
 
                     self.is_saving = False
-
                     saving_end_time = time.time()
                     ep_saving_time = saving_end_time - saving_start_time
-
                     total_saving_time += ep_saving_time
                     self.current_episode += 1
 
@@ -692,8 +677,7 @@ class DQLAlgorithm():
                     self.coord.join([trainer_thread])
                 #training ended, save results
                 end_time = time.time()
-                print("Training ended")
-
+                print("Training ended. Saving model...")
                 save_path = saver.save(sess, self.trained_model_file_path, global_step=self.num_episodes) #save the trained model
                 print("Trained model saved in file: %s" % save_path)
 

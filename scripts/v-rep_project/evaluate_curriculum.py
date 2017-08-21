@@ -34,8 +34,6 @@ def plot_cl_cumul_successes(dir_path, subtask_switch_episodes, cumul_successes):
     plt.close()
 
 
-
-
 timestr = time.strftime("%Y-%b-%d_%H-%M-%S",time.gmtime()) #or time.localtime()
 current_dir_path = os.path.dirname(os.path.realpath(__file__))
 all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
