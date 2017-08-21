@@ -61,8 +61,8 @@ num_hidden_layers = 2
 num_neurons_per_hidden = 50
 batch_size = 32
 lrate=1e-4
-testing_scripts = False  # set to True test scripts for a few episodes/steps
-# max_updates_per_env_step = 10
+testing_scripts = True  # set to True test scripts for a few episodes/steps
+max_updates_per_env_step = 10
 
 #########################################
 
@@ -133,11 +133,13 @@ trainDQL_args = dict(
                     notes=experiment_name,
                     previous_norm=False,
                     targetRelativePos=targetRelativePos,
-                    # policy_test_period=100,  # episodes
+                    policy_test_period=100,  # episodes
+                    policy_test_episodes=20,  # episodes
                     # success_rate_for_subtask_completion=success_rate_for_subtask_completion,  # change with/without CL
                     nSJoints=6,
                     nAJoints=6,
-                    # max_updates_per_env_step=max_updates_per_env_step,
+                    old_bias=False,
+                    max_updates_per_env_step=max_updates_per_env_step,
                     )
 
 if testing_scripts:
@@ -148,7 +150,8 @@ if testing_scripts:
                               batch_size=1,
                               replay_start_size=6,
                               replay_memory_size=10,
-                              # policy_test_period=5,
+                              policy_test_period=5,  # episodes
+                    		  policy_test_episodes=2,  # episodes
                              )
                         )
 
