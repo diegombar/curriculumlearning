@@ -25,7 +25,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # experience replay dataset, experience = (s,a,r,s',done)
 class experience_dataset():
-
     def __init__(self, size):
         self.data = []
         self.size = size
@@ -451,364 +450,377 @@ class DQLAlgorithm():
                     trainer_thread = threading.Thread(name='trainer', target=self.trainer, args=(sess,))
                     print("[MAIN] Trainer thread created.")
                     trainer_thread.start()
-
-                self.copyLearnerMainToTarget(sess)  # Set the target network to be equal to the primary network.
-                # initialize epsilon
-                if self.skip_training:
-                    self.epsilon = self.e_min
-                else:
-                    self.addE = self.e_max - self.e_min
-                    self.epsilon = self.e_min + self.addE
-
-                self.num_steps_per_ep = []
-                self.undisc_return_per_ep = []
-                success_count = 0
-                self.cumul_successes_per_ep = []
-                self.epsilon_per_ep = []
-                self.average_maxQ_per_ep = np.array([]).reshape(self.nAJoints, 0)
-                self.statesArray = np.array([]).reshape(self.stateSize, 0)
-                self.maxQvaluesArray = np.array([]).reshape(self.nAJoints, 0)
-                self.success_step_per_ep = []
-                self.is_saving = False
-                total_saving_time = 0
-                # test success initialization:
-                self.test_success_rates = []
-                self.test_mean_returns = []
-                self.test_steps = []
-                self.test_episodes = []
-                testing_policy_episode = 0
-                self.testing_policy = False
-                current_test_success_count = 0
-                epsilon_backup = 0
-                episode_success_step = 0
-                # no_progress_count = 0
-
-                collector_start_time = time.time()
-                self.current_episode = 0
-                cumul_test_return = 0
-                while self.current_episode <= self.num_episodes and testing_policy_episode < self.policy_test_episodes:
-                    if self.testing_policy:
-                        testing_policy_episode += 1
-                    else:
-                        self.current_episode += 1
-
-                    self.updateCollectorNetParams(sess)  # copy the trainer main net to the collector main net
-                    if self.testing_policy:
-                        print("\n\n\n[MAIN] Testing episode number: ", testing_policy_episode)
-                    else:
-                        print("\n\n\n[MAIN] Training episode number: ", self.current_episode)
-
+                with self.coord.stop_on_exception():
+                    self.copyLearnerMainToTarget(sess)  # Set the target network to be equal to the primary network.
+                    # initialize epsilon
                     if self.skip_training:
                         self.epsilon = self.e_min
-                    elif self.total_steps > self.replay_start_size:
-                        # decay epsilon
-                        self.addE *= self.addEFactor
+                    else:
+                        self.addE = self.e_max - self.e_min
                         self.epsilon = self.e_min + self.addE
 
-                    initialState = env.reset()  # reset environment and get first observation
-                    episode_undisc_return = 0
-                    sum_of_maxQ = np.zeros((self.nAJoints, 1))
-                    done = False
-                    task_completed = False
+                    self.num_steps_per_ep = []
+                    self.undisc_return_per_ep = []
+                    success_count = 0
+                    self.cumul_successes_per_ep = []
+                    self.epsilon_per_ep = []
+                    self.average_maxQ_per_ep = np.array([]).reshape(self.nAJoints, 0)
+                    self.statesArray = np.array([]).reshape(self.stateSize, 0)
+                    self.maxQvaluesArray = np.array([]).reshape(self.nAJoints, 0)
+                    self.success_step_per_ep = []
+                    self.is_saving = False
+                    total_saving_time = 0
+                    # test success initialization:
+                    self.test_success_rates = []
+                    self.test_mean_returns = []
+                    self.test_steps = []
+                    self.test_episodes = []
+                    testing_policy_episode = 0
+                    self.testing_policy = False
+                    current_test_success_count = 0
+                    epsilon_backup = 0
+                    episode_success_step = 0
+                    # no_progress_count = 0
+
+                    collector_start_time = time.time()
+                    self.current_episode = 0
+                    cumul_test_return = 0
+                    while (self.current_episode < self.num_episodes or self.testing_policy) and not self.coord.should_stop():
+                        if self.testing_policy:
+                            testing_policy_episode += 1
+                        else:
+                            self.current_episode += 1
+
+                        self.updateCollectorNetParams(sess)  # copy the trainer main net to the collector main net
+                        if self.testing_policy:
+                            print("\n\n\n[MAIN] Testing episode number: ", testing_policy_episode)
+                        else:
+                            print("\n\n\n[MAIN] Training episode number: ", self.current_episode)
+
+                        if self.skip_training:
+                            self.epsilon = self.e_min
+                        elif self.total_steps > self.replay_start_size:
+                            # decay epsilon
+                            self.addE *= self.addEFactor
+                            self.epsilon = self.e_min + self.addE
+
+                        initialState = env.reset()  # reset environment and get first observation
+                        episode_undisc_return = 0
+                        sum_of_maxQ = np.zeros((self.nAJoints, 1))
+                        done = False
+                        task_completed = False
+                        if not self.skip_training:
+                            episodeBuffer = experience_dataset(self.replay_memory_size)  # temporary buffer
+
+                        self.current_step = 0
+                        while self.current_step < self.max_steps_per_episode and not self.coord.should_stop():
+                            self.current_step += 1
+                            print("\n[MAIN] step:", self.current_step)
+                            # pick action from the DQN, epsilon greedy
+                            chosenActions, allJQValues = sess.run(
+                                [self.collector_mainDQN.allJointsBestActions, self.collector_mainDQN.allJointsQvalues3D],
+                                feed_dict={self.collector_mainDQN.inState: np.reshape(initialState, (1, self.stateSize))}
+                            )
+
+                            chosenActions = np.reshape(np.array(chosenActions), self.nAJoints)
+                            allJQValues = np.reshape(np.array(allJQValues), (self.nAJoints, self.nActionsPerJoint))
+                            maxQvalues = allJQValues[range(self.nAJoints), chosenActions]  # 1 x nJoints
+
+                            if self.total_steps <= self.replay_start_size and not self.skip_training:
+                                chosenActions = np.random.randint(0, self.nActionsPerJoint, self.nAJoints)
+                            else:
+                                indices = np.random.rand(self.nAJoints) < self.epsilon
+                                chosenActions[indices] = np.random.randint(0, self.nActionsPerJoint, sum(indices))
+
+                            # perform action and get new state and reward
+                            newState, r, done = env.step(chosenActions)
+
+                            # add experience to buffer
+                            end_multiplier = 0 if self.current_step == self.max_steps_per_episode else 1
+                            transition = np.array([initialState, chosenActions, r, newState, end_multiplier])
+                            transition = np.reshape(transition, [1, 5])  # 1 x 5
+                            episodeBuffer.add(transition)  # add step to episode buffer
+
+                            # if not skip_training:
+                            # if total_steps > replay_start_size:
+                            #     if total_steps % train_model_steps_period == 0:
+                            #         #train model
+                            #         batch = dataset.sample(batch_size)
+                            #         # states0, actions0, rewards, states1, dones = batch.T
+                            #         states0, actions0, rewards, states1, end_multipliers = batch.T
+                            #         states0 = np.vstack(states0)
+                            #         actions0 = np.vstack(actions0)
+                            #         states1 = np.vstack(states1)
+                            #         rewards = np.reshape(rewards, (batch_size, 1))
+                            #         # dones = np.reshape(dones, (batch_size, 1))
+                            #         end_multipliers = np.reshape(end_multipliers, (batch_size, 1))
+                            #         allJBestActions = sess.run(mainDQN.allJointsBestActions, feed_dict={mainDQN.inState:states1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a'))#batch_size x 1
+                            #         allJQvalues = sess.run(targetDQN.allJointsQvalues3D, feed_dict={targetDQN.inState:states1}) #feed batch of s' and get batch of Q2(a') # batch_size x 3
+                            #         #get Q values of best actions
+                            #         allJBestActions_one_hot = np.arange(nActionsPerJoint) == allJBestActions[:, :, None]
+                            #         allJBestActionsQValues = np.sum(np.multiply(allJBestActions_one_hot, allJQvalues), axis=2) # batch_size x nJoints
+                            #         # end_multiplier = -(dones - 1) # batch_size x 1 ,  equals zero if end of succesful episode
+                            #         allJQtargets = np.reshape(rewards + y * allJBestActionsQValues * end_multipliers, (batch_size, nAJoints)) #batch_size x nJoints
+                            #         #Update the primary network with our target values.
+                            #         _ = sess.run(mainDQN.updateModel, feed_dict={mainDQN.inState:states0, mainDQN.Qtargets:allJQtargets, mainDQN.chosenActions:actions0})
+                            #         run_ops(targetOps,sess) #Set the target network to be equal to the primary network.
+
+                            # end of step, track episode values
+                            episode_undisc_return += r
+
+                            # save q values
+                            if not self.testing_policy:
+                                maxQvalues2 = np.reshape(maxQvalues, (self.nAJoints, 1))
+                                stateToSave = np.reshape(initialState, (self.stateSize, 1))
+                                sum_of_maxQ += maxQvalues2
+                                self.total_steps += 1
+                                if (self.total_steps % (self.q_plots_period * self.max_steps_per_episode)) >= (self.q_plots_period * self.max_steps_per_episode - self.q_plots_num_of_points):
+                                    self.statesArray = np.concatenate((self.statesArray, stateToSave), axis=1)
+                                    self.maxQvaluesArray = np.concatenate((self.maxQvaluesArray, maxQvalues2), axis=1)
+
+                            initialState = newState
+                            # dont stop the ep. when done, so that the robot stays in the target position
+                            if done and not task_completed:
+                                task_completed = True
+                                episode_success_step = self.current_step
+                            #     break
+
+                        # end of episode
+
+                        if self.testing_policy:
+                            cumul_test_return += episode_undisc_return
+                            if task_completed:
+                                current_test_success_count += 1
+
+                            if testing_policy_episode == self.policy_test_episodes:
+                                # back to training
+                                print("[MAIN] Back to training.")
+                                self.testing_policy = False
+                                self.skip_training = False
+                                self.epsilon = epsilon_backup
+                                testing_policy_episode = 0
+
+                                test_success_rate = current_test_success_count / self.policy_test_episodes
+                                test_mean_returns = cumul_test_return / self.policy_test_episodes
+                                self.test_success_rates.append(test_success_rate)
+                                self.test_mean_returns.append(test_mean_returns)
+
+                                # if success_rate_for_subtask_completion and len(test_success_rates)>2:
+                                #     if test_success_rates[-1] < test_success_rates[-2]:
+                                #         no_progress_count += 1
+                                #     else:
+                                #         no_progress_count = 0
+                                #     if no_progress_count == 5:
+                                #         print("\nSuccess rate did not improve, moving on to next task.")
+                                #         break
+                        else:
+                            # add current episode's list of transitions to dataset
+                            self.dataset.add(episodeBuffer.data)
+                            if task_completed:
+                                success_count += 1
+                                success_step = episode_success_step
+                            else:
+                                success_step = self.max_steps_per_episode
+
+                            self.success_step_per_ep.append(success_step)
+                            self.dataset.add(episodeBuffer.data)
+                            self.num_steps_per_ep.append(self.current_step)
+                            self.undisc_return_per_ep.append(episode_undisc_return)
+                            self.cumul_successes_per_ep.append(success_count)
+                            self.epsilon_per_ep.append(self.epsilon)
+
+                            averageMaxQ = sum_of_maxQ / self.current_step  # nJoints x 1
+                            print("[MAIN] averageMaxQ for each joint: ", averageMaxQ.T)
+                            self.average_maxQ_per_ep = np.concatenate((self.average_maxQ_per_ep, averageMaxQ), axis=1)
+
+                            # save the model and log training
+                            self.is_saving = True
+                            saving_start_time = time.time()
+                            if self.current_episode % self.model_saving_period == 0:
+                                env.stop_if_needed()
+                                print("[MAIN] Saving model and plots...")
+                                checkpoint_save_path = saver.save(sess, self.checkpoint_model_file_path, global_step=self.current_episode)
+                                # print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(self.current_episode, j, undisc_return, done))
+                                checkpoints_plots_dir_path = os.path.join(self.current_model_dir_path, "checkpoint_results_ep_" + str(self.current_episode))
+                                os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
+                                self.savePlots(checkpoints_plots_dir_path)
+
+                            if self.current_episode % self.q_plots_period == 0:
+                                env.stop_if_needed()
+                                # plot Q plots
+                                print("[MAIN] Saving Q-plots...")
+                                Qplots_dir_path = os.path.join(self.current_model_dir_path, "q_plots_ep_" + str(self.current_episode))
+                                os.makedirs(Qplots_dir_path, exist_ok=True)
+                                # self.lastStatesArray = self.statesArray[:, -self.q_plots_num_of_points:-1]
+                                # self.lastMaxQvaluesArray = self.maxQvaluesArray[:, -self.q_plots_num_of_points:-1]
+                                self.saveQvaluesPlot(Qplots_dir_path, self.statesArray, self.maxQvaluesArray)
+                                self.statesArray = np.array([]).reshape(self.stateSize, 0)  # reset q values logs
+                                self.maxQvaluesArray = np.array([]).reshape(self.nAJoints, 0)
+
+                            self.is_saving = False
+                            saving_end_time = time.time()
+                            ep_saving_time = saving_end_time - saving_start_time
+                            total_saving_time += ep_saving_time
+
+                            if ((self.current_episode % self.policy_test_period == 0) or (self.current_episode == self.num_episodes)) and not (self.skip_training or self.testing_policy):
+                                # pause training and test current policy for some episodes
+                                self.testing_policy = True
+                                print("[MAIN] Testing policy...")
+                                self.test_steps.append(self.total_steps)
+                                self.test_episodes.append(self.current_episode)
+                                current_test_success_count = 0
+                                self.skip_training = True
+                                epsilon_backup = self.epsilon
+                                cumul_test_return = 0
+
+                    # end of training, save results
+                    collector_end_time = time.time()
+                    waiting_for_trainer_to_end_time = 0
                     if not self.skip_training:
-                        episodeBuffer = experience_dataset(self.replay_memory_size)  # temporary buffer
+                        self.coord.request_stop()
+                        self.coord.join(threads=[trainer_thread])
+                        waiting_for_trainer_to_end_time = 3
+                        time.sleep(waiting_for_trainer_to_end_time)
+                    # training ended, save results
+                    end_time = time.time()
+                    print("[MAIN] Training ended. Saving model...")
+                    trained_model_save_path = saver.save(sess, self.trained_model_file_path, global_step=self.num_episodes)  # save the trained model
+                    print("[MAIN] Trained model saved in file: %s" % trained_model_save_path)
 
-                    self.current_step = 1
-                    while self.current_step <= self.max_steps_per_episode:
-                        # print("\nstep:", self.current_step)
-                        # pick action from the DQN, epsilon greedy
-                        chosenActions, allJQValues = sess.run(
-                            [self.collector_mainDQN.allJointsBestActions, self.collector_mainDQN.allJointsQvalues3D],
-                            feed_dict={self.collector_mainDQN.inState: np.reshape(initialState, (1, self.stateSize))}
-                        )
+            # save total time and steps to txt file
+            total_training_time_in_secs = end_time - start_time - waiting_for_trainer_to_end_time  # in seconds
+            total_training_time_in_hours = total_training_time_in_secs / 3600
+            print('[MAIN] Total training time (in hours):', total_training_time_in_hours)
+            self.total_episodes = self.current_episode
+            collecting_time = collector_end_time - collector_start_time - total_saving_time
+            collector_freq = self.total_steps / collecting_time
 
-                        chosenActions = np.reshape(np.array(chosenActions), self.nAJoints)
-                        allJQValues = np.reshape(np.array(allJQValues), (self.nAJoints, self.nActionsPerJoint))
-                        maxQvalues = allJQValues[range(self.nAJoints), chosenActions]  # 1 x nJoints
-
-                        if self.total_steps <= self.replay_start_size and not self.skip_training:
-                            chosenActions = np.random.randint(0, self.nActionsPerJoint, self.nAJoints)
-                        else:
-                            indices = np.random.rand(self.nAJoints) < self.epsilon
-                            chosenActions[indices] = np.random.randint(0, self.nActionsPerJoint, sum(indices))
-
-                        # perform action and get new state and reward
-                        newState, r, done = env.step(chosenActions)
-
-                        # add experience to buffer
-                        end_multiplier = 0 if self.current_step == self.max_steps_per_episode else 1
-                        transition = np.array([initialState, chosenActions, r, newState, end_multiplier])
-                        transition = np.reshape(transition, [1, 5])  # 1 x 5
-                        episodeBuffer.add(transition)  # add step to episode buffer
-
-                        # if not skip_training:
-                        # if total_steps > replay_start_size:
-                        #     if total_steps % train_model_steps_period == 0:
-                        #         #train model
-                        #         batch = dataset.sample(batch_size)
-                        #         # states0, actions0, rewards, states1, dones = batch.T
-                        #         states0, actions0, rewards, states1, end_multipliers = batch.T
-                        #         states0 = np.vstack(states0)
-                        #         actions0 = np.vstack(actions0)
-                        #         states1 = np.vstack(states1)
-                        #         rewards = np.reshape(rewards, (batch_size, 1))
-                        #         # dones = np.reshape(dones, (batch_size, 1))
-                        #         end_multipliers = np.reshape(end_multipliers, (batch_size, 1))
-                        #         allJBestActions = sess.run(mainDQN.allJointsBestActions, feed_dict={mainDQN.inState:states1}) #feed batch of s' and get batch of a' = argmax(Q1(s',a'))#batch_size x 1
-                        #         allJQvalues = sess.run(targetDQN.allJointsQvalues3D, feed_dict={targetDQN.inState:states1}) #feed batch of s' and get batch of Q2(a') # batch_size x 3
-                        #         #get Q values of best actions
-                        #         allJBestActions_one_hot = np.arange(nActionsPerJoint) == allJBestActions[:, :, None]
-                        #         allJBestActionsQValues = np.sum(np.multiply(allJBestActions_one_hot, allJQvalues), axis=2) # batch_size x nJoints
-                        #         # end_multiplier = -(dones - 1) # batch_size x 1 ,  equals zero if end of succesful episode
-                        #         allJQtargets = np.reshape(rewards + y * allJBestActionsQValues * end_multipliers, (batch_size, nAJoints)) #batch_size x nJoints
-                        #         #Update the primary network with our target values.
-                        #         _ = sess.run(mainDQN.updateModel, feed_dict={mainDQN.inState:states0, mainDQN.Qtargets:allJQtargets, mainDQN.chosenActions:actions0})
-                        #         run_ops(targetOps,sess) #Set the target network to be equal to the primary network.
-
-                        # end of step, track episode values
-                        episode_undisc_return += r
-
-                        # save q values
-                        if not self.testing_policy:
-                            maxQvalues2 = np.reshape(maxQvalues, (self.nAJoints, 1))
-                            stateToSave = np.reshape(initialState, (self.stateSize, 1))
-                            sum_of_maxQ += maxQvalues2
-                            self.total_steps += 1
-                            if (self.total_steps % (self.q_plots_period * self.max_steps_per_episode)) >= (self.q_plots_period * self.max_steps_per_episode - self.q_plots_num_of_points):
-                                self.statesArray = np.concatenate((self.statesArray, stateToSave), axis=1)
-                                self.maxQvaluesArray = np.concatenate((self.maxQvaluesArray, maxQvalues2), axis=1)
-
-                        initialState = newState
-                        self.current_step += 1
-
-                        # dont stop the ep. when done, so that the robot stays in the target position
-                        if done and not task_completed:
-                            task_completed = True
-                            episode_success_step = self.current_step
-                        #     break
-
-                    # end of episode
-
-                    if self.testing_policy:
-                        cumul_test_return += episode_undisc_return
-                        if task_completed:
-                            current_test_success_count += 1
-
-                        if testing_policy_episode == self.policy_test_episodes:
-                            # back to training
-                            print("[MAIN] Back to training.")
-                            self.testing_policy = False
-                            self.skip_training = False
-                            self.epsilon = epsilon_backup
-                            testing_policy_episode = 0
-
-                            test_success_rate = current_test_success_count / self.policy_test_episodes
-                            test_mean_returns = cumul_test_return / self.policy_test_episodes
-                            self.test_success_rates.append(test_success_rate)
-                            self.test_mean_returns.append(test_mean_returns)
-
-                            # if success_rate_for_subtask_completion and len(test_success_rates)>2:
-                            #     if test_success_rates[-1] < test_success_rates[-2]:
-                            #         no_progress_count += 1
-                            #     else:
-                            #         no_progress_count = 0
-                            #     if no_progress_count == 5:
-                            #         print("\nSuccess rate did not improve, moving on to next task.")
-                            #         break
-                    else:
-                        # add current episode's list of transitions to dataset
-                        self.dataset.add(episodeBuffer.data)
-                        if task_completed:
-                            success_count += 1
-                            success_step = episode_success_step
-                        else:
-                            success_step = self.max_steps_per_episode
-
-                        self.success_step_per_ep.append(success_step)
-                        self.dataset.add(episodeBuffer.data)
-                        self.num_steps_per_ep.append(self.current_step)
-                        self.undisc_return_per_ep.append(episode_undisc_return)
-                        self.cumul_successes_per_ep.append(success_count)
-                        self.epsilon_per_ep.append(self.epsilon)
-
-                        averageMaxQ = sum_of_maxQ / self.current_step  # nJoints x 1
-                        print("[MAIN] averageMaxQ for each joint: ", averageMaxQ.T)
-                        self.average_maxQ_per_ep = np.concatenate((self.average_maxQ_per_ep, averageMaxQ), axis=1)
-
-                        # save the model and log training
-                        self.is_saving = True
-                        saving_start_time = time.time()
-                        if self.current_episode % self.model_saving_period == 0:
-                            env.stop_if_needed()
-                            print("[MAIN] Saving model and plots...")
-                            checkpoint_save_path = saver.save(sess, self.checkpoint_model_file_path, global_step=self.current_episode)
-                            # print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(self.current_episode, j, undisc_return, done))
-                            checkpoints_plots_dir_path = os.path.join(self.current_model_dir_path, "checkpoint_results_ep_" + str(self.current_episode))
-                            os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
-                            self.savePlots(checkpoints_plots_dir_path)
-
-                        if self.current_episode % self.q_plots_period == 0:
-                            env.stop_if_needed()
-                            # plot Q plots
-                            print("[MAIN] Saving Q-plots...")
-                            Qplots_dir_path = os.path.join(self.current_model_dir_path, "q_plots_ep_" + str(self.current_episode))
-                            os.makedirs(Qplots_dir_path, exist_ok=True)
-                            # self.lastStatesArray = self.statesArray[:, -self.q_plots_num_of_points:-1]
-                            # self.lastMaxQvaluesArray = self.maxQvaluesArray[:, -self.q_plots_num_of_points:-1]
-                            self.saveQvaluesPlot(Qplots_dir_path, self.statesArray, self.maxQvaluesArray)
-                            self.statesArray = np.array([]).reshape(self.stateSize, 0)  # reset q values logs
-                            self.maxQvaluesArray = np.array([]).reshape(self.nAJoints, 0)
-
-                        self.is_saving = False
-                        saving_end_time = time.time()
-                        ep_saving_time = saving_end_time - saving_start_time
-                        total_saving_time += ep_saving_time
-
-                        if ((self.current_episode % self.policy_test_period == 0) or (self.current_episode == self.num_episodes)) and not (self.skip_training or self.testing_policy):
-                            # pause training and test current policy for some episodes
-                            self.testing_policy = True
-                            print("[MAIN] Testing policy...")
-                            self.test_steps.append(self.total_steps)
-                            self.test_episodes.append(self.current_episode)
-                            current_test_success_count = 0
-                            self.skip_training = True
-                            epsilon_backup = self.epsilon
-                            cumul_test_return = 0
-
-                # end of training, save results
-                collector_end_time = time.time()
-                if not self.skip_training:
-                    self.coord.request_stop()
-                    self.coord.join([trainer_thread])
-                # training ended, save results
-                end_time = time.time()
-                print("[MAIN] Training ended. Saving model...")
-                trained_model_save_path = saver.save(sess, self.trained_model_file_path, global_step=self.num_episodes)  # save the trained model
-                print("[MAIN] Trained model saved in file: %s" % trained_model_save_path)
-
-        # save total time and steps to txt file
-        total_training_time_in_secs = end_time - start_time  # in seconds
-        total_training_time_in_hours = total_training_time_in_secs / 3600
-        print('[MAIN] Total training time (in hours):', total_training_time_in_hours)
-        total_eps = self.current_episode
-        collecting_time = collector_end_time - collector_start_time - total_saving_time
-        collector_freq = self.total_steps / collecting_time
-
-        collector_end_stats_dict = dict(COLLECTOR_total_number_of_steps_executed=self.total_steps,
-                                        COLLECTOR_total_number_of_episodes_executed=total_eps,
-                                        COLLECTOR__experience_collecting_time_in_sec=collecting_time,
-                                        COLLECTOR_env_steps_per_sec=collector_freq,
-                                        COLLECTOR_total_saving_time_in_sec=total_saving_time,
-                                        total_training_time_in_sec=total_training_time_in_secs,
-                                        total_training_time_in_hours=total_training_time_in_hours,
-                                        )
-        self.end_stats_dict.update(collector_end_stats_dict)
-
-        if not self.skip_training:
-            training_time = self.training_loop_end_time - self.training_loop_start_time - total_saving_time
-            trainer_waiting_time = self.training_loop_start_time - self.trainer_start_time
-            trainer_freq = self.total_network_updates / training_time
-            network_updates_per_env_step = trainer_freq / collector_freq
-            trainer_end_stats_dict = dict(TRAINER_total_network_updates=self.total_network_updates,
-                                          TRAINER_waiting_time_in_sec=trainer_waiting_time,
-                                          TRAINER_training_time_after_min_dataset_in_sec=training_time,
-                                          TRAINER_network_updates_per_sec=trainer_freq,
-                                          network_updates_per_env_step=network_updates_per_env_step,
-                                          )
-            self.end_stats_dict.update(trainer_end_stats_dict)
-
-        stats_file_path = os.path.join(self.current_model_dir_path, "end_stats.txt")
-        self.save2txt(stats_file_path, self.end_stats_dict)
-
-        # save lists of results to json for later plots
-        lists_to_serialize_dict = dict(undisc_return_per_ep=self.undisc_return_per_ep,
-                                       num_steps_per_ep=self.num_steps_per_ep,
-                                       cumul_successes_per_ep=self.cumul_successes_per_ep,
-                                       epsilon_per_ep=self.epsilon_per_ep,
-                                       success_step_per_ep=self.success_step_per_ep,
-                                       test_steps=self.test_steps,
-                                       test_episodes=self.test_episodes,
-                                       test_success_rates=self.test_success_rates,
-                                       test_mean_returns=self.test_mean_returns,
-                                       net_updates_per_step=self.net_updates_per_step,
-                                       )
-
-        self.serialize_lists(self.serialized_lists_dir_path, lists_to_serialize_dict)
-        self.savePlots(self.trained_model_plots_dir_path)
-        self.saveTestPlots(self.trained_model_plots_dir_path)
-
-        lists_to_serialize_dict.update(dict(trained_model_save_path=trained_model_save_path,
-                                            total_steps=self.total_steps,  # for visualization and curriculum learning
+            collector_end_stats_dict = dict(COLLECTOR_total_number_of_steps_executed=self.total_steps,
+                                            COLLECTOR_total_number_of_episodes_executed=self.total_episodes,
+                                            COLLECTOR_experience_collecting_time_in_sec=collecting_time,
+                                            COLLECTOR_env_steps_per_sec=collector_freq,
+                                            COLLECTOR_total_saving_time_in_sec=total_saving_time,
+                                            total_training_time_in_sec=total_training_time_in_secs,
                                             total_training_time_in_hours=total_training_time_in_hours,
-                                            ))
+                                            )
+            self.end_stats_dict.update(collector_end_stats_dict)
+
+            if not self.skip_training:
+                training_time = self.training_loop_end_time - self.training_loop_start_time - total_saving_time
+                trainer_waiting_time = self.training_loop_start_time - self.trainer_start_time
+                trainer_freq = self.total_network_updates / training_time
+                network_updates_per_env_step = trainer_freq / collector_freq
+                trainer_end_stats_dict = dict(TRAINER_total_network_updates=self.total_network_updates,
+                                              TRAINER_waiting_time_in_sec=trainer_waiting_time,
+                                              TRAINER_training_time_after_min_dataset_in_sec=training_time,
+                                              TRAINER_network_updates_per_sec=trainer_freq,
+                                              network_updates_per_env_step=network_updates_per_env_step,
+                                              )
+                self.end_stats_dict.update(trainer_end_stats_dict)
+
+            stats_file_path = os.path.join(self.current_model_dir_path, "end_stats.txt")
+            self.save2txt(stats_file_path, self.end_stats_dict)
+
+            # save lists of results to json for later plots
+            lists_to_serialize_dict = dict(undisc_return_per_ep=self.undisc_return_per_ep,
+                                           num_steps_per_ep=self.num_steps_per_ep,
+                                           cumul_successes_per_ep=self.cumul_successes_per_ep,
+                                           epsilon_per_ep=self.epsilon_per_ep,
+                                           success_step_per_ep=self.success_step_per_ep,
+                                           test_steps=self.test_steps,
+                                           test_episodes=self.test_episodes,
+                                           test_success_rates=self.test_success_rates,
+                                           test_mean_returns=self.test_mean_returns,
+                                           net_updates_per_step=self.net_updates_per_step,
+                                           )
+
+            self.serialize_lists(self.serialized_lists_dir_path, lists_to_serialize_dict)
+            self.savePlots(self.trained_model_plots_dir_path)
+            self.saveTestPlots(self.trained_model_plots_dir_path)
+
+            lists_to_serialize_dict.update(dict(trained_model_save_path=trained_model_save_path,
+                                                total_steps=self.total_steps,  # for visualization and curriculum learning
+                                                total_episodes=self.total_episodes,
+                                                total_training_time_in_hours=total_training_time_in_hours,
+                                                ))
         return lists_to_serialize_dict
 
     def trainer(self, sess):
-        self.trainer_start_time = time.time()
-        while self.total_steps < self.replay_start_size:
-            time.sleep(1)
-        print("[TRAINER] Dataset has minimum size, training starts..")
-        self.training_loop_start_time = time.time()
-        self.total_network_updates = 0
-        self.net_updates_per_step = []
-        while True:
-            if (not self.is_saving) and (not self.testing_policy):
-                last_step = self.total_steps
-                updates_per_step_counter = 0
-                while last_step == self.total_steps:
-                    if updates_per_step_counter < self.max_updates_per_env_step:
-                        batch = self.dataset.sample(self.batch_size)
-                        # states0, actions0, rewards, states1, dones = batch.T
-                        states0, actions0, rewards, states1, end_multipliers = batch.T
-                        states0 = np.vstack(states0)
-                        actions0 = np.vstack(actions0)
-                        states1 = np.vstack(states1)
-                        rewards = np.reshape(rewards, (self.batch_size, 1))
-                        # dones = np.reshape(dones, (batch_size, 1))
-                        end_multipliers = np.reshape(end_multipliers, (self.batch_size, 1))
+        with self.coord.stop_on_exception():
+            self.net_updates_per_step = []
+            self.trainer_start_time = time.time()
 
-                        allJBestActions = sess.run(self.trainer_mainDQN.allJointsBestActions,
-                                                   feed_dict={self.trainer_mainDQN.inState: states1}
-                                                   )  # feed batch of s' and get batch of a' = argmax(Q1(s',a')) #batch_size x 1
-                        allJQvalues = sess.run(self.trainer_targetDQN.allJointsQvalues3D,
-                                               feed_dict={self.trainer_targetDQN.inState: states1}
-                                               )  # feed batch of s' and get batch of Q2(a') # batch_size x 3
-
-                        # get Q values of best actions
-                        allJBestActions_one_hot = np.arange(self.nActionsPerJoint) == allJBestActions[:, :, None]
-                        allJBestActionsQValues = np.sum(np.multiply(allJBestActions_one_hot, allJQvalues), axis=2)  # batch_size x nJoints
-                        # end_multiplier = -(dones - 1) # batch_size x 1 ,  equals zero if end of succesful episode
-
-                        allJQtargets = np.reshape(rewards + self.y * allJBestActionsQValues * end_multipliers, (self.batch_size, self.nAJoints))  # batch_size x nJoints
-
-                        # Update the primary network with our target values.
-                        if (self.total_steps % self.tensorboard_log_period == 0) and (updates_per_step_counter == 0):
-                            run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-                            run_metadata = tf.RunMetadata()
-                            summary, _ = sess.run([self.merged, self.trainer_mainDQN.updateModel],
-                                                  feed_dict={self.trainer_mainDQN.inState: states0,
-                                                             self.trainer_mainDQN.Qtargets: allJQtargets,
-                                                             self.trainer_mainDQN.chosenActions: actions0},
-                                                  options=run_options,
-                                                  run_metadata=run_metadata)
-                            self.training_writer.add_run_metadata(run_metadata, 'step%d' % self.total_steps)
-                            self.training_writer.add_summary(summary, self.total_steps)
-                        else:
-                            _ = sess.run(self.trainer_mainDQN.updateModel,
-                                         feed_dict={self.trainer_mainDQN.inState: states0,
-                                                    self.trainer_mainDQN.Qtargets: allJQtargets,
-                                                    self.trainer_mainDQN.chosenActions: actions0})
-                        self.softUpdateTarget(sess)  # Soft update of the target network towards the main network.
-                        self.total_network_updates += 1
-                        updates_per_step_counter += 1
-                    # else: wait for the next environment step
-                    if self.coord.should_stop():
+            while True:
+                if self.total_steps > 0:
+                    last_step = self.total_steps
+                    self.net_updates_per_step.append(0)
+                    while True:
+                        if self.total_steps > last_step:
+                            break
+                if self.total_steps >= self.replay_start_size:
                         break
-                self.net_updates_per_step.append(updates_per_step_counter)
-            if self.coord.should_stop():
-                    break
-        self.training_loop_end_time = time.time()
-        print("[TRAINER] Thread ended.")
+            print("[TRAINER] Dataset has minimum size, training starts..")
+            self.training_loop_start_time = time.time()
+            self.total_network_updates = 0
+            while True:
+                if (not self.is_saving) and (not self.testing_policy):
+                    last_step = self.total_steps
+                    updates_per_step_counter = 0
+                    while True:
+                        if updates_per_step_counter < self.max_updates_per_env_step:
+                            self.total_network_updates += 1
+                            updates_per_step_counter += 1
+                            print("[TRAINER] Current update number: ", updates_per_step_counter)
+                            batch = self.dataset.sample(self.batch_size)
+                            # states0, actions0, rewards, states1, dones = batch.T
+                            states0, actions0, rewards, states1, end_multipliers = batch.T
+                            states0 = np.vstack(states0)
+                            actions0 = np.vstack(actions0)
+                            states1 = np.vstack(states1)
+                            rewards = np.reshape(rewards, (self.batch_size, 1))
+                            # dones = np.reshape(dones, (batch_size, 1))
+                            end_multipliers = np.reshape(end_multipliers, (self.batch_size, 1))
+
+                            allJBestActions = sess.run(self.trainer_mainDQN.allJointsBestActions,
+                                                       feed_dict={self.trainer_mainDQN.inState: states1}
+                                                       )  # feed batch of s' and get batch of a' = argmax(Q1(s',a')) #batch_size x 1
+                            allJQvalues = sess.run(self.trainer_targetDQN.allJointsQvalues3D,
+                                                   feed_dict={self.trainer_targetDQN.inState: states1}
+                                                   )  # feed batch of s' and get batch of Q2(a') # batch_size x 3
+
+                            # get Q values of best actions
+                            allJBestActions_one_hot = np.arange(self.nActionsPerJoint) == allJBestActions[:, :, None]
+                            allJBestActionsQValues = np.sum(np.multiply(allJBestActions_one_hot, allJQvalues), axis=2)  # batch_size x nJoints
+                            # end_multiplier = -(dones - 1) # batch_size x 1 ,  equals zero if end of succesful episode
+                            allJQtargets = np.reshape(rewards + self.y * allJBestActionsQValues * end_multipliers, (self.batch_size, self.nAJoints))  # batch_size x nJoints
+
+                            # Update the primary network with our target values.
+                            if (self.total_steps % self.tensorboard_log_period == 0) and (updates_per_step_counter == 0):
+                                run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+                                run_metadata = tf.RunMetadata()
+                                summary, _ = sess.run([self.merged, self.trainer_mainDQN.updateModel],
+                                                      feed_dict={self.trainer_mainDQN.inState: states0,
+                                                                 self.trainer_mainDQN.Qtargets: allJQtargets,
+                                                                 self.trainer_mainDQN.chosenActions: actions0},
+                                                      options=run_options,
+                                                      run_metadata=run_metadata)
+                                self.training_writer.add_run_metadata(run_metadata, 'step%d' % self.total_steps)
+                                self.training_writer.add_summary(summary, self.total_steps)
+                            else:
+                                _ = sess.run(self.trainer_mainDQN.updateModel,
+                                             feed_dict={self.trainer_mainDQN.inState: states0,
+                                                        self.trainer_mainDQN.Qtargets: allJQtargets,
+                                                        self.trainer_mainDQN.chosenActions: actions0})
+                            self.softUpdateTarget(sess)  # Soft update of the target network towards the main network.
+                        # else: wait for the next environment step
+                        if self.coord.should_stop() or self.total_steps > last_step:
+                            break
+                    self.net_updates_per_step.append(updates_per_step_counter)
+                    print("[TRAINER] Network updates during last step: ", updates_per_step_counter)
+                if self.coord.should_stop():
+                        break
+            self.training_loop_end_time = time.time()
+            print("[TRAINER] Thread ended.")
 
     def saveRewardFunction(self, robotenv, dir_path):
         fig = plt.figure()

@@ -73,7 +73,7 @@ class RobotEnv():
         self.state = np.zeros((1, self.observation_space_size))
         self.reward = 0
         self.goalReached = False
-        self.minDistance = 0.03  # 3 cm
+        self.minDistance = 0.05  # 5 cm
         # v-rep
         self.vrepProcess = None
         self.clientID = None
@@ -247,7 +247,7 @@ class RobotEnv():
                 break
             else:
                 if try_count == 1:
-                    print('Stopping simulation...')
+                    print('[ROBOTENV] Stopping simulation...')
                     returnCode = vrep.simxStopSimulation(self.clientID, vrep.simx_opmode_blocking)
                     if returnCode != vrep.simx_return_ok:
                         print("[ROBOTENV] simxStopSimulation failed, error code:", returnCode)
