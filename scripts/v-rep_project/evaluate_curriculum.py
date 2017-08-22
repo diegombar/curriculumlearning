@@ -87,7 +87,7 @@ class Curriculum():
         self.curriculum_epsilon_per_ep = []
         self.curriculum_net_updates_per_step = []
         self.curriculum_success_step_per_ep = []
-        self.curriculum_test_success_rates = []
+        self.curriculum_test_success_rates = [0]
         self.curriculum_test_mean_returns = []
         self.curriculum_total_time = 0.0
         cl_cumul_successes_per_ep = np.array([0])
@@ -194,6 +194,10 @@ class Curriculum():
                 self.curriculum_net_updates_per_step += subt_net_updates_per_step
                 self.curriculum_test_success_rates += subt_test_success_rates
                 self.curriculum_test_mean_returns += subt_test_mean_returns
+
+                # print('[CURRICULUM] len(self.curriculum_switching_steps): ', self.curriculum_switching_steps)
+                print('[CURRICULUM] len(self.curriculum_test_success_rates): ', self.curriculum_test_success_rates)
+                print('[CURRICULUM] len(cl_test_steps): ', cl_test_steps)
 
                 # update curriculum time
                 self.curriculum_total_time += subt_total_training_time_in_hours  # in hours
