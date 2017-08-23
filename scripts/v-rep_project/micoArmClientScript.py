@@ -42,7 +42,7 @@ vrepProcess = subprocess.Popen(vrep_cmd, shell=False, preexec_fn=os.setsid)
 
 # connect to V-Rep Remote Api Server
 vrep.simxFinish(-1)  # close all opened connections
-clientID=vrep.simxStart('127.0.0.1', portNb, True, False, 5000, 5)  # Connect to V-REP
+clientID = vrep.simxStart('127.0.0.1', portNb, True, False, 5000, 5)  # Connect to V-REP
 
 if clientID == -1:
     print('Failed connecting to remote API server')
@@ -85,8 +85,8 @@ else:
     # some test target positions for the 6 joints, in radians
     targetPos0 = np.zeros(6)
     targetPosPi = np.array([pi] * 6)
-    targetPosPiO2 = np.array([pi/2] * 6)
-    targetPos1 = np.array([pi/2] * 6)
+    targetPosPiO2 = np.array([pi / 2] * 6)
+    targetPos1 = np.array([pi / 2] * 6)
     targetPos2 = np.array([90, 135, 225, 180, 180, 350])
     targetPos2 = degrees2Radians(targetPos2)
     targetPos4 = np.array([180, 135, 225, 180, 180, 350])

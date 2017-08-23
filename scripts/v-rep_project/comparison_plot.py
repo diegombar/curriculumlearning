@@ -71,7 +71,7 @@ task = RobotEnv.TASK_REACH_CUBE
 
 testing_scripts = False
 max_steps_per_episode = 200
-num_episodes = 3000
+num_episodes = 1000
 num_hidden_layers = 3
 num_neurons_per_hidden = 50
 max_updates_per_env_step = 10
