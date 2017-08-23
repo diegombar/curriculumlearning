@@ -41,7 +41,7 @@ class RobotEnv():
     # doc lab : "/homes/dam416/V-REP_PRO_EDU_V3_3_1_64_Linux/vrep.sh"
     current_dir_path = os.path.dirname(os.path.realpath(__file__))  # directory of this .py file
     # scenePath = os.path.join(current_dir_path, "MicoRobot.ttt")
-    scenePath = os.path.join(current_dir_path, "MicoRobot_new_distance.ttt")
+    scenePath = os.path.join(current_dir_path, "MicoRobot_last.ttt")
     # scenePath = os.path.join(current_dir_path, "mico_scene_vrep3-3-1.ttt")
 
     # initialize the environment
