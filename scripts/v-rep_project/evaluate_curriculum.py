@@ -63,7 +63,7 @@ class Curriculum():
             # success_rate_for_subtask_completion = True
 
         if self.testing_scripts:
-            self.curriculum_name = "TEST"
+            self.curriculum_name = self.curriculum_name + "_TEST"
 
         self.timestr = time.strftime("%Y-%b-%d_%H-%M-%S", time.gmtime())  # or time.localtime()
         self.current_dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -145,6 +145,7 @@ class Curriculum():
                                  )
 
         # run curriculum
+        print('[CURRICULUM] Running new curriculum: ' + self.curriculum_name)
         st_num = 0
         for vel in self.Velocities:
             for nAJoints in self.NumOfAJoints:
@@ -355,7 +356,7 @@ class Curriculum():
         if vertical_xs is not None:
             # vertical lines at subtask switching
             for vertical_x in vertical_xs:
-                plt.axvline(x=vertical_x, ls='dashed', color='r')
+                plt.axvline(x=vertical_x, color='g', ls=':', linewidth=0.5)
         plot_file = os.path.join(dir_path, filename + '.svg')
         fig.savefig(plot_file, bbox_inches='tight')
         plt.close()

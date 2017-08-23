@@ -515,7 +515,7 @@ class DQLAlgorithm():
                         self.current_step = 0
                         while self.current_step < self.max_steps_per_episode and not self.coord.should_stop():
                             self.current_step += 1
-                            print("\n[MAIN] step:", self.current_step)
+                            # print("\n[MAIN] step:", self.current_step)
                             # pick action from the DQN, epsilon greedy
                             chosenActions, allJQValues = sess.run(
                                 [self.collector_mainDQN.allJointsBestActions, self.collector_mainDQN.allJointsQvalues3D],
@@ -770,7 +770,7 @@ class DQLAlgorithm():
                         if updates_per_step_counter < self.max_updates_per_env_step:
                             self.total_network_updates += 1
                             updates_per_step_counter += 1
-                            print("[TRAINER] Current update number: ", updates_per_step_counter)
+                            # print("[TRAINER] Current update number: ", updates_per_step_counter)
                             batch = self.dataset.sample(self.batch_size)
                             # states0, actions0, rewards, states1, dones = batch.T
                             states0, actions0, rewards, states1, end_multipliers = batch.T
@@ -816,7 +816,7 @@ class DQLAlgorithm():
                         if self.coord.should_stop() or self.total_steps > last_step:
                             break
                     self.net_updates_per_step.append(updates_per_step_counter)
-                    print("[TRAINER] Network updates during last step: ", updates_per_step_counter)
+                    # print("[TRAINER] Network updates during last step: ", updates_per_step_counter)
                 if self.coord.should_stop():
                         break
             self.training_loop_end_time = time.time()
