@@ -207,7 +207,7 @@ class DQLAlgorithm():
                  portNb=19998,
                  old_bias=False,
                  max_updates_per_env_step=10,
-                 initial_joint_positions=initial_joint_positions
+                 initial_joint_positions=None
                  ):
 
         self.experiment_dir_path = experiment_dir_path

@@ -114,10 +114,13 @@ else:
 
     # set joints target positions
     def setJointTargetPositions(targetPositions):
+        enableControlLoop()
         for i in range(6):
-            returnCode = vrep.simxSetJointTargetPosition(clientID, jointHandles[i], targetPositions[i], vrep.simx_opmode_oneshot)
+            returnCode = vrep.simxSetJointTargetPosition(clientID, jointHandles[i], targetPositions[i], vrep.simx_opmode_blocking)
             if returnCode != vrep.simx_return_ok:
                 print("SetJointTargetPosition got error code: %s" % returnCode)
+        # wait for it to reach?
+        disableControlLoop()
 
     def enableControlLoop():
         for i in range(6):

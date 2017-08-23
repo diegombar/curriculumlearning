@@ -10,10 +10,10 @@ from matplotlib import pyplot as plt
 class Curriculum():
     # curriculums
     NO_CURRICULUM_VEL_025 = 0
-    NO_CURRICULUM_VEL_1 = 3
+    NO_CURRICULUM_VEL_1 = -1
     CURRICULUM_DECREASING_SPEED = 1
     CURRICULUM_INCREASING_JOINT_NUMBER = 2
-    # CURRICULUM_STARTING_AWAY_FROM_TARGET = 3
+    CURRICULUM_INITIALIZE_FURTHER = 3
 
     def __init__(self,
                  curriculum,
@@ -136,7 +136,7 @@ class Curriculum():
                              policy_test_episodes=20,  # episodes
                              # success_rate_for_subtask_completion=success_rate_for_subtask_completion,  # change with/without CL
                              nSJoints=6,
-                             nAJoints=6,
+                             # nAJoints=6,
                              old_bias=False,
                              max_updates_per_env_step=self.max_updates_per_env_step,
                              )
@@ -158,11 +158,11 @@ class Curriculum():
         st_num = 0
         for vel in self.Velocities:
             for nAJoints in self.NumOfAJoints:
-                for initial_joint_positions in Initial_positions:
+                for initial_joint_positions in self.Initial_positions:
                     st_num += 1
                     trainDQL_args.update(dict(velocity=vel,
-                                              nSJoints=6,
                                               nAJoints=nAJoints,
+                                              initial_joint_positions=initial_joint_positions,
                                               model_to_load_file_path=subt_trained_model_save_path,
                                               )
                                          )

@@ -1,7 +1,7 @@
 from evaluate_curriculum import Curriculum
 from robotenv import RobotEnv
 
-testing_scripts = False
+testing_scripts = True
 curriculum = Curriculum.CURRICULUM_INITIALIZE_FURTHER
 task = RobotEnv.TASK_REACH_CUBE
 max_steps_per_episode = 200
