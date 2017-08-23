@@ -38,8 +38,14 @@ class Curriculum():
         self.testing_scripts = testing_scripts
         self.max_updates_per_env_step = max_updates_per_env_step
 
+        targetPosInitial = np.array([1.0] * 6) * np.pi
+        # targetPosStraight = np.array([0.66, 1.0, 1.25, 1.5, 1.0, 1.0]) * np.pi
+        targetPosHalfWayCube = np.array([0.66, 1.25, 1.25, 1.5, 1.0, 1.0]) * np.pi
+        targetPosNearCube = np.array([0.66, 1.5, 1.25, 1.5, 1.0, 1.0]) * np.pi
+
         self.Velocities = [0.25]
         self.NumOfAJoints = [6]
+        self.Initial_positions = [targetPosInitial]
         if self.curriculum == self.NO_CURRICULUM_VEL_025:
             self.curriculum_name = "no_curriculum_vel_025"
             self.Velocities = [0.25]
@@ -54,11 +60,16 @@ class Curriculum():
             self.num_episodes = self.num_episodes // len(self.Velocities)
             # success_rate_for_subtask_completion = True
         elif self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER:
-            self.Velocities = [0.25]
             self.curriculum_name = "cl_increasing_num_of_joints"
             self.NumOfAJoints = range(1, 7)
             self.num_episodes = self.num_episodes // len(self.NumOfAJoints)
+            self.Velocities = [0.25]
             # success_rate_for_subtask_completion = True
+        elif self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER:
+            self.curriculum_name = "cl_increasing_num_of_joints"
+            self.Initial_positions = [targetPosInitial, targetPosHalfWayCube, targetPosNearCube]
+            self.num_episodes = self.num_episodes // len(self.Initial_positions)
+            self.Velocities = [0.25]
 
         if self.testing_scripts:
             self.curriculum_name = self.curriculum_name + "_TEST"
@@ -147,74 +158,75 @@ class Curriculum():
         st_num = 0
         for vel in self.Velocities:
             for nAJoints in self.NumOfAJoints:
-                st_num += 1
-                trainDQL_args.update(dict(velocity=vel,
-                                          nSJoints=6,
-                                          nAJoints=nAJoints,
-                                          model_to_load_file_path=subt_trained_model_save_path,
-                                          )
-                                     )
+                for initial_joint_positions in Initial_positions:
+                    st_num += 1
+                    trainDQL_args.update(dict(velocity=vel,
+                                              nSJoints=6,
+                                              nAJoints=nAJoints,
+                                              model_to_load_file_path=subt_trained_model_save_path,
+                                              )
+                                         )
 
-                # model_path, subt_total_steps, subt_cumul_successes_per_ep, subt_test_success_rates, subt_test_steps, subt_total_training_time_in_hours = training.trainDQL(**trainDQL_args)
+                    # model_path, subt_total_steps, subt_cumul_successes_per_ep, subt_test_success_rates, subt_test_steps, subt_total_training_time_in_hours = training.trainDQL(**trainDQL_args)
 
-                dql = training.DQLAlgorithm(**trainDQL_args)
+                    dql = training.DQLAlgorithm(**trainDQL_args)
 
-                # model_path, subt_total_steps, subt_cumul_successes_per_ep, subt_total_training_time_in_hours = dql.run()
-                results_dict = dql.run()
+                    # model_path, subt_total_steps, subt_cumul_successes_per_ep, subt_total_training_time_in_hours = dql.run()
+                    results_dict = dql.run()
 
-                subt_undisc_return_per_ep = results_dict['undisc_return_per_ep']
-                subt_num_steps_per_ep = results_dict['num_steps_per_ep']
-                subt_cumul_successes_per_ep = results_dict['cumul_successes_per_ep']
-                subt_epsilon_per_ep = results_dict['epsilon_per_ep']
-                subt_success_step_per_ep = results_dict['success_step_per_ep']
-                subt_test_steps = results_dict['test_steps']
-                subt_test_episodes = results_dict['test_episodes']
-                subt_test_success_rates = results_dict['test_success_rates']
-                subt_test_mean_returns = results_dict['test_mean_returns']
-                subt_net_updates_per_step = results_dict['net_updates_per_step']
-                subt_trained_model_save_path = results_dict['trained_model_save_path']
-                subt_total_steps = results_dict['total_steps']
-                subt_total_episodes = results_dict['total_episodes']
-                subt_total_training_time_in_hours = results_dict['total_training_time_in_hours']
+                    subt_undisc_return_per_ep = results_dict['undisc_return_per_ep']
+                    subt_num_steps_per_ep = results_dict['num_steps_per_ep']
+                    subt_cumul_successes_per_ep = results_dict['cumul_successes_per_ep']
+                    subt_epsilon_per_ep = results_dict['epsilon_per_ep']
+                    subt_success_step_per_ep = results_dict['success_step_per_ep']
+                    subt_test_steps = results_dict['test_steps']
+                    subt_test_episodes = results_dict['test_episodes']
+                    subt_test_success_rates = results_dict['test_success_rates']
+                    subt_test_mean_returns = results_dict['test_mean_returns']
+                    subt_net_updates_per_step = results_dict['net_updates_per_step']
+                    subt_trained_model_save_path = results_dict['trained_model_save_path']
+                    subt_total_steps = results_dict['total_steps']
+                    subt_total_episodes = results_dict['total_episodes']
+                    subt_total_training_time_in_hours = results_dict['total_training_time_in_hours']
 
-                # update cumulative successes
-                last_cumul_successes_per_step = 0 if st_num == 1 else cl_cumul_successes_per_ep[-1]
-                abs_subt_cumul_successes_per_ep = np.array(subt_cumul_successes_per_ep) + last_cumul_successes_per_step  # subtask counter to cl counter
-                cl_cumul_successes_per_ep = np.concatenate((cl_cumul_successes_per_ep, abs_subt_cumul_successes_per_ep), axis=0)
+                    # update cumulative successes
+                    last_cumul_successes_per_step = 0 if st_num == 1 else cl_cumul_successes_per_ep[-1]
+                    abs_subt_cumul_successes_per_ep = np.array(subt_cumul_successes_per_ep) + last_cumul_successes_per_step  # subtask counter to cl counter
+                    cl_cumul_successes_per_ep = np.concatenate((cl_cumul_successes_per_ep, abs_subt_cumul_successes_per_ep), axis=0)
 
-                # update test steps and test episodes
-                abs_subt_test_steps = np.array(subt_test_steps) + subt_abs_initial_step  # subtask step to cl step
-                cl_test_steps = np.concatenate((cl_test_steps, abs_subt_test_steps), axis=0)
-                abs_subt_test_episodes = np.array(subt_test_episodes) + subt_abs_initial_episode  # subtask episode to cl episode
-                cl_test_episodes = np.concatenate((cl_test_episodes, abs_subt_test_episodes), axis=0)
+                    # update test steps and test episodes
+                    abs_subt_test_steps = np.array(subt_test_steps) + subt_abs_initial_step  # subtask step to cl step
+                    cl_test_steps = np.concatenate((cl_test_steps, abs_subt_test_steps), axis=0)
+                    abs_subt_test_episodes = np.array(subt_test_episodes) + subt_abs_initial_episode  # subtask episode to cl episode
+                    cl_test_episodes = np.concatenate((cl_test_episodes, abs_subt_test_episodes), axis=0)
 
-                # update switching steps and switching episodes
-                last_curriculum_step = subt_total_steps + subt_abs_initial_step
-                self.curriculum_switching_steps.append(last_curriculum_step)
-                last_curriculum_ep = subt_total_episodes + subt_abs_initial_episode
-                self.curriculum_switching_episodes.append(last_curriculum_ep)
+                    # update switching steps and switching episodes
+                    last_curriculum_step = subt_total_steps + subt_abs_initial_step
+                    self.curriculum_switching_steps.append(last_curriculum_step)
+                    last_curriculum_ep = subt_total_episodes + subt_abs_initial_episode
+                    self.curriculum_switching_episodes.append(last_curriculum_ep)
 
-                # list concatenations
-                self.curriculum_num_steps_per_ep += subt_num_steps_per_ep
-                self.curriculum_undisc_return_per_ep += subt_undisc_return_per_ep
-                self.curriculum_epsilon_per_ep += subt_epsilon_per_ep
-                self.curriculum_success_step_per_ep += subt_success_step_per_ep
-                self.curriculum_net_updates_per_step += subt_net_updates_per_step
-                self.curriculum_test_success_rates += subt_test_success_rates
-                self.curriculum_test_mean_returns += subt_test_mean_returns
+                    # list concatenations
+                    self.curriculum_num_steps_per_ep += subt_num_steps_per_ep
+                    self.curriculum_undisc_return_per_ep += subt_undisc_return_per_ep
+                    self.curriculum_epsilon_per_ep += subt_epsilon_per_ep
+                    self.curriculum_success_step_per_ep += subt_success_step_per_ep
+                    self.curriculum_net_updates_per_step += subt_net_updates_per_step
+                    self.curriculum_test_success_rates += subt_test_success_rates
+                    self.curriculum_test_mean_returns += subt_test_mean_returns
 
-                # update curriculum time
-                self.curriculum_total_time += subt_total_training_time_in_hours  # in hours
-                subt_stats_dict = dict(number_of_steps_executed_curriculum_so_far=last_curriculum_step,
-                                       number_of_episodes_executed_curriculum_so_far=last_curriculum_ep,
-                                       training_time_in_hours_curriculum_so_far=self.curriculum_total_time,
-                                       )
-                stats_file_path = os.path.join(self.curriculum_dir_path, "stats_sub_task_" + str(st_num) + ".txt")
-                with open(stats_file_path, "w") as stats_file:
-                    json.dump(subt_stats_dict, stats_file, sort_keys=True, indent=4)
+                    # update curriculum time
+                    self.curriculum_total_time += subt_total_training_time_in_hours  # in hours
+                    subt_stats_dict = dict(number_of_steps_executed_curriculum_so_far=last_curriculum_step,
+                                           number_of_episodes_executed_curriculum_so_far=last_curriculum_ep,
+                                           training_time_in_hours_curriculum_so_far=self.curriculum_total_time,
+                                           )
+                    stats_file_path = os.path.join(self.curriculum_dir_path, "stats_sub_task_" + str(st_num) + ".txt")
+                    with open(stats_file_path, "w") as stats_file:
+                        json.dump(subt_stats_dict, stats_file, sort_keys=True, indent=4)
 
-                subt_abs_initial_step = last_curriculum_step
-                subt_abs_initial_episode = last_curriculum_ep
+                    subt_abs_initial_step = last_curriculum_step
+                    subt_abs_initial_episode = last_curriculum_ep
 
         # curriculum ended, serializing curriculum lists
         curriculum_end_stats_dict = dict(total_number_of_steps_executed_curriculum=last_curriculum_step,

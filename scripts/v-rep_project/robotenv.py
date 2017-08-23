@@ -54,7 +54,8 @@ class RobotEnv():
                  velocity=1,
                  nSJoints=6,
                  nAJoints=6,
-                 portNb=19998
+                 portNb=19998,
+                 initial_joint_positions=None
                  ):
         # actions/states/reward/done
         self.task = task  # see tasks 1, 2 above
@@ -88,6 +89,8 @@ class RobotEnv():
         self.showGUI = showGUI
         self.rewards_decay_rate = rewards_decay_rate  # =1/0.3, reward is close to zero for 5 x 0.3 = 1.5 m
         self.rewards_normalizer = rewards_normalizer
+
+        self.initial_joint_positions = initial_joint_positions
 
     # 'with' statement (used to exit the v-rep simulation properly)
     def __enter__(self):
@@ -210,6 +213,11 @@ class RobotEnv():
     def reset(self):
         if vrep.simxGetConnectionId(self.clientID) != -1:
             self.start()
+
+            # initialize joint positions
+            if self.initial_joint_positions is not None:
+                self.setTargetJointPositions(self.initial_joint_positions)
+
             # returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_streaming) #start streaming
             # returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_streaming) #start streaming
 
@@ -355,3 +363,21 @@ class RobotEnv():
             #         print("sent reward3=", self.reward)
             #         break
             return self.state, self.reward, self.goalReached
+
+    def setTargetJointPositions(self, target_joint_positions):
+        # targetPosInitial = np.array([1.0] * 6) * np.pi
+        # targetPosStraight = np.array([0.66, 1.0, 1.25, 1.5, 1.0, 1.0]) * np.pi
+        # targetPosHalfWayCube = np.array([0.66, 1.25, 1.25, 1.5, 1.0, 1.0]) * np.pi
+        # targetPosNearCube = np.array([0.66, 1.5, 1.25, 1.5, 1.0, 1.0]) * np.pi
+        self.enableControlLoop()
+        for i in range(6):
+            vrep.simxSetJointTargetPosition(self.clientID, self.jointHandles[i], target_joint_positions[i], vrep.simx_opmode_blocking)
+        self.disableControlLoop()
+
+    def enableControlLoop(self):
+        for i in range(6):
+            vrep.simxSetObjectIntParameter(self.clientID, self.jointHandles[i], vrep.sim_jointintparam_ctrl_enabled, 1, vrep.simx_opmode_blocking)
+
+    def disableControlLoop(self):
+        for i in range(6):
+            vrep.simxSetObjectIntParameter(self.clientID, self.jointHandles[i], vrep.sim_jointintparam_ctrl_enabled, 0, vrep.simx_opmode_blocking)

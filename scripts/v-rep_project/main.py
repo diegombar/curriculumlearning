@@ -2,6 +2,8 @@ from evaluate_curriculum import Curriculum
 from robotenv import RobotEnv
 
 testing_scripts = False
+curriculum = Curriculum.CURRICULUM_INITIALIZE_FURTHER
+task = RobotEnv.TASK_REACH_CUBE
 max_steps_per_episode = 200
 num_episodes = 2000
 num_hidden_layers = 2
@@ -10,8 +12,8 @@ max_updates_per_env_step = 10
 batch_size = 32
 lrate = 1e-4
 
-curr = Curriculum(curriculum=Curriculum.NO_CURRICULUM_VEL_1,
-                  task=RobotEnv.TASK_REACH_CUBE,
+curr = Curriculum(curriculum=curriculum,
+                  task=task,
                   max_steps_per_episode=max_steps_per_episode,
                   num_episodes=num_episodes,
                   num_hidden_layers=num_hidden_layers,

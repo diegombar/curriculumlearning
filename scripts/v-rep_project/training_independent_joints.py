@@ -206,7 +206,8 @@ class DQLAlgorithm():
                  nAJoints=6,
                  portNb=19998,
                  old_bias=False,
-                 max_updates_per_env_step=10
+                 max_updates_per_env_step=10,
+                 initial_joint_positions=initial_joint_positions
                  ):
 
         self.experiment_dir_path = experiment_dir_path
@@ -237,6 +238,7 @@ class DQLAlgorithm():
         self.portNb = portNb
         self.old_bias = old_bias
         self.max_updates_per_env_step = max_updates_per_env_step
+        self.initial_joint_positions = initial_joint_positions
 
         self.h_params = {}
         self.end_stats_dict = {}
@@ -373,7 +375,8 @@ class DQLAlgorithm():
                       velocity=self.velocity,
                       nSJoints=self.nSJoints,
                       nAJoints=self.nAJoints,
-                      portNb=self.portNb
+                      portNb=self.portNb,
+                      initial_joint_positions=self.initial_joint_positions,
                       ) as env:
             tf.reset_default_graph()
 

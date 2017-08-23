@@ -84,17 +84,22 @@ else:
 
     # some test target positions for the 6 joints, in radians
     targetPos0 = np.zeros(6)
-    targetPosPi = np.array([pi] * 6)
-    targetPosPiO2 = np.array([pi / 2] * 6)
-    targetPos1 = np.array([pi / 2] * 6)
+    targetPosPi = np.array([np.pi] * 6)
+    targetPosPiO2 = np.array([np.pi / 2] * 6)
+    targetPos1 = np.array([np.pi / 2] * 6)
     targetPos2 = np.array([90, 135, 225, 180, 180, 350])
     targetPos2 = degrees2Radians(targetPos2)
     targetPos4 = np.array([180, 135, 225, 180, 180, 350])
     targetPos4 = degrees2Radians(targetPos4)
 
+    targetPosInitial = np.array([1.0] * 6) * np.pi
+    targetPosStraight = np.array([0.66, 1.0, 1.25, 1.5, 1.0, 1.0]) * np.pi
+    targetPosHalfWayCube = np.array([0.66, 1.25, 1.25, 1.5, 1.0, 1.0]) * np.pi
+    targetPosNearCube = np.array([0.66, 1.5, 1.25, 1.5, 1.0, 1.0]) * np.pi
+
     # checkGoal
     goalReached = False
-    minDistance = 0.01 #one cm from goal
+    minDistance = 0.05  # one cm from goal
 
     # Hand
     # def openHand(clientID):
@@ -108,11 +113,19 @@ else:
     #     returnCode = vrep.simxSetJointTargetVelocity(clientID, fingersH2, closingVel, vrep.simx_opmode_oneshot)
 
     # set joints target positions
-    def setJointTargetPositions(clientID, targetPositions):
+    def setJointTargetPositions(targetPositions):
         for i in range(6):
             returnCode = vrep.simxSetJointTargetPosition(clientID, jointHandles[i], targetPositions[i], vrep.simx_opmode_oneshot)
             if returnCode != vrep.simx_return_ok:
                 print("SetJointTargetPosition got error code: %s" % returnCode)
+
+    def enableControlLoop():
+        for i in range(6):
+            vrep.simxSetObjectIntParameter(clientID, jointHandles[i], vrep.sim_jointintparam_ctrl_enabled, 1, vrep.simx_opmode_blocking)
+
+    def disableControlLoop():
+        for i in range(6):
+            vrep.simxSetObjectIntParameter(clientID, jointHandles[i], vrep.sim_jointintparam_ctrl_enabled, 0, vrep.simx_opmode_blocking)
 
     # Start simulation
     returnCode = vrep.simxStartSimulation(clientID, vrep.simx_opmode_blocking)
@@ -125,17 +138,17 @@ else:
         c = readchar.readchar()
         print('char=', c)
         if c == 'a':
-            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], vel, vrep.simx_opmode_blocking)
-            printlog('simxSetJointTargetVelocity', returnCode)
-            # setJointTargetPositions(clientID, targetPos0)
+            # returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], vel, vrep.simx_opmode_blocking)
+            # printlog('simxSetJointTargetVelocity', returnCode)
+            setJointTargetPositions(targetPosInitial)
         elif c == 'd':
-            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], -vel, vrep.simx_opmode_blocking)
-            printlog('simxSetJointTargetVelocity', returnCode)
-            # setJointTargetPositions(clientID, targetPosPiO2)
+            # returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], -vel, vrep.simx_opmode_blocking)
+            # printlog('simxSetJointTargetVelocity', returnCode)
+            setJointTargetPositions(targetPosHalfWayCube)
         elif c == 's':
-            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], 0, vrep.simx_opmode_blocking)
-            printlog('simxSetJointTargetVelocity', returnCode)
-            # setJointTargetPositions(clientID, targetPosPi)
+            # returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], 0, vrep.simx_opmode_blocking)
+            # printlog('simxSetJointTargetVelocity', returnCode)
+            setJointTargetPositions(targetPosStraight)
         elif c == 'w':
             returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[4], vel, vrep.simx_opmode_blocking)
             printlog('simxSetJointTargetVelocity', returnCode)
@@ -146,8 +159,9 @@ else:
             returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[4], 0, vrep.simx_opmode_blocking)
             printlog('simxSetJointTargetVelocity', returnCode)
         elif c == 'f':
-            returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[3], vel, vrep.simx_opmode_blocking)
-            printlog('simxSetJointTargetVelocity', returnCode)
+            # returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[3], vel, vrep.simx_opmode_blocking)
+            # printlog('simxSetJointTargetVelocity', returnCode)
+            setJointTargetPositions(targetPosNearCube)
         elif c == 'h':
             returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[3], -vel, vrep.simx_opmode_blocking)
             printlog('simxSetJointTargetVelocity', returnCode)
@@ -199,6 +213,12 @@ else:
             jointPositions = np.array(floatData[0::2])  # take elements at odd positions (even corresponds to torques)
             jointPositions = jointPositions % (2 * np.pi)  # take values in [0, 2*pi]
             print('jointPositions: ', jointPositions)
+        elif c == 'c':
+            enableControlLoop()
+            print('Joints control loop enabled.')
+        elif c == 'v':
+            disableControlLoop()
+            print('Joints control loop disabled.')
         elif c == 'q':
             break
 
@@ -241,3 +261,4 @@ else:
 os.killpg(os.getpgid(vrepProcess.pid), signal.SIGTERM)
 
 print('Mico Arm Program ended')
+

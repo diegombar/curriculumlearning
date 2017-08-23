@@ -65,11 +65,12 @@ no_curriculum = Curriculum.NO_CURRICULUM_VEL_025
 
 Curriculums = [Curriculum.CURRICULUM_DECREASING_SPEED,
                Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER,
+               Curriculum.CURRICULUM_INITIALIZE_FURTHER
                ]
 
 task = RobotEnv.TASK_REACH_CUBE
 
-testing_scripts = False
+testing_scripts = True
 max_steps_per_episode = 200
 num_episodes = 3000
 num_hidden_layers = 3
