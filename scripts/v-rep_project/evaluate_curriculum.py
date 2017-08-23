@@ -5,12 +5,11 @@ import json
 import numpy as np
 from matplotlib import pyplot as plt
 
+from robotenv import RobotEnv
+
+
 
 class Curriculum():
-    # tasks
-    TASK_REACH_CUBE = 1
-    TASK_PUSH_CUBE_TO_TARGET_POSITION = 2
-
     # curriculums
     NO_CURRICULUM_VEL_025 = 0
     NO_CURRICULUM_VEL_1 = 3
@@ -41,7 +40,7 @@ class Curriculum():
         self.testing_scripts = testing_scripts
         self.max_updates_per_env_step = max_updates_per_env_step
 
-        self.Velocities = [1]
+        self.Velocities = [0.25]
         self.NumOfAJoints = [6]
         if self.curriculum == self.NO_CURRICULUM_VEL_025:
             self.curriculum_name = "no_curriculum_vel_025"
@@ -57,6 +56,7 @@ class Curriculum():
             self.num_episodes = self.num_episodes // len(self.Velocities)
             # success_rate_for_subtask_completion = True
         elif self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER:
+        	self.Velocities = [0.25]
             self.curriculum_name = "cl_increasing_num_of_joints"
             self.NumOfAJoints = range(1, 7)
             self.num_episodes = self.num_episodes // len(self.NumOfAJoints)
@@ -232,21 +232,6 @@ class Curriculum():
         self.curriculum_test_steps = cl_test_steps.tolist()
         self.curriculum_test_episodes = cl_test_episodes.tolist()
 
-        lists_to_serialize_dict = dict(curriculum_undisc_return_per_ep=self.curriculum_undisc_return_per_ep,
-                                       curriculum_num_steps_per_ep=self.curriculum_num_steps_per_ep,
-                                       curriculum_cumul_successes_per_ep=self.curriculum_cumul_successes_per_ep,
-                                       curriculum_epsilon_per_ep=self.curriculum_epsilon_per_ep,
-                                       curriculum_success_step_per_ep=self.curriculum_success_step_per_ep,
-                                       curriculum_test_steps=self.curriculum_test_steps,
-                                       curriculum_test_episodes=self.curriculum_test_episodes,
-                                       curriculum_test_success_rates=self.curriculum_test_success_rates,
-                                       curriculum_test_mean_returns=self.curriculum_test_mean_returns,
-                                       curriculum_net_updates_per_step=self.curriculum_net_updates_per_step,
-                                       curriculum_switching_episodes=self.curriculum_switching_episodes,
-                                       curriculum_switching_steps=self.curriculum_switching_steps,
-                                       )
-        self.serialize_lists(self.serialized_lists_dir_path, lists_to_serialize_dict)
-
         episodes = range(1, len(self.curriculum_undisc_return_per_ep) + 1)
         steps = range(1, len(self.curriculum_net_updates_per_step) + 1)
 
@@ -329,6 +314,21 @@ class Curriculum():
                       'curriculum_net_updates_per_step',
                       self.curriculum_switching_steps,
                       )
+
+        lists_to_serialize_dict = dict(curriculum_undisc_return_per_ep=self.curriculum_undisc_return_per_ep,
+                                       curriculum_num_steps_per_ep=self.curriculum_num_steps_per_ep,
+                                       curriculum_cumul_successes_per_ep=self.curriculum_cumul_successes_per_ep,
+                                       curriculum_epsilon_per_ep=self.curriculum_epsilon_per_ep,
+                                       curriculum_success_step_per_ep=self.curriculum_success_step_per_ep,
+                                       curriculum_test_steps=self.curriculum_test_steps,
+                                       curriculum_test_episodes=self.curriculum_test_episodes,
+                                       curriculum_test_success_rates=self.curriculum_test_success_rates,
+                                       curriculum_test_mean_returns=self.curriculum_test_mean_returns,
+                                       curriculum_net_updates_per_step=self.curriculum_net_updates_per_step,
+                                       curriculum_switching_episodes=self.curriculum_switching_episodes,
+                                       curriculum_switching_steps=self.curriculum_switching_steps,
+                                       )
+        self.serialize_lists(self.serialized_lists_dir_path, lists_to_serialize_dict)
 
         return lists_to_serialize_dict
 

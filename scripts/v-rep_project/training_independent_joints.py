@@ -82,8 +82,7 @@ class DQN():
                 weight_name = "weight" + str(i)
                 bias_name = "bias" + str(i)
                 with tf.name_scope(layer_name) as scope:
-                    self.variable_dict[weight_name] = tf.Variable(tf.truncated_normal([neuronsPerLayer[i], neuronsPerLayer[i + 1]],
-                                                                  mean=0.0, stddev=0.1), name=weight_name)
+                    self.variable_dict[weight_name] = tf.Variable(tf.truncated_normal([neuronsPerLayer[i], neuronsPerLayer[i + 1]], mean=0.0, stddev=0.1), name=weight_name)
                     bias_shape = [1] if old_bias else [neuronsPerLayer[i + 1]]
                     self.variable_dict[bias_name] = tf.Variable(tf.constant(0.1, shape=bias_shape), name=bias_name)
                     self.weight_names.append(weight_name)

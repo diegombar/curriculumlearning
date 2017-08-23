@@ -30,12 +30,10 @@ def printlog(functionName, returnCode):
 
 home_path = os.path.expanduser('~')
 
-# tasks
-TASK_REACH_CUBE = 1
-TASK_PUSH_CUBE_TO_TARGET_POSITION = 2
-
-
 class RobotEnv():
+    # tasks
+    TASK_REACH_CUBE = 1
+    TASK_PUSH_CUBE_TO_TARGET_POSITION = 2
     # portNb = 19998
     vrepPath = os.path.join(home_path, "V-REP_PRO_EDU_V3_4_0_Linux", "vrep.sh")
     # blade "/home/diego/V-REP_PRO_EDU_V3_4_0_Linux/vrep.sh"
@@ -65,7 +63,7 @@ class RobotEnv():
 
         self.observation_space_size = self.nSJoints + 3 + 3  # FOR NOW #8 # 6 joint angles, cube position and end effector position
 
-        if self.task == TASK_PUSH_CUBE_TO_TARGET_POSITION:
+        if self.task == self.TASK_PUSH_CUBE_TO_TARGET_POSITION:
             self.targetPosition = targetPosition  # tuple (x,y) target position relative to robot base
         self.action_space_size = 3 * self.nAJoints  # (+Vel, -Vel, 0) for 6 joints
         self.action_space = range(0, self.action_space_size)
@@ -87,8 +85,8 @@ class RobotEnv():
         # self.goal_reward = 1  # reward given at goal
         self.jointVel = velocity
         self.showGUI = showGUI
-        self.distance_decay_rate = rewards_decay_rate  # =1/0.3, reward is close to zero for 5 x 0.3 = 1.5 m
-        self.reward_normalizer = rewards_normalizer
+        self.rewards_decay_rate = rewards_decay_rate  # =1/0.3, reward is close to zero for 5 x 0.3 = 1.5 m
+        self.rewards_normalizer = rewards_normalizer
 
     # 'with' statement (used to exit the v-rep simulation properly)
     def __enter__(self):
@@ -262,7 +260,7 @@ class RobotEnv():
             returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
 
     def distance2reward(self, distance):
-        return self.reward_normalizer * np.exp(-self.distance_decay_rate * distance)
+        return self.rewards_normalizer * np.exp(-self.rewards_decay_rate * distance)
 
     # update the state
     def updateState(self, centerInZeroRad=False):
@@ -299,10 +297,10 @@ class RobotEnv():
             self.state = np.concatenate((self.state, self.endEffectorRelPos))
             self.state = np.concatenate((self.state, self.goalCubeRelPos))  # (x,y,z), z doesnt change in the plane
 
-            if self.task == TASK_REACH_CUBE:
+            if self.task == self.TASK_REACH_CUBE:
                 returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking)  # dist in metres
                 # vrep.simx_opmode_buffer after streaming start
-            elif self.task == TASK_PUSH_CUBE_TO_TARGET_POSITION:
+            elif self.task == self.TASK_PUSH_CUBE_TO_TARGET_POSITION:
                 target_x, target_y = self.targetPosition
                 self.distanceToGoal = np.sqrt((target_x - self.goalCubeRelPos[0])**2 + (target_y - self.goalCubeRelPos[1])**2)
             else:

@@ -4,6 +4,7 @@ import time
 # import numpy as np
 from matplotlib import pyplot as plt
 from evaluate_curriculum import Curriculum
+from robotenv import RobotEnv
 
 # exp_with_cl_dir_name = 'cl_decreasing_speeds_2017-Aug-10_16-01-01'  # #######TO CHANGE
 # exp_without_cl_dir_name = 'cl_decreasing_speeds_2017-Aug-10_16-01-01'  # #######TO CHANGE
@@ -60,23 +61,22 @@ def savePlot(dir_path,
 
 
 # ###################
-no_curriculum = Curriculum.NO_CURRICULUM_VEL_1
+no_curriculum = Curriculum.NO_CURRICULUM_VEL_025
 
 Curriculums = [Curriculum.CURRICULUM_DECREASING_SPEED,
                Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER,
                ]
 
-task = Curriculum.TASK_REACH_CUBE
+task = RobotEnv.TASK_REACH_CUBE
 
-testing_scripts = True
+testing_scripts = False
 max_steps_per_episode = 200
-num_episodes = 2000
-num_hidden_layers = 3
+num_episodes = 3000
+num_hidden_layers = 2
 num_neurons_per_hidden = 50
 max_updates_per_env_step = 10
-task = Curriculum.TASK_REACH_CUBE,
-batch_size = 32,
-lrate = 1e-4,
+batch_size = 32
+lrate = 1e-4
 # ################
 
 curr = Curriculum(curriculum=no_curriculum,
@@ -119,7 +119,7 @@ for curriculum in Curriculums:
                       num_neurons_per_hidden=num_neurons_per_hidden,
                       batch_size=batch_size,
                       lrate=lrate,
-                      testing_scripts=True,  # ##
+                      testing_scripts=testing_scripts,  # ##
                       max_updates_per_env_step=max_updates_per_env_step,
                       )
     results_dict = curr.run()
