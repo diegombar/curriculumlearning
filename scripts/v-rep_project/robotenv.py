@@ -30,6 +30,7 @@ def printlog(functionName, returnCode):
 
 home_path = os.path.expanduser('~')
 
+
 class RobotEnv():
     # tasks
     TASK_REACH_CUBE = 1

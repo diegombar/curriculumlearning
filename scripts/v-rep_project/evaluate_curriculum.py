@@ -4,9 +4,7 @@ import os
 import json
 import numpy as np
 from matplotlib import pyplot as plt
-
-from robotenv import RobotEnv
-
+# from robotenv import RobotEnv
 
 
 class Curriculum():
@@ -56,7 +54,7 @@ class Curriculum():
             self.num_episodes = self.num_episodes // len(self.Velocities)
             # success_rate_for_subtask_completion = True
         elif self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER:
-        	self.Velocities = [0.25]
+            self.Velocities = [0.25]
             self.curriculum_name = "cl_increasing_num_of_joints"
             self.NumOfAJoints = range(1, 7)
             self.num_episodes = self.num_episodes // len(self.NumOfAJoints)

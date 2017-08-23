@@ -45,8 +45,8 @@ def savePlot(dir_path,
              vertical_xs=None
              ):
     fig = plt.figure()
-    plt.plot(curr_x_values, curr_y_values, 'b--', linewidth=0.5, label='with curriculum')
-    plt.plot(no_curr_x_values, no_curr_y_values, 'k-.', linewidth=0.5, label='no curriculum')
+    plt.plot(curr_x_values, curr_y_values, 'b', linewidth=0.5, label='with curriculum')
+    plt.plot(no_curr_x_values, no_curr_y_values, 'r--', linewidth=0.5, label='no curriculum')
     plt.legend(loc='best')
     plt.xlabel(x_label)
     plt.ylabel(y_label)
@@ -72,7 +72,7 @@ task = RobotEnv.TASK_REACH_CUBE
 testing_scripts = False
 max_steps_per_episode = 200
 num_episodes = 3000
-num_hidden_layers = 2
+num_hidden_layers = 3
 num_neurons_per_hidden = 50
 max_updates_per_env_step = 10
 batch_size = 32
