@@ -361,22 +361,39 @@ class RobotEnv():
             #         break
             return self.state, self.reward, self.goalReached
 
+    # def setTargetJointPositions(self, target_joint_positions):
+    #     # targetPosInitial = np.array([1.0] * 6) * np.pi
+    #     # targetPosStraight = np.array([0.66, 1.0, 1.25, 1.5, 1.0, 1.0]) * np.pi
+    #     # targetPosHalfWayCube = np.array([0.66, 1.25, 1.25, 1.5, 1.0, 1.0]) * np.pi
+    #     # targetPosNearCube = np.array([0.66, 1.5, 1.25, 1.5, 1.0, 1.0]) * np.pi
+    #     self.enableControlLoop()
+    #     for i in range(6):
+    #         vrep.simxSetJointTargetPosition(self.clientID, self.jointHandles[i], target_joint_positions[i], vrep.simx_opmode_blocking)
+    #     # wait to reach the target position
+    #     maxDistance = 0.1
+    #     sqMaxDistance = maxDistance ** 2
+    #     while True:
+    #         sqDistance = np.sum((self.getJointRawAngles() - target_joint_positions) ** 2)
+    #         if sqDistance < sqMaxDistance:
+    #             break
+    #     self.disableControlLoop()
+
     def setTargetJointPositions(self, target_joint_positions):
         # targetPosInitial = np.array([1.0] * 6) * np.pi
         # targetPosStraight = np.array([0.66, 1.0, 1.25, 1.5, 1.0, 1.0]) * np.pi
         # targetPosHalfWayCube = np.array([0.66, 1.25, 1.25, 1.5, 1.0, 1.0]) * np.pi
         # targetPosNearCube = np.array([0.66, 1.5, 1.25, 1.5, 1.0, 1.0]) * np.pi
-        self.enableControlLoop()
+        # enableControlLoop()
         for i in range(6):
+            vrep.simxSetJointPosition(self.clientID, self.jointHandles[i], target_joint_positions[i], vrep.simx_opmode_blocking)
             vrep.simxSetJointTargetPosition(self.clientID, self.jointHandles[i], target_joint_positions[i], vrep.simx_opmode_blocking)
-        # wait to reach the target position
-        maxDistance = 0.1
-        sqMaxDistance = maxDistance ** 2
+        # check joint positions
+        maxDistance = 0.05
         while True:
             sqDistance = np.sum((self.getJointRawAngles() - target_joint_positions) ** 2)
-            if sqDistance < sqMaxDistance:
+            if sqDistance < maxDistance ** 2:
                 break
-        self.disableControlLoop()
+        # disableControlLoop()
 
     def enableControlLoop(self):
         for i in range(6):

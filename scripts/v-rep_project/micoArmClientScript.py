@@ -126,8 +126,24 @@ else:
             sqDistance = np.sum((getJointRawAngles() - targetJointPositions) ** 2)
             if sqDistance < maxDistance ** 2:
                 break
-
         disableControlLoop()
+
+    def setTargetJointPositions2(targetJointPositions):
+        # targetPosInitial = np.array([1.0] * 6) * np.pi
+        # targetPosStraight = np.array([0.66, 1.0, 1.25, 1.5, 1.0, 1.0]) * np.pi
+        # targetPosHalfWayCube = np.array([0.66, 1.25, 1.25, 1.5, 1.0, 1.0]) * np.pi
+        # targetPosNearCube = np.array([0.66, 1.5, 1.25, 1.5, 1.0, 1.0]) * np.pi
+        # enableControlLoop()
+        for i in range(6):
+            vrep.simxSetJointPosition(clientID, jointHandles[i], targetJointPositions[i], vrep.simx_opmode_blocking)
+            vrep.simxSetJointTargetPosition(clientID, jointHandles[i], targetJointPositions[i], vrep.simx_opmode_blocking)
+        # check joint positions
+        maxDistance = 0.05
+        while True:
+            sqDistance = np.sum((getJointRawAngles() - targetJointPositions) ** 2)
+            if sqDistance < maxDistance ** 2:
+                break
+        # disableControlLoop()
 
     def getJointRawAngles():
         returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(clientID, jointsCollectionHandle, 15, vrep.simx_opmode_blocking)  # or simx_opmode_blocking (not recommended)
@@ -142,9 +158,10 @@ else:
         for i in range(6):
             vrep.simxSetObjectIntParameter(clientID, jointHandles[i], vrep.sim_jointintparam_ctrl_enabled, 0, vrep.simx_opmode_blocking)
 
+    setTargetJointPositions2(targetPosNearCube)
     # Start simulation
-    returnCode = vrep.simxStartSimulation(clientID, vrep.simx_opmode_blocking)
-    printlog('simxStartSimulation', returnCode)
+    # returnCode = vrep.simxStartSimulation(clientID, vrep.simx_opmode_blocking)
+    # printlog('simxStartSimulation', returnCode)
 
     # check server state before loop
     while vrep.simxGetConnectionId(clientID) != -1:
@@ -155,15 +172,15 @@ else:
         if c == 'a':
             # returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], vel, vrep.simx_opmode_blocking)
             # printlog('simxSetJointTargetVelocity', returnCode)
-            setTargetJointPositions(targetPosInitial)
+            setTargetJointPositions2(targetPosInitial)
         elif c == 'd':
             # returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], -vel, vrep.simx_opmode_blocking)
             # printlog('simxSetJointTargetVelocity', returnCode)
-            setTargetJointPositions(targetPosHalfWayCube)
+            setTargetJointPositions2(targetPosHalfWayCube)
         elif c == 's':
             # returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[5], 0, vrep.simx_opmode_blocking)
             # printlog('simxSetJointTargetVelocity', returnCode)
-            setTargetJointPositions(targetPosStraight)
+            setTargetJointPositions2(targetPosStraight)
         elif c == 'w':
             returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[4], vel, vrep.simx_opmode_blocking)
             printlog('simxSetJointTargetVelocity', returnCode)
@@ -176,7 +193,7 @@ else:
         elif c == 'f':
             # returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[3], vel, vrep.simx_opmode_blocking)
             # printlog('simxSetJointTargetVelocity', returnCode)
-            setTargetJointPositions(targetPosNearCube)
+            setTargetJointPositions2(targetPosNearCube)
         elif c == 'h':
             returnCode = vrep.simxSetJointTargetVelocity(clientID, jointHandles[3], -vel, vrep.simx_opmode_blocking)
             printlog('simxSetJointTargetVelocity', returnCode)
@@ -276,4 +293,3 @@ else:
 os.killpg(os.getpgid(vrepProcess.pid), signal.SIGTERM)
 
 print('Mico Arm Program ended')
-
