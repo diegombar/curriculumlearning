@@ -154,7 +154,7 @@ class Curriculum():
                                  )
 
         # run curriculum
-        print('[CURRICULUM] Running new curriculum: ' + self.curriculum_name)
+        print('[CURRICULUM] Running new curriculum: ', self.curriculum_name)
         st_num = 0
         for vel in self.Velocities:
             for nAJoints in self.NumOfAJoints:

@@ -274,10 +274,7 @@ class RobotEnv():
     # update the state
     def updateState(self, centerInZeroRad=False):
         if vrep.simxGetConnectionId(self.clientID) != -1:
-            # NOTE: default initial state: 180 degrees (=pi radians) for all angles
-            # update joint angles, normalize to ]0,1]
-            returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_blocking)  # or simx_opmode_blocking (not recommended)
-            jointPositions = np.array(floatData[0::2])  # take elements at odd positions (even correspond to torques)
+            jointPositions = self.getJointRawAngles() #np.array
             jointPositions = jointPositions % (2 * np.pi)  # convert values to [0, 2*pi[
 
             if centerInZeroRad:
@@ -372,6 +369,12 @@ class RobotEnv():
         self.enableControlLoop()
         for i in range(6):
             vrep.simxSetJointTargetPosition(self.clientID, self.jointHandles[i], target_joint_positions[i], vrep.simx_opmode_blocking)
+        # wait to reach the target position
+        maxDistance = 0.1
+        while True:
+            sqDistance = np.sum((self.getJointRawAngles() - target_joint_positions) ** 2)
+            if sqDistance < maxDistance ** 2:
+                break
         self.disableControlLoop()
 
     def enableControlLoop(self):
@@ -381,3 +384,10 @@ class RobotEnv():
     def disableControlLoop(self):
         for i in range(6):
             vrep.simxSetObjectIntParameter(self.clientID, self.jointHandles[i], vrep.sim_jointintparam_ctrl_enabled, 0, vrep.simx_opmode_blocking)
+
+    def getJointRawAngles(self):
+        # NOTE: default initial state: 180 degrees (=pi radians) for all angles
+        # update joint angles, normalize to ]0,1]
+        returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_blocking)  # or simx_opmode_blocking (not recommended)
+        jointPositions = np.array(floatData[0::2])  # take elements at odd positions (even correspond to torques)
+        return jointPositions
