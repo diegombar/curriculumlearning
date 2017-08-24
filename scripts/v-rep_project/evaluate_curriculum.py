@@ -67,7 +67,7 @@ class Curriculum():
             # success_rate_for_subtask_completion = True
         elif self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER:
             self.curriculum_name = "cl_increasing_num_of_joints"
-            self.Initial_positions = [targetPosInitial, targetPosHalfWayCube, targetPosNearCube]
+            self.Initial_positions = [targetPosNearCube, targetPosHalfWayCube, targetPosInitial]
             self.num_episodes = self.num_episodes // len(self.Initial_positions)
             self.Velocities = [0.25]
 

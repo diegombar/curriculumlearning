@@ -63,16 +63,14 @@ def savePlot(dir_path,
 # ###################
 no_curriculum = Curriculum.NO_CURRICULUM_VEL_025
 
-Curriculums = [Curriculum.CURRICULUM_DECREASING_SPEED,
-               Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER,
-               Curriculum.CURRICULUM_INITIALIZE_FURTHER
+Curriculums = [Curriculum.CURRICULUM_INITIALIZE_FURTHER,
                ]
 
 task = RobotEnv.TASK_REACH_CUBE
 
 testing_scripts = True
 max_steps_per_episode = 200
-num_episodes = 3000
+num_episodes = 1000
 num_hidden_layers = 3
 num_neurons_per_hidden = 50
 max_updates_per_env_step = 10
@@ -80,36 +78,36 @@ batch_size = 32
 lrate = 1e-4
 # ################
 
-curr = Curriculum(curriculum=no_curriculum,
-                  task=task,
-                  max_steps_per_episode=max_steps_per_episode,
-                  num_episodes=num_episodes,
-                  num_hidden_layers=num_hidden_layers,
-                  num_neurons_per_hidden=num_neurons_per_hidden,
-                  batch_size=batch_size,
-                  lrate=lrate,
-                  testing_scripts=testing_scripts,  # ##
-                  max_updates_per_env_step=max_updates_per_env_step,
-                  )
-no_curriculum_results_dict = curr.run()
+# curr = Curriculum(curriculum=no_curriculum,
+#                   task=task,
+#                   max_steps_per_episode=max_steps_per_episode,
+#                   num_episodes=num_episodes,
+#                   num_hidden_layers=num_hidden_layers,
+#                   num_neurons_per_hidden=num_neurons_per_hidden,
+#                   batch_size=batch_size,
+#                   lrate=lrate,
+#                   testing_scripts=testing_scripts,  # ##
+#                   max_updates_per_env_step=max_updates_per_env_step,
+#                   )
+# no_curriculum_results_dict = curr.run()
 
-no_curriculum_undisc_return_per_ep = no_curriculum_results_dict['curriculum_undisc_return_per_ep']
-no_curriculum_num_steps_per_ep = no_curriculum_results_dict['curriculum_num_steps_per_ep']
-no_curriculum_cumul_successes_per_ep = no_curriculum_results_dict['curriculum_cumul_successes_per_ep']
-no_curriculum_epsilon_per_ep = no_curriculum_results_dict['curriculum_epsilon_per_ep']
-no_curriculum_success_step_per_ep = no_curriculum_results_dict['curriculum_success_step_per_ep']
-no_curriculum_test_steps = no_curriculum_results_dict['curriculum_test_steps']
-no_curriculum_test_episodes = no_curriculum_results_dict['curriculum_test_episodes']
-no_curriculum_test_success_rates = no_curriculum_results_dict['curriculum_test_success_rates']
-no_curriculum_test_mean_returns = no_curriculum_results_dict['curriculum_test_mean_returns']
-no_curriculum_net_updates_per_step = no_curriculum_results_dict['curriculum_net_updates_per_step']
-# no_curriculum_switching_episodes = no_curriculum_results_dict['curriculum_switching_episodes']
-# no_curriculum_switching_steps = no_curriculum_results_dict['curriculum_switching_steps']
+# no_curriculum_undisc_return_per_ep = no_curriculum_results_dict['curriculum_undisc_return_per_ep']
+# no_curriculum_num_steps_per_ep = no_curriculum_results_dict['curriculum_num_steps_per_ep']
+# no_curriculum_cumul_successes_per_ep = no_curriculum_results_dict['curriculum_cumul_successes_per_ep']
+# no_curriculum_epsilon_per_ep = no_curriculum_results_dict['curriculum_epsilon_per_ep']
+# no_curriculum_success_step_per_ep = no_curriculum_results_dict['curriculum_success_step_per_ep']
+# no_curriculum_test_steps = no_curriculum_results_dict['curriculum_test_steps']
+# no_curriculum_test_episodes = no_curriculum_results_dict['curriculum_test_episodes']
+# no_curriculum_test_success_rates = no_curriculum_results_dict['curriculum_test_success_rates']
+# no_curriculum_test_mean_returns = no_curriculum_results_dict['curriculum_test_mean_returns']
+# no_curriculum_net_updates_per_step = no_curriculum_results_dict['curriculum_net_updates_per_step']
+# # no_curriculum_switching_episodes = no_curriculum_results_dict['curriculum_switching_episodes']
+# # no_curriculum_switching_steps = no_curriculum_results_dict['curriculum_switching_steps']
 
-no_curriculum_episodes = range(1, len(no_curriculum_undisc_return_per_ep) + 1)
-no_curriculum_steps = range(1, len(no_curriculum_net_updates_per_step) + 1)
+# no_curriculum_episodes = range(1, len(no_curriculum_undisc_return_per_ep) + 1)
+# no_curriculum_steps = range(1, len(no_curriculum_net_updates_per_step) + 1)
 
-no_curriculum_name = curr.curriculum_name
+# no_curriculum_name = curr.curriculum_name
 
 for curriculum in Curriculums:
     curr = Curriculum(curriculum=curriculum,
@@ -142,6 +140,39 @@ for curriculum in Curriculums:
     curriculum_steps = range(1, len(curriculum_net_updates_per_step) + 1)
 
     curriculum_name = curr.curriculum_name
+
+    #  ###
+    curr = Curriculum(curriculum=no_curriculum,
+                      task=task,
+                      max_steps_per_episode=max_steps_per_episode,
+                      num_episodes=num_episodes,
+                      num_hidden_layers=num_hidden_layers,
+                      num_neurons_per_hidden=num_neurons_per_hidden,
+                      batch_size=batch_size,
+                      lrate=lrate,
+                      testing_scripts=testing_scripts,  # ##
+                      max_updates_per_env_step=max_updates_per_env_step,
+                      )
+    no_curriculum_results_dict = curr.run()
+
+    no_curriculum_undisc_return_per_ep = no_curriculum_results_dict['curriculum_undisc_return_per_ep']
+    no_curriculum_num_steps_per_ep = no_curriculum_results_dict['curriculum_num_steps_per_ep']
+    no_curriculum_cumul_successes_per_ep = no_curriculum_results_dict['curriculum_cumul_successes_per_ep']
+    no_curriculum_epsilon_per_ep = no_curriculum_results_dict['curriculum_epsilon_per_ep']
+    no_curriculum_success_step_per_ep = no_curriculum_results_dict['curriculum_success_step_per_ep']
+    no_curriculum_test_steps = no_curriculum_results_dict['curriculum_test_steps']
+    no_curriculum_test_episodes = no_curriculum_results_dict['curriculum_test_episodes']
+    no_curriculum_test_success_rates = no_curriculum_results_dict['curriculum_test_success_rates']
+    no_curriculum_test_mean_returns = no_curriculum_results_dict['curriculum_test_mean_returns']
+    no_curriculum_net_updates_per_step = no_curriculum_results_dict['curriculum_net_updates_per_step']
+    # no_curriculum_switching_episodes = no_curriculum_results_dict['curriculum_switching_episodes']
+    # no_curriculum_switching_steps = no_curriculum_results_dict['curriculum_switching_steps']
+
+    no_curriculum_episodes = range(1, len(no_curriculum_undisc_return_per_ep) + 1)
+    no_curriculum_steps = range(1, len(no_curriculum_net_updates_per_step) + 1)
+
+    no_curriculum_name = curr.curriculum_name
+    # ###
 
     timestr = time.strftime("%Y-%b-%d_%H-%M-%S", time.gmtime())  # or time.localtime()
     current_comparison_name = timestr + '_comparison_' + no_curriculum_name + '_' + curriculum_name
