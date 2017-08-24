@@ -112,28 +112,18 @@ else:
     #     returnCode = vrep.simxSetJointTargetVelocity(clientID, fingersH1, closingVel, vrep.simx_opmode_oneshot)
     #     returnCode = vrep.simxSetJointTargetVelocity(clientID, fingersH2, closingVel, vrep.simx_opmode_oneshot)
 
-    # set joints target positions
-    def setJointTargetPositions(targetPositions):
-        enableControlLoop()
-        for i in range(6):
-            returnCode = vrep.simxSetJointTargetPosition(clientID, jointHandles[i], targetPositions[i], vrep.simx_opmode_blocking)
-            if returnCode != vrep.simx_return_ok:
-                print("SetJointTargetPosition got error code: %s" % returnCode)
-        # wait for it to reach?
-        disableControlLoop()
-
-    def setTargetJointPositions(targetPositions):
+    def setTargetJointPositions(targetJointPositions):
         # targetPosInitial = np.array([1.0] * 6) * np.pi
         # targetPosStraight = np.array([0.66, 1.0, 1.25, 1.5, 1.0, 1.0]) * np.pi
         # targetPosHalfWayCube = np.array([0.66, 1.25, 1.25, 1.5, 1.0, 1.0]) * np.pi
         # targetPosNearCube = np.array([0.66, 1.5, 1.25, 1.5, 1.0, 1.0]) * np.pi
         enableControlLoop()
         for i in range(6):
-            vrep.simxSetJointTargetPosition(clientID, jointHandles[i], targetPositions[i], vrep.simx_opmode_blocking)
+            vrep.simxSetJointTargetPosition(clientID, jointHandles[i], targetJointPositions[i], vrep.simx_opmode_blocking)
         # wait to reach the target position
         maxDistance = 0.05
         while True:
-            sqDistance = np.sum((getJointRawAngles() - targetPositions) ** 2)
+            sqDistance = np.sum((getJointRawAngles() - targetJointPositions) ** 2)
             if sqDistance < maxDistance ** 2:
                 break
 

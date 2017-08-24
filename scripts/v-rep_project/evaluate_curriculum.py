@@ -26,6 +26,8 @@ class Curriculum():
                  lrate,
                  testing_scripts,
                  max_updates_per_env_step,
+                 replay_start_size=50000,
+                 replay_memory_size=500000,
                  ):
         self.curriculum = curriculum
         self.task = task
@@ -37,6 +39,8 @@ class Curriculum():
         self.lrate = lrate
         self.testing_scripts = testing_scripts
         self.max_updates_per_env_step = max_updates_per_env_step
+        self.replay_start_size = replay_start_size
+        self.replay_memory_size = replay_memory_size
 
         targetPosInitial = np.array([1.0] * 6) * np.pi
         # targetPosStraight = np.array([0.66, 1.0, 1.25, 1.5, 1.0, 1.0]) * np.pi
@@ -57,17 +61,20 @@ class Curriculum():
         elif self.curriculum == self.CURRICULUM_DECREASING_SPEED:
             self.curriculum_name = "cl_decreasing_speeds"
             self.Velocities = [1, 0.5, 0.25]
+            self.replay_start_size = self.replay_start_size // len(self.Velocities)
             self.num_episodes = self.num_episodes // len(self.Velocities)
             # success_rate_for_subtask_completion = True
         elif self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER:
             self.curriculum_name = "cl_increasing_num_of_joints"
             self.NumOfAJoints = range(1, 7)
+            self.replay_start_size = self.replay_start_size // len(self.NumOfAJoints)
             self.num_episodes = self.num_episodes // len(self.NumOfAJoints)
             self.Velocities = [0.25]
             # success_rate_for_subtask_completion = True
         elif self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER:
-            self.curriculum_name = "cl_increasing_num_of_joints"
+            self.curriculum_name = "cl_initializing_further"
             self.Initial_positions = [targetPosNearCube, targetPosHalfWayCube, targetPosInitial]
+            self.replay_start_size = self.replay_start_size // len(self.Initial_positions)
             self.num_episodes = self.num_episodes // len(self.Initial_positions)
             self.Velocities = [0.25]
 
@@ -92,7 +99,7 @@ class Curriculum():
         # vel025 = os.path.join(
         #    current_dir_path,"trained_models_and_results",
         #    "decreasing_speed","model_and_results_2017-Jul-27_02-49-34_vel=025","trained_model","final_model-400")
-        targetRelativePos = (0.0, 0.5)  # relative x, y in metres
+        targetJointPosition = (0.15, 0.35)  # relative x, y in metres (robot base is at (0,0)), DOABLE
         model_saving_period = self.num_episodes // 5
         subt_abs_initial_step = 0
         subt_abs_initial_episode = 0
@@ -122,8 +129,8 @@ class Curriculum():
                              model_saving_period=model_saving_period,
                              lrate=self.lrate,  # 1e-3 seems to work fine
                              batch_size=self.batch_size,
-                             replay_start_size=50000,
-                             replay_memory_size=500000,
+                             replay_start_size=self.replay_start_size,
+                             replay_memory_size=self.replay_memory_size,
                              showGUI=True,
                              # velocity=0.25,  # 1.0 seems to work fine
                              model_to_load_file_path=subt_trained_model_save_path,
@@ -131,7 +138,7 @@ class Curriculum():
                              skip_training=False,
                              notes=self.curriculum_name,
                              previous_norm=False,
-                             targetRelativePos=targetRelativePos,
+                             targetJointPosition=targetJointPosition,
                              policy_test_period=100,  # episodes
                              policy_test_episodes=20,  # episodes
                              # success_rate_for_subtask_completion=success_rate_for_subtask_completion,  # change with/without CL

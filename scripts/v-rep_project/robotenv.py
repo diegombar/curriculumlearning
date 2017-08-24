@@ -47,7 +47,7 @@ class RobotEnv():
     # initialize the environment
     def __init__(self,
                  task,
-                 targetPosition,
+                 targetCubePosition,
                  rewards_normalizer,
                  rewards_decay_rate,
                  showGUI=True,
@@ -66,7 +66,7 @@ class RobotEnv():
         self.observation_space_size = self.nSJoints + 3 + 3  # FOR NOW #8 # 6 joint angles, cube position and end effector position
 
         if self.task == self.TASK_PUSH_CUBE_TO_TARGET_POSITION:
-            self.targetPosition = targetPosition  # tuple (x,y) target position relative to robot base
+            self.targetCubePosition = targetCubePosition  # tuple (x,y) target position relative to robot base
         self.action_space_size = 3 * self.nAJoints  # (+Vel, -Vel, 0) for 6 joints
         self.action_space = range(0, self.action_space_size)
         self.observation_space = np.zeros((1, self.observation_space_size))
@@ -83,7 +83,7 @@ class RobotEnv():
         self.fingersH2 = 0
         self.jointsCollectionHandle = 0
         self.distToGoalHandle = 0
-        self.distanceToGoal = None
+        self.distanceToCube = None
         # self.goal_reward = 1  # reward given at goal
         self.jointVel = velocity
         self.showGUI = showGUI
@@ -274,7 +274,7 @@ class RobotEnv():
     # update the state
     def updateState(self, centerInZeroRad=False):
         if vrep.simxGetConnectionId(self.clientID) != -1:
-            jointPositions = self.getJointRawAngles() #np.array
+            jointPositions = self.getJointRawAngles()  # np.array
             jointPositions = jointPositions % (2 * np.pi)  # convert values to [0, 2*pi[
 
             if centerInZeroRad:
@@ -299,25 +299,25 @@ class RobotEnv():
 
             returnCode, self.goalCubeRelPos = vrep.simxGetObjectPosition(self.clientID, self.goalCubeH, self.robotBaseH, vrep.simx_opmode_blocking)
             returnCode, self.endEffectorRelPos = vrep.simxGetObjectPosition(self.clientID, self.endEffectorH, self.robotBaseH, vrep.simx_opmode_blocking)
-
+            print('[ROBOTENV] goal position rel. to robot base: ', self.goalCubeRelPos)
             self.state = np.concatenate((self.state, self.endEffectorRelPos))
             self.state = np.concatenate((self.state, self.goalCubeRelPos))  # (x,y,z), z doesnt change in the plane
 
+            returnCode, self.distanceToCube = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking)  # dist in metres
+
             if self.task == self.TASK_REACH_CUBE:
-                returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking)  # dist in metres
-                # vrep.simx_opmode_buffer after streaming start
+                self.reward = self.distance2reward(self.distanceToCube)
+                if self.distanceToCube < self.minDistance:
+                    self.goalReached = True
+                    print('[ROBOTENV] #### SUCCESS ####')
             elif self.task == self.TASK_PUSH_CUBE_TO_TARGET_POSITION:
-                target_x, target_y = self.targetPosition
-                self.distanceToGoal = np.sqrt((target_x - self.goalCubeRelPos[0])**2 + (target_y - self.goalCubeRelPos[1])**2)
+                self.distanceCubeTargetPos = np.sqrt((self.targetCubePosition[0] - self.goalCubeRelPos[0])**2 + (self.targetCubePosition[1] - self.goalCubeRelPos[1])**2)
+                self.reward = self.distance2reward(self.distanceToCube) + self.distance2reward(self.distanceCubeTargetPos)
+                if self.distanceCubeTargetPos < self.minDistance:
+                    self.goalReached = True
+                    print('[ROBOTENV] #### SUCCESS ####')
             else:
-                print('[ROBOTENV] ERROR: Invalid Task')
-
-            # print('\n Distance to Target Position: ', self.distanceToGoal)
-            self.reward = self.distance2reward(self.distanceToGoal)
-
-            if self.distanceToGoal < self.minDistance:
-                self.goalReached = True
-                print('[ROBOTENV] #### SUCCESS ####')
+                print('[ROBOTENV]################# ERROR: Invalid Task ######################')
 
     # execute action ACTIONS SHOULD BE THE RIGHT SIZE
     def step(self, actions):
@@ -371,9 +371,10 @@ class RobotEnv():
             vrep.simxSetJointTargetPosition(self.clientID, self.jointHandles[i], target_joint_positions[i], vrep.simx_opmode_blocking)
         # wait to reach the target position
         maxDistance = 0.1
+        sqMaxDistance = maxDistance ** 2
         while True:
             sqDistance = np.sum((self.getJointRawAngles() - target_joint_positions) ** 2)
-            if sqDistance < maxDistance ** 2:
+            if sqDistance < sqMaxDistance:
                 break
         self.disableControlLoop()
 

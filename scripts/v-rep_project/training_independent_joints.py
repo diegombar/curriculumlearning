@@ -198,7 +198,7 @@ class DQLAlgorithm():
                  skip_training=False,
                  notes=None,
                  previous_norm=False,
-                 targetRelativePos=0,
+                 targetJointPosition=None,
                  policy_test_period=100,  # episodes
                  policy_test_episodes=20,  # episodes
                  # success_rate_for_subtask_completion=False,
@@ -229,7 +229,8 @@ class DQLAlgorithm():
         self.skip_training = skip_training
         self.notes = notes
         self.previous_norm = previous_norm
-        self.targetRelativePos = targetRelativePos
+        if targetJointPosition is not None:
+            self.targetJointPosition = targetJointPosition
         self.policy_test_period = policy_test_period
         self.policy_test_episodes = policy_test_episodes
         # self.success_rate_for_subtask_completion = success_rate_for_subtask_completion
@@ -368,7 +369,7 @@ class DQLAlgorithm():
 
     def run(self):
         with RobotEnv(task=self.task,
-                      targetPosition=self.targetRelativePos,
+                      targetJointPosition=self.targetJointPosition,
                       rewards_normalizer=self.rewards_normalizer,
                       rewards_decay_rate=self.rewards_decay_rate,
                       showGUI=self.showGUI,
