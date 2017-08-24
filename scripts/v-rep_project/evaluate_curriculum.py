@@ -99,7 +99,7 @@ class Curriculum():
         # vel025 = os.path.join(
         #    current_dir_path,"trained_models_and_results",
         #    "decreasing_speed","model_and_results_2017-Jul-27_02-49-34_vel=025","trained_model","final_model-400")
-        targetJointPosition = (0.15, 0.35)  # relative x, y in metres (robot base is at (0,0)), DOABLE
+        self.targetCubePosition = (0.15, 0.35)  # relative x, y in metres (robot base is at (0,0)), DOABLE
         model_saving_period = self.num_episodes // 5
         subt_abs_initial_step = 0
         subt_abs_initial_episode = 0
@@ -138,7 +138,7 @@ class Curriculum():
                              skip_training=False,
                              notes=self.curriculum_name,
                              previous_norm=False,
-                             targetJointPosition=targetJointPosition,
+                             targetCubePosition=self.targetCubePosition,
                              policy_test_period=100,  # episodes
                              policy_test_episodes=20,  # episodes
                              # success_rate_for_subtask_completion=success_rate_for_subtask_completion,  # change with/without CL

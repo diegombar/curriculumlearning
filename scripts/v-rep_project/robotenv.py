@@ -90,7 +90,8 @@ class RobotEnv():
         self.rewards_decay_rate = rewards_decay_rate  # =1/0.3, reward is close to zero for 5 x 0.3 = 1.5 m
         self.rewards_normalizer = rewards_normalizer
 
-        self.initial_joint_positions = initial_joint_positions
+        if initial_joint_positions is not None:
+            self.initial_joint_positions = initial_joint_positions
 
     # 'with' statement (used to exit the v-rep simulation properly)
     def __enter__(self):
@@ -299,7 +300,6 @@ class RobotEnv():
 
             returnCode, self.goalCubeRelPos = vrep.simxGetObjectPosition(self.clientID, self.goalCubeH, self.robotBaseH, vrep.simx_opmode_blocking)
             returnCode, self.endEffectorRelPos = vrep.simxGetObjectPosition(self.clientID, self.endEffectorH, self.robotBaseH, vrep.simx_opmode_blocking)
-            print('[ROBOTENV] goal position rel. to robot base: ', self.goalCubeRelPos)
             self.state = np.concatenate((self.state, self.endEffectorRelPos))
             self.state = np.concatenate((self.state, self.goalCubeRelPos))  # (x,y,z), z doesnt change in the plane
 

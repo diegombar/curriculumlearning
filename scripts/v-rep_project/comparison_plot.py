@@ -72,14 +72,15 @@ task = RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
 
 testing_scripts = False
 max_steps_per_episode = 200
-num_episodes = 1000
+num_episodes = 2000
 num_hidden_layers = 3
 num_neurons_per_hidden = 50
 max_updates_per_env_step = 10
 batch_size = 32
 lrate = 1e-4
-replay_start_size = 50000
-replay_memory_size = 500000
+replay_start_size = (num_episodes // 20) * max_steps_per_episode
+replay_memory_size = 10 * replay_start_size
+
 # ################
 
 curr_args = dict(curriculum=no_curriculum,
@@ -116,7 +117,7 @@ no_curriculum_net_updates_per_step = no_curriculum_results_dict['curriculum_net_
 no_curriculum_episodes = range(1, len(no_curriculum_undisc_return_per_ep) + 1)
 no_curriculum_steps = range(1, len(no_curriculum_net_updates_per_step) + 1)
 
-no_curriculum_name = no_curr.curriculum_name
+no_curriculum_folder_name = no_curr.folder_name
 
 # ####
 
@@ -141,7 +142,7 @@ for curriculum in Curriculums:
     curriculum_episodes = range(1, len(curriculum_undisc_return_per_ep) + 1)
     curriculum_steps = range(1, len(curriculum_net_updates_per_step) + 1)
 
-    curriculum_name = curr.curriculum_name
+    curriculum_folder_name = curr.folder_name
 
     #  ###
     # curr_args.update(dict(curriculum=no_curriculum))
@@ -168,7 +169,7 @@ for curriculum in Curriculums:
     # ###
 
     timestr = time.strftime("%Y-%b-%d_%H-%M-%S", time.gmtime())  # or time.localtime()
-    current_comparison_name = timestr + '_comparison_' + no_curriculum_name + '_' + curriculum_name
+    current_comparison_name = timestr + '_comparison_' + no_curriculum_folder_name + '_' + curriculum_folder_name
     current_comparison_dir_path = os.path.join(comparison_plots_dir_path, current_comparison_name)
     os.makedirs(current_comparison_dir_path, exist_ok=True)
 
