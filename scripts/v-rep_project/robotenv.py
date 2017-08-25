@@ -99,7 +99,7 @@ class RobotEnv():
     def __enter__(self):
         print('[ROBOTENV] Starting environment...')
 
-        sync_mode_str = 'TRUE' if sync_mode else 'FALSE'
+        sync_mode_str = 'TRUE' if self.sync_mode else 'FALSE'
         portNb_str = str(self.portNb)
 
         # launch v-rep
@@ -245,7 +245,8 @@ class RobotEnv():
         try_count = 0
         while True:
             try_count += 1
-            vrep.simxGetIntegerSignal(self.ClientID, 'dummy', 1, vrep.simx_opmode_blocking)
+            vrep.simxSetIntegerSignal(self.clientID, 'dummySignal', 1, vrep.simx_opmode_blocking)
+
             # returnCode, ping = vrep.simxGetPingTime(self.clientID)
             returnCode, serverState = vrep.simxGetInMessageInfo(self.clientID, vrep.simx_headeroffset_server_state)
             # printlog('\nsimxGetInMessageInfo', returnCode)
