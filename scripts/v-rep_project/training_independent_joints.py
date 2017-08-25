@@ -209,7 +209,7 @@ class DQLAlgorithm():
                  max_updates_per_env_step=10,
                  initial_joint_positions=None,
                  disable_saving=False,
-                 sync_mode=False,
+                 sync_mode=True,
                  ):
         self.h_params = {}
         self.end_stats_dict = {}
@@ -243,7 +243,8 @@ class DQLAlgorithm():
         self.portNb = portNb
         self.old_bias = old_bias
         self.max_updates_per_env_step = max_updates_per_env_step
-        self.initial_joint_positions = initial_joint_positions
+        if initial_joint_positions is not None:
+            self.initial_joint_positions = initial_joint_positions
         self.disable_saving = disable_saving
         self.h_params["portNb"] = self.portNb
         self.h_params["disable_saving"] = self.disable_saving
@@ -525,7 +526,7 @@ class DQLAlgorithm():
                         self.current_step = 0
                         while self.current_step < self.max_steps_per_episode and not self.coord.should_stop():
                             self.current_step += 1
-                            print("\n[MAIN] step:", self.current_step)
+                            # print("\n[MAIN] step:", self.current_step)
                             # pick action from the DQN, epsilon greedy
                             chosenActions, allJQValues = sess.run(
                                 [self.collector_mainDQN.allJointsBestActions, self.collector_mainDQN.allJointsQvalues3D],
@@ -594,8 +595,8 @@ class DQLAlgorithm():
                                 task_completed = True
                                 episode_success_step = self.current_step
                             #     break
-
                         # end of episode
+                        env.stop_if_needed()
                         if self.testing_policy:
                             cumul_test_return += episode_undisc_return
                             if task_completed:
@@ -647,7 +648,6 @@ class DQLAlgorithm():
                                 self.is_saving = True
                                 saving_start_time = time.time()
                                 if self.current_episode % self.model_saving_period == 0:
-                                    env.stop_if_needed()
                                     print("[MAIN] Saving model and plots...")
                                     checkpoint_save_path = saver.save(sess, self.checkpoint_model_file_path, global_step=self.current_episode)
                                     # print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(self.current_episode, j, undisc_return, done))
@@ -656,7 +656,6 @@ class DQLAlgorithm():
                                     self.savePlots(checkpoints_plots_dir_path)
 
                                 if self.current_episode % self.q_plots_period == 0:
-                                    env.stop_if_needed()
                                     # plot Q plots
                                     print("[MAIN] Saving Q-plots...")
                                     Qplots_dir_path = os.path.join(self.current_model_dir_path, "q_plots_ep_" + str(self.current_episode))

@@ -29,7 +29,7 @@ class Curriculum():
                  replay_start_size=50000,
                  replay_memory_size=500000,
                  disable_saving=False,
-                 sync_mode=False,
+                 sync_mode=True,
                  ):
         self.curriculum = curriculum
         self.task = task

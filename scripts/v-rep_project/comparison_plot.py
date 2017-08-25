@@ -70,7 +70,7 @@ Curriculums = [Curriculum.CURRICULUM_INITIALIZE_FURTHER,
 
 task = RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
 
-testing_scripts = False
+testing_scripts = True
 max_steps_per_episode = 200
 num_episodes = 1000
 num_hidden_layers = 3
