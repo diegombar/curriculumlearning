@@ -209,6 +209,7 @@ class DQLAlgorithm():
                  max_updates_per_env_step=10,
                  initial_joint_positions=None,
                  disable_saving=False,
+                 sync_mode=False,
                  ):
         self.h_params = {}
         self.end_stats_dict = {}
@@ -246,6 +247,7 @@ class DQLAlgorithm():
         self.disable_saving = disable_saving
         self.h_params["portNb"] = self.portNb
         self.h_params["disable_saving"] = self.disable_saving
+        self.sync_mode = sync_mode
 
         # hyper params to save to txt file
         self.h_params["experiment_dir_path"] = self.experiment_dir_path
@@ -381,6 +383,7 @@ class DQLAlgorithm():
                       nAJoints=self.nAJoints,
                       portNb=self.portNb,
                       initial_joint_positions=self.initial_joint_positions,
+                      sync_mode=self.sync_mode,
                       ) as env:
             tf.reset_default_graph()
 

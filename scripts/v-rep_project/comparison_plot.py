@@ -81,6 +81,7 @@ lrate = 1e-4
 replay_start_size = (num_episodes // 20) * max_steps_per_episode
 replay_memory_size = 10 * replay_start_size
 disable_saving = True
+sync_mode = True
 
 # ################
 
@@ -97,6 +98,7 @@ curr_args = dict(curriculum=no_curriculum,
                  replay_start_size=replay_start_size,
                  replay_memory_size=replay_memory_size,
                  disable_saving=disable_saving,
+                 sync_mode=sync_mode,
                  )
 
 curr_args.update(dict(curriculum=no_curriculum))
