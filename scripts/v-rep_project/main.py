@@ -29,7 +29,7 @@ curr_args = dict(curriculum=curriculum,
                  replay_start_size=replay_start_size,
                  replay_memory_size=replay_memory_size,
                  disable_saving=disable_saving,
-                 sync_mode=sync_mode
+                 sync_mode=sync_mode,
                  )
 
 curr = Curriculum(**curr_args)

@@ -457,7 +457,7 @@ class DQLAlgorithm():
 
                 if not self.skip_training:
                     trainer_thread = threading.Thread(name='trainer', target=self.trainer, args=(sess,))
-                    print("[MAIN] Trainer thread created.")
+                    # print("[MAIN] Trainer thread created.")
                     trainer_thread.start()
                 with self.coord.stop_on_exception():
                     self.copyLearnerMainToTarget(sess)  # Set the target network to be equal to the primary network.
@@ -525,7 +525,7 @@ class DQLAlgorithm():
                         self.current_step = 0
                         while self.current_step < self.max_steps_per_episode and not self.coord.should_stop():
                             self.current_step += 1
-                            # print("\n[MAIN] step:", self.current_step)
+                            print("\n[MAIN] step:", self.current_step)
                             # pick action from the DQN, epsilon greedy
                             chosenActions, allJQValues = sess.run(
                                 [self.collector_mainDQN.allJointsBestActions, self.collector_mainDQN.allJointsQvalues3D],
@@ -683,75 +683,75 @@ class DQLAlgorithm():
                                 epsilon_backup = self.epsilon
                                 cumul_test_return = 0
 
-                    # end of training, save results
-                    collector_end_time = time.time()
-                    waiting_for_trainer_to_end_time = 0
-                    if not self.skip_training:
-                        self.coord.request_stop()
-                        self.coord.join(threads=[trainer_thread])
-                        waiting_for_trainer_to_end_time = 3
-                        time.sleep(waiting_for_trainer_to_end_time)
-                    # training ended, save results
-                    end_time = time.time()
-                    print("[MAIN] Training ended. Saving model...")
-                    trained_model_save_path = saver.save(sess, self.trained_model_file_path, global_step=self.num_episodes)  # save the trained model
-                    print("[MAIN] Trained model saved in file: %s" % trained_model_save_path)
-            # save total time and steps to txt file
-            total_training_time_in_secs = end_time - start_time - waiting_for_trainer_to_end_time  # in seconds
-            total_training_time_in_hours = total_training_time_in_secs / 3600
-            print('[MAIN] Total training time (in hours):', total_training_time_in_hours)
-            self.total_episodes = self.current_episode
-            collecting_time = collector_end_time - collector_start_time - total_saving_time
-            collector_freq = self.total_steps / collecting_time
+                # end of training, save results
+                collector_end_time = time.time()
+                waiting_for_trainer_to_end_time = 0
+                if not self.skip_training:
+                    self.coord.request_stop()
+                    self.coord.join(threads=[trainer_thread])
+                    # waiting_for_trainer_to_end_time = 3
+                    time.sleep(waiting_for_trainer_to_end_time)
+                # training ended, save results
+                end_time = time.time()
+                print("[MAIN] Training ended. Saving model...")
+                trained_model_save_path = saver.save(sess, self.trained_model_file_path, global_step=self.num_episodes)  # save the trained model
+                print("[MAIN] Trained model saved in file: %s" % trained_model_save_path)
+        # save total time and steps to txt file
+        total_training_time_in_secs = end_time - start_time - waiting_for_trainer_to_end_time  # in seconds
+        total_training_time_in_hours = total_training_time_in_secs / 3600
+        print('[MAIN] Total training time (in hours):', total_training_time_in_hours)
+        self.total_episodes = self.current_episode
+        collecting_time = collector_end_time - collector_start_time - total_saving_time
+        collector_freq = self.total_steps / collecting_time
 
-            collector_end_stats_dict = dict(COLLECTOR_total_number_of_steps_executed=self.total_steps,
-                                            COLLECTOR_total_number_of_episodes_executed=self.total_episodes,
-                                            COLLECTOR_experience_collecting_time_in_sec=collecting_time,
-                                            COLLECTOR_env_steps_per_sec=collector_freq,
-                                            COLLECTOR_total_saving_time_in_sec=total_saving_time,
-                                            total_training_time_in_sec=total_training_time_in_secs,
+        collector_end_stats_dict = dict(COLLECTOR_total_number_of_steps_executed=self.total_steps,
+                                        COLLECTOR_total_number_of_episodes_executed=self.total_episodes,
+                                        COLLECTOR_experience_collecting_time_in_sec=collecting_time,
+                                        COLLECTOR_env_steps_per_sec=collector_freq,
+                                        COLLECTOR_total_saving_time_in_sec=total_saving_time,
+                                        total_training_time_in_sec=total_training_time_in_secs,
+                                        total_training_time_in_hours=total_training_time_in_hours,
+                                        )
+        self.end_stats_dict.update(collector_end_stats_dict)
+
+        if not self.skip_training:
+            training_time = self.training_loop_end_time - self.training_loop_start_time - total_saving_time
+            trainer_waiting_time = self.training_loop_start_time - self.trainer_start_time
+            trainer_freq = self.total_network_updates / training_time
+            network_updates_per_env_step = trainer_freq / collector_freq
+            trainer_end_stats_dict = dict(TRAINER_total_network_updates=self.total_network_updates,
+                                          TRAINER_waiting_time_in_sec=trainer_waiting_time,
+                                          TRAINER_training_time_after_min_dataset_in_sec=training_time,
+                                          TRAINER_network_updates_per_sec=trainer_freq,
+                                          network_updates_per_env_step=network_updates_per_env_step,
+                                          )
+            self.end_stats_dict.update(trainer_end_stats_dict)
+
+        stats_file_path = os.path.join(self.current_model_dir_path, "end_stats.txt")
+        self.save2txt(stats_file_path, self.end_stats_dict)
+
+        # save lists of results to json for later plots
+        lists_to_serialize_dict = dict(undisc_return_per_ep=self.undisc_return_per_ep,
+                                       num_steps_per_ep=self.num_steps_per_ep,
+                                       cumul_successes_per_ep=self.cumul_successes_per_ep,
+                                       epsilon_per_ep=self.epsilon_per_ep,
+                                       success_step_per_ep=self.success_step_per_ep,
+                                       test_steps=self.test_steps,
+                                       test_episodes=self.test_episodes,
+                                       test_success_rates=self.test_success_rates,
+                                       test_mean_returns=self.test_mean_returns,
+                                       net_updates_per_step=self.net_updates_per_step,
+                                       )
+
+        self.serialize_lists(self.serialized_lists_dir_path, lists_to_serialize_dict)
+        self.savePlots(self.trained_model_plots_dir_path)
+        self.saveTestPlots(self.trained_model_plots_dir_path)
+
+        lists_to_serialize_dict.update(dict(trained_model_save_path=trained_model_save_path,
+                                            total_steps=self.total_steps,  # for visualization and curriculum learning
+                                            total_episodes=self.total_episodes,
                                             total_training_time_in_hours=total_training_time_in_hours,
-                                            )
-            self.end_stats_dict.update(collector_end_stats_dict)
-
-            if not self.skip_training:
-                training_time = self.training_loop_end_time - self.training_loop_start_time - total_saving_time
-                trainer_waiting_time = self.training_loop_start_time - self.trainer_start_time
-                trainer_freq = self.total_network_updates / training_time
-                network_updates_per_env_step = trainer_freq / collector_freq
-                trainer_end_stats_dict = dict(TRAINER_total_network_updates=self.total_network_updates,
-                                              TRAINER_waiting_time_in_sec=trainer_waiting_time,
-                                              TRAINER_training_time_after_min_dataset_in_sec=training_time,
-                                              TRAINER_network_updates_per_sec=trainer_freq,
-                                              network_updates_per_env_step=network_updates_per_env_step,
-                                              )
-                self.end_stats_dict.update(trainer_end_stats_dict)
-
-            stats_file_path = os.path.join(self.current_model_dir_path, "end_stats.txt")
-            self.save2txt(stats_file_path, self.end_stats_dict)
-
-            # save lists of results to json for later plots
-            lists_to_serialize_dict = dict(undisc_return_per_ep=self.undisc_return_per_ep,
-                                           num_steps_per_ep=self.num_steps_per_ep,
-                                           cumul_successes_per_ep=self.cumul_successes_per_ep,
-                                           epsilon_per_ep=self.epsilon_per_ep,
-                                           success_step_per_ep=self.success_step_per_ep,
-                                           test_steps=self.test_steps,
-                                           test_episodes=self.test_episodes,
-                                           test_success_rates=self.test_success_rates,
-                                           test_mean_returns=self.test_mean_returns,
-                                           net_updates_per_step=self.net_updates_per_step,
-                                           )
-
-            self.serialize_lists(self.serialized_lists_dir_path, lists_to_serialize_dict)
-            self.savePlots(self.trained_model_plots_dir_path)
-            self.saveTestPlots(self.trained_model_plots_dir_path)
-
-            lists_to_serialize_dict.update(dict(trained_model_save_path=trained_model_save_path,
-                                                total_steps=self.total_steps,  # for visualization and curriculum learning
-                                                total_episodes=self.total_episodes,
-                                                total_training_time_in_hours=total_training_time_in_hours,
-                                                ))
+                                            ))
         return lists_to_serialize_dict
 
     def trainer(self, sess):

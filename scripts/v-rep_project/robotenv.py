@@ -147,8 +147,10 @@ class RobotEnv():
             # Start simulation
             # vrep.simxSetIntegerSignal(self.clientID, 'dummy', 1, vrep.simx_opmode_blocking)
             # time.sleep(5)  #to center window for recordings
-            returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
-            printlog('simxStartSimulation', returnCode)
+
+            self.startSimulation()
+            # returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
+            # printlog('simxStartSimulation', returnCode)
 
             # get handles and start streaming distance to goal
             for i in range(0, self.nSJoints):
@@ -219,10 +221,9 @@ class RobotEnv():
     def reset(self):
         if vrep.simxGetConnectionId(self.clientID) != -1:
             self.stop_if_needed()
-            # initialize joint positions
             if self.initial_joint_positions is not None:
                 self.setTargetJointPositions(self.initial_joint_positions)
-            self.startSimulation()
+            self.startSimulation(check_stop=False)
             # returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_streaming) #start streaming
             # returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_streaming) #start streaming
 
@@ -266,14 +267,13 @@ class RobotEnv():
                     if returnCode != vrep.simx_return_ok:
                         print("[ROBOTENV] simxStopSimulation failed, error code:", returnCode)
 
-    def startSimulation(self):
+    def startSimulation(self, check_stop=True):
         # make sure simulation is stopped, stop if needed
-        self.stop_if_needed()
-        print("[ROBOTENV] Starting simulation...")
-        vrep.simxSynchronous(clientID, self.sync_mode)
+        if check_stop:
+            self.stop_if_needed()
+        returnCode = vrep.simxSynchronous(self.clientID, self.sync_mode)
         returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
         while returnCode != vrep.simx_return_ok:
-            print("[ROBOTENV] simxStartSimulation failed, error code:", returnCode)
             returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
 
     def distance2reward(self, distance):

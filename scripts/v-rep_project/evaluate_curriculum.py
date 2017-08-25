@@ -150,7 +150,7 @@ class Curriculum():
                              # nAJoints=6,
                              old_bias=False,
                              max_updates_per_env_step=self.max_updates_per_env_step,
-                             disable_saving=self.disable_saving
+                             disable_saving=self.disable_saving,
                              sync_mode=self.sync_mode,
                              )
 
