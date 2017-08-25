@@ -207,9 +207,11 @@ class DQLAlgorithm():
                  portNb=19998,
                  old_bias=False,
                  max_updates_per_env_step=10,
-                 initial_joint_positions=None
+                 initial_joint_positions=None,
+                 disable_saving=False,
                  ):
-
+        self.h_params = {}
+        self.end_stats_dict = {}
         self.experiment_dir_path = experiment_dir_path
         self.num_hidden_layers = num_hidden_layers
         self.num_neurons_per_hidden = num_neurons_per_hidden
@@ -231,6 +233,7 @@ class DQLAlgorithm():
         self.previous_norm = previous_norm
         if targetCubePosition is not None:
             self.targetCubePosition = targetCubePosition
+            self.h_params["targetCubePosition"] = self.targetCubePosition
         self.policy_test_period = policy_test_period
         self.policy_test_episodes = policy_test_episodes
         # self.success_rate_for_subtask_completion = success_rate_for_subtask_completion
@@ -240,9 +243,9 @@ class DQLAlgorithm():
         self.old_bias = old_bias
         self.max_updates_per_env_step = max_updates_per_env_step
         self.initial_joint_positions = initial_joint_positions
-
-        self.h_params = {}
-        self.end_stats_dict = {}
+        self.disable_saving = disable_saving
+        self.h_params["portNb"] = self.portNb
+        self.h_params["disable_saving"] = self.disable_saving
 
         # hyper params to save to txt file
         self.h_params["experiment_dir_path"] = self.experiment_dir_path
@@ -590,7 +593,6 @@ class DQLAlgorithm():
                             #     break
 
                         # end of episode
-
                         if self.testing_policy:
                             cumul_test_return += episode_undisc_return
                             if task_completed:
@@ -638,33 +640,34 @@ class DQLAlgorithm():
                             self.average_maxQ_per_ep = np.concatenate((self.average_maxQ_per_ep, averageMaxQ), axis=1)
 
                             # save the model and log training
-                            self.is_saving = True
-                            saving_start_time = time.time()
-                            if self.current_episode % self.model_saving_period == 0:
-                                env.stop_if_needed()
-                                print("[MAIN] Saving model and plots...")
-                                checkpoint_save_path = saver.save(sess, self.checkpoint_model_file_path, global_step=self.current_episode)
-                                # print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(self.current_episode, j, undisc_return, done))
-                                checkpoints_plots_dir_path = os.path.join(self.current_model_dir_path, "checkpoint_results_ep_" + str(self.current_episode))
-                                os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
-                                self.savePlots(checkpoints_plots_dir_path)
+                            if not self.disable_saving:
+                                self.is_saving = True
+                                saving_start_time = time.time()
+                                if self.current_episode % self.model_saving_period == 0:
+                                    env.stop_if_needed()
+                                    print("[MAIN] Saving model and plots...")
+                                    checkpoint_save_path = saver.save(sess, self.checkpoint_model_file_path, global_step=self.current_episode)
+                                    # print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(self.current_episode, j, undisc_return, done))
+                                    checkpoints_plots_dir_path = os.path.join(self.current_model_dir_path, "checkpoint_results_ep_" + str(self.current_episode))
+                                    os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
+                                    self.savePlots(checkpoints_plots_dir_path)
 
-                            if self.current_episode % self.q_plots_period == 0:
-                                env.stop_if_needed()
-                                # plot Q plots
-                                print("[MAIN] Saving Q-plots...")
-                                Qplots_dir_path = os.path.join(self.current_model_dir_path, "q_plots_ep_" + str(self.current_episode))
-                                os.makedirs(Qplots_dir_path, exist_ok=True)
-                                # self.lastStatesArray = self.statesArray[:, -self.q_plots_num_of_points:-1]
-                                # self.lastMaxQvaluesArray = self.maxQvaluesArray[:, -self.q_plots_num_of_points:-1]
-                                self.saveQvaluesPlot(Qplots_dir_path, self.statesArray, self.maxQvaluesArray)
-                                self.statesArray = np.array([]).reshape(self.stateSize, 0)  # reset q values logs
-                                self.maxQvaluesArray = np.array([]).reshape(self.nAJoints, 0)
+                                if self.current_episode % self.q_plots_period == 0:
+                                    env.stop_if_needed()
+                                    # plot Q plots
+                                    print("[MAIN] Saving Q-plots...")
+                                    Qplots_dir_path = os.path.join(self.current_model_dir_path, "q_plots_ep_" + str(self.current_episode))
+                                    os.makedirs(Qplots_dir_path, exist_ok=True)
+                                    # self.lastStatesArray = self.statesArray[:, -self.q_plots_num_of_points:-1]
+                                    # self.lastMaxQvaluesArray = self.maxQvaluesArray[:, -self.q_plots_num_of_points:-1]
+                                    self.saveQvaluesPlot(Qplots_dir_path, self.statesArray, self.maxQvaluesArray)
+                                    self.statesArray = np.array([]).reshape(self.stateSize, 0)  # reset q values logs
+                                    self.maxQvaluesArray = np.array([]).reshape(self.nAJoints, 0)
 
-                            self.is_saving = False
-                            saving_end_time = time.time()
-                            ep_saving_time = saving_end_time - saving_start_time
-                            total_saving_time += ep_saving_time
+                                self.is_saving = False
+                                saving_end_time = time.time()
+                                ep_saving_time = saving_end_time - saving_start_time
+                                total_saving_time += ep_saving_time
 
                             if ((self.current_episode % self.policy_test_period == 0) or (self.current_episode == self.num_episodes)) and not (self.skip_training or self.testing_policy):
                                 # pause training and test current policy for some episodes
@@ -690,7 +693,6 @@ class DQLAlgorithm():
                     print("[MAIN] Training ended. Saving model...")
                     trained_model_save_path = saver.save(sess, self.trained_model_file_path, global_step=self.num_episodes)  # save the trained model
                     print("[MAIN] Trained model saved in file: %s" % trained_model_save_path)
-
             # save total time and steps to txt file
             total_training_time_in_secs = end_time - start_time - waiting_for_trainer_to_end_time  # in seconds
             total_training_time_in_hours = total_training_time_in_secs / 3600
@@ -750,10 +752,10 @@ class DQLAlgorithm():
         return lists_to_serialize_dict
 
     def trainer(self, sess):
+        print("[TRAINER] Trainer thread started.")
         with self.coord.stop_on_exception():
             self.net_updates_per_step = []
             self.trainer_start_time = time.time()
-
             while True:
                 if self.total_steps > 0:
                     last_step = self.total_steps

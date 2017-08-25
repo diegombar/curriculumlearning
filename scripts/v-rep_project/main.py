@@ -13,6 +13,7 @@ batch_size = 32
 lrate = 1e-4
 replay_start_size = (num_episodes // 20) * max_steps_per_episode
 replay_memory_size = 10 * replay_start_size
+disable_saving = True
 
 curr_args = dict(curriculum=curriculum,
                  task=task,
@@ -26,6 +27,7 @@ curr_args = dict(curriculum=curriculum,
                  max_updates_per_env_step=max_updates_per_env_step,
                  replay_start_size=replay_start_size,
                  replay_memory_size=replay_memory_size,
+                 disable_saving=disable_saving,
                  )
 
 curr = Curriculum(**curr_args)

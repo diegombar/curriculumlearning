@@ -28,6 +28,7 @@ class Curriculum():
                  max_updates_per_env_step,
                  replay_start_size=50000,
                  replay_memory_size=500000,
+                 disable_saving=False,
                  ):
         self.curriculum = curriculum
         self.task = task
@@ -41,6 +42,7 @@ class Curriculum():
         self.max_updates_per_env_step = max_updates_per_env_step
         self.replay_start_size = replay_start_size
         self.replay_memory_size = replay_memory_size
+        self.disable_saving = True if (disable_saving and testing_scripts) else False
 
         targetPosInitial = np.array([1.0] * 6) * np.pi
         # targetPosStraight = np.array([0.66, 1.0, 1.25, 1.5, 1.0, 1.0]) * np.pi
@@ -146,6 +148,7 @@ class Curriculum():
                              # nAJoints=6,
                              old_bias=False,
                              max_updates_per_env_step=self.max_updates_per_env_step,
+                             disable_saving=self.disable_saving
                              )
 
         if self.testing_scripts:

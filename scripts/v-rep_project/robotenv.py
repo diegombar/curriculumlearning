@@ -213,12 +213,11 @@ class RobotEnv():
     # reset the state for each new episode
     def reset(self):
         if vrep.simxGetConnectionId(self.clientID) != -1:
-            self.start()
-
+            self.stop_if_needed()
             # initialize joint positions
             if self.initial_joint_positions is not None:
                 self.setTargetJointPositions(self.initial_joint_positions)
-
+            self.start()
             # returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_streaming) #start streaming
             # returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_streaming) #start streaming
 
