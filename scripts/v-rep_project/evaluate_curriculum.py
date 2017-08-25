@@ -30,6 +30,7 @@ class Curriculum():
                  replay_memory_size=500000,
                  disable_saving=False,
                  sync_mode=True,
+                 portNb=19999,
                  ):
         self.curriculum = curriculum
         self.task = task
@@ -45,6 +46,7 @@ class Curriculum():
         self.replay_memory_size = replay_memory_size
         self.disable_saving = True if (disable_saving and testing_scripts) else False
         self.sync_mode = sync_mode
+        self.portNb = portNb
 
         targetPosInitial = np.array([1.0] * 6) * np.pi
         # targetPosStraight = np.array([0.66, 1.0, 1.25, 1.5, 1.0, 1.0]) * np.pi
@@ -148,6 +150,7 @@ class Curriculum():
                              # success_rate_for_subtask_completion=success_rate_for_subtask_completion,  # change with/without CL
                              nSJoints=6,
                              # nAJoints=6,
+                             portNb=self.portNb,
                              old_bias=False,
                              max_updates_per_env_step=self.max_updates_per_env_step,
                              disable_saving=self.disable_saving,

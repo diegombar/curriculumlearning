@@ -204,7 +204,7 @@ class DQLAlgorithm():
                  # success_rate_for_subtask_completion=False,
                  nSJoints=6,
                  nAJoints=6,
-                 portNb=19998,
+                 portNb=19999,
                  old_bias=False,
                  max_updates_per_env_step=10,
                  initial_joint_positions=None,

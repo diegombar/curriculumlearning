@@ -54,7 +54,7 @@ class RobotEnv():
                  velocity=1,
                  nSJoints=6,
                  nAJoints=6,
-                 portNb=19998,
+                 portNb=19999,
                  initial_joint_positions=None,
                  sync_mode=True,
                  ):

@@ -1,7 +1,7 @@
 from evaluate_curriculum import Curriculum
 from robotenv import RobotEnv
 
-testing_scripts = True
+testing_scripts = False
 curriculum = Curriculum.CURRICULUM_INITIALIZE_FURTHER
 task = RobotEnv.TASK_REACH_CUBE
 max_steps_per_episode = 200
@@ -14,7 +14,8 @@ lrate = 1e-4
 replay_start_size = (num_episodes // 20) * max_steps_per_episode
 replay_memory_size = 10 * replay_start_size
 disable_saving = True
-sync_mode = True
+sync_mode = False
+portNb = 19999
 
 curr_args = dict(curriculum=curriculum,
                  task=task,
@@ -30,6 +31,7 @@ curr_args = dict(curriculum=curriculum,
                  replay_memory_size=replay_memory_size,
                  disable_saving=disable_saving,
                  sync_mode=sync_mode,
+                 portNb=portNb,
                  )
 
 curr = Curriculum(**curr_args)

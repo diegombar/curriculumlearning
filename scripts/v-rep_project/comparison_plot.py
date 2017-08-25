@@ -64,8 +64,8 @@ def savePlot(dir_path,
 no_curriculum = Curriculum.NO_CURRICULUM_VEL_025
 
 Curriculums = [Curriculum.CURRICULUM_INITIALIZE_FURTHER,
-               Curriculum.CURRICULUM_DECREASING_SPEED,
-               Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER
+               # Curriculum.CURRICULUM_DECREASING_SPEED,
+               # Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER
                ]
 
 task = RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
@@ -82,6 +82,7 @@ replay_start_size = (num_episodes // 20) * max_steps_per_episode
 replay_memory_size = 10 * replay_start_size
 disable_saving = True
 sync_mode = True
+portNb = 19999
 
 # ################
 
@@ -99,6 +100,7 @@ curr_args = dict(curriculum=no_curriculum,
                  replay_memory_size=replay_memory_size,
                  disable_saving=disable_saving,
                  sync_mode=sync_mode,
+                 portNb=portNb,
                  )
 
 curr_args.update(dict(curriculum=no_curriculum))
