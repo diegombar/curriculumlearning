@@ -55,7 +55,8 @@ class RobotEnv():
                  nSJoints=6,
                  nAJoints=6,
                  portNb=19998,
-                 initial_joint_positions=None
+                 initial_joint_positions=None,
+                 sync_mode=False,
                  ):
         # actions/states/reward/done
         self.task = task  # see tasks 1, 2 above
@@ -89,6 +90,7 @@ class RobotEnv():
         self.showGUI = showGUI
         self.rewards_decay_rate = rewards_decay_rate  # =1/0.3, reward is close to zero for 5 x 0.3 = 1.5 m
         self.rewards_normalizer = rewards_normalizer
+        self.sync_mode = sync_mode
 
         if initial_joint_positions is not None:
             self.initial_joint_positions = initial_joint_positions
@@ -97,8 +99,11 @@ class RobotEnv():
     def __enter__(self):
         print('[ROBOTENV] Starting environment...')
 
+        sync_mode_str = 'TRUE' if sync_mode else 'FALSE'
+        portNb_str = str(self.portNb)
+
         # launch v-rep
-        vrep_cmd = [self.vrepPath, '-gREMOTEAPISERVERSERVICE_' + str(self.portNb) + '_FALSE_FALSE']
+        vrep_cmd = [self.vrepPath, '-gREMOTEAPISERVERSERVICE_' + portNb_str + '_FALSE_' + sync_mode_str]
         if not self.showGUI:
             vrep_cmd.append('-h')  # headless mode
         vrep_cmd.append(self.scenePath)
@@ -213,7 +218,7 @@ class RobotEnv():
     # reset the state for each new episode
     def reset(self):
         if vrep.simxGetConnectionId(self.clientID) != -1:
-            self.start()
+            self.startSimulation()
 
             # initialize joint positions
             if self.initial_joint_positions is not None:
@@ -240,7 +245,8 @@ class RobotEnv():
         try_count = 0
         while True:
             try_count += 1
-            returnCode, ping = vrep.simxGetPingTime(self.clientID)
+            vrep.simxGetIntegerSignal(self.ClientID, 'dummy', 1, vrep.simx_opmode_blocking)
+            # returnCode, ping = vrep.simxGetPingTime(self.clientID)
             returnCode, serverState = vrep.simxGetInMessageInfo(self.clientID, vrep.simx_headeroffset_server_state)
             # printlog('\nsimxGetInMessageInfo', returnCode)
             # print('\nServer state: ', serverState)
@@ -260,10 +266,11 @@ class RobotEnv():
                     if returnCode != vrep.simx_return_ok:
                         print("[ROBOTENV] simxStopSimulation failed, error code:", returnCode)
 
-    def start(self):
+    def startSimulation(self):
         # make sure simulation is stopped, stop if needed
         self.stop_if_needed()
         print("[ROBOTENV] Starting simulation...")
+        vrep.simxSynchronous(clientID, self.sync_mode)
         returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
         while returnCode != vrep.simx_return_ok:
             print("[ROBOTENV] simxStartSimulation failed, error code:", returnCode)
@@ -317,7 +324,7 @@ class RobotEnv():
                     self.goalReached = True
                     print('[ROBOTENV] #### SUCCESS ####')
             else:
-                print('[ROBOTENV]################# ERROR: Invalid Task ######################')
+                raise RuntimeError('[ROBOTENV] Invalid Task')
 
     # execute action ACTIONS SHOULD BE THE RIGHT SIZE
     def step(self, actions):
@@ -349,6 +356,12 @@ class RobotEnv():
             #         returnCode = vrep.simxSetJointTargetPosition(self.clientID, jointHandles[i], targetPositions[i], vrep.simx_opmode_blocking)
             #         if returnCode != vrep.simx_return_ok:
             #             print("SetJointTargetPosition got error code: %s" % returnCode)
+
+            #simulation step
+            vrep.simxSynchronousTrigger(self.clientID)
+
+            vrep.simxGetPingTime(self.clientID)
+
             self.updateState()
             # check the state is valid
             # while True:
