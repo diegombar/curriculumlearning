@@ -48,8 +48,8 @@ class RobotEnv():
     def __init__(self,
                  task,
                  targetCubePosition,
-                 rewards_normalizer,
-                 rewards_decay_rate,
+                 rewards_normalizer=0.1,
+                 rewards_decay_rate=5,
                  showGUI=True,
                  velocity=1,
                  nSJoints=6,
@@ -57,17 +57,27 @@ class RobotEnv():
                  portNb=19999,
                  initial_joint_positions=None,
                  sync_mode=True,
+                 shaping_rewards=True,
+                 ignore_cube_z=True,
                  ):
         # actions/states/reward/done
         self.task = task  # see tasks 1, 2 above
         self.nSJoints = nSJoints  # num of joints to include in state vector (starts at base)
         self.nAJoints = nAJoints  # num of actionable joints (starts at base)
         self.portNb = portNb
+        self.shaping_rewards = shaping_rewards
+        self.ignore_cube_z = ignore_cube_z
 
         self.observation_space_size = self.nSJoints + 3 + 3  # FOR NOW #8 # 6 joint angles, cube position and end effector position
 
         if self.task == self.TASK_PUSH_CUBE_TO_TARGET_POSITION:
-            self.targetCubePosition = targetCubePosition  # tuple (x,y) target position relative to robot base
+            if targetCubePosition is None:
+                self.targetCubePosition = (0.15, 0.35)
+            else:
+                self.targetCubePosition = targetCubePosition  # tuple (x,y) target position relative to robot base
+        else:
+            self.targetCubePosition = None
+
         self.action_space_size = 3 * self.nAJoints  # (+Vel, -Vel, 0) for 6 joints
         self.action_space = range(0, self.action_space_size)
         self.observation_space = np.zeros((1, self.observation_space_size))
@@ -91,9 +101,7 @@ class RobotEnv():
         self.rewards_decay_rate = rewards_decay_rate  # =1/0.3, reward is close to zero for 5 x 0.3 = 1.5 m
         self.rewards_normalizer = rewards_normalizer
         self.sync_mode = sync_mode
-
-        if initial_joint_positions is not None:
-            self.initial_joint_positions = initial_joint_positions
+        self.initial_joint_positions = initial_joint_positions
 
     # 'with' statement (used to exit the v-rep simulation properly)
     def __enter__(self):
@@ -148,7 +156,7 @@ class RobotEnv():
             # # vrep.simxSetIntegerSignal(self.clientID, 'dummy', 1, vrep.simx_opmode_blocking)
             # # time.sleep(5)  #to center window for recordings
             # if self.initial_joint_positions is not None:
-            #     self.setTargetJointPositions(self.initial_joint_positions)
+            #     self.initializeJointPositions(self.initial_joint_positions)
             # self.startSimulation()
             # # returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
             # # printlog('simxStartSimulation', returnCode)
@@ -160,6 +168,7 @@ class RobotEnv():
             returnCode, self.fingersH1 = vrep.simxGetObjectHandle(self.clientID, 'MicoHand_fingers12_motor1', vrep.simx_opmode_blocking)
             returnCode, self.fingersH2 = vrep.simxGetObjectHandle(self.clientID, 'MicoHand_fingers12_motor2', vrep.simx_opmode_blocking)
             returnCode, self.goalCubeH = vrep.simxGetObjectHandle(self.clientID, 'GoalCube', vrep.simx_opmode_blocking)
+            returnCode, self.targetCubePositionH = vrep.simxGetObjectHandle(self.clientID, 'GoalPosition', vrep.simx_opmode_blocking)
             returnCode, self.robotBaseH = vrep.simxGetObjectHandle(self.clientID, 'Mico_link1_visible', vrep.simx_opmode_blocking)
             returnCode, self.jointsCollectionHandle = vrep.simxGetCollectionHandle(self.clientID, "sixJoints#", vrep.simx_opmode_blocking)
             returnCode, self.distToGoalHandle = vrep.simxGetDistanceHandle(self.clientID, "distanceToGoal#", vrep.simx_opmode_blocking)
@@ -171,7 +180,15 @@ class RobotEnv():
 
             # Start simulation
             if self.initial_joint_positions is not None:
-                self.setTargetJointPositions(self.initial_joint_positions)
+                self.initializeJointPositions()
+
+            if self.targetCubePosition is None:
+                # hide goal position plane
+                visibility_layer_param_ID = 10
+                invisible_layer = 10
+                vrep.simxSetObjectIntParameter(self.clientID, self.targetCubePositionH, visibility_layer_param_ID, invisible_layer, vrep.simx_opmode_blocking)
+            else:
+                self.initializeGoalPosition()
 
             self.reset()
 
@@ -235,7 +252,7 @@ class RobotEnv():
             # activate to change position at each env.reset()
             # self.stop_if_needed()
             # if self.initial_joint_positions is not None:
-            #     self.setTargetJointPositions(self.initial_joint_positions)
+            #     self.initializeJointPositions(self.initial_joint_positions)
             self.startSimulation()
 
             # get new measurements
@@ -284,8 +301,16 @@ class RobotEnv():
         # while returnCode != vrep.simx_return_ok:
         #     returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
 
-    def distance2reward(self, distance):
-        return self.rewards_normalizer * np.exp(-self.rewards_decay_rate * distance)
+    def distance2reward(self, distance, decay_rate):
+        if self.shaping_rewards:
+            reward = self.rewards_normalizer * np.exp(-decay_rate * distance)
+        else:
+            #sparse rewards
+            if distance < self.minDistance:
+                reward = self.rewards_normalizer
+            else:
+                reward = 0.0
+        return reward
 
     # update the state
     def updateState(self, centerInZeroRad=False):
@@ -295,7 +320,7 @@ class RobotEnv():
 
             if centerInZeroRad:
                 newJPositions = [angle if angle <= np.pi else angle - 2 * np.pi for angle in jointPositions]  # convert values to ]-pi, +pi]
-                newJPositions = np.array(newJPositions) + np.pi # convert values to ]0, +2*pi]
+                newJPositions = np.array(newJPositions) + np.pi  # convert values to ]0, +2*pi]
             else:
                 # center in pi
                 newJPositions = np.array(jointPositions)
@@ -309,19 +334,21 @@ class RobotEnv():
 
             returnCode, self.goalCubeRelPos = vrep.simxGetObjectPosition(self.clientID, self.goalCubeH, self.robotBaseH, vrep.simx_opmode_blocking)
             returnCode, self.endEffectorRelPos = vrep.simxGetObjectPosition(self.clientID, self.endEffectorH, self.robotBaseH, vrep.simx_opmode_blocking)
+            if self.ignore_cube_z:
+                self.goalCubeRelPos = (self.goalCubeRelPos[0], self.goalCubeRelPos[1])
             self.state = np.concatenate((self.state, self.endEffectorRelPos))
             self.state = np.concatenate((self.state, self.goalCubeRelPos))  # (x,y,z), z doesnt change in the plane
 
             returnCode, self.distanceToCube = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_blocking)  # dist in metres
 
             if self.task == self.TASK_REACH_CUBE:
-                self.reward = self.distance2reward(self.distanceToCube)
+                self.reward = self.distance2reward(self.distanceToCube, self.rewards_decay_rate)
                 if self.distanceToCube < self.minDistance:
                     self.goalReached = True
-                    print('[ROBOTENV] #### SUCCESS ####')
+                    print('[ROBOTENV] #### GOAL STATE ####')
             elif self.task == self.TASK_PUSH_CUBE_TO_TARGET_POSITION:
                 self.distanceCubeTargetPos = np.sqrt((self.targetCubePosition[0] - self.goalCubeRelPos[0])**2 + (self.targetCubePosition[1] - self.goalCubeRelPos[1])**2)
-                self.reward = self.distance2reward(self.distanceToCube) + self.distance2reward(self.distanceCubeTargetPos)
+                self.reward = self.distance2reward(self.distanceToCube, self.rewards_decay_rate) + self.distance2reward(self.distanceCubeTargetPos, 3 * self.rewards_decay_rate)
                 if self.distanceCubeTargetPos < self.minDistance:
                     self.goalReached = True
                     print('[ROBOTENV] #### SUCCESS ####')
@@ -359,7 +386,7 @@ class RobotEnv():
             #         break
             return self.state, self.reward, self.goalReached
 
-    # def setTargetJointPositions(self, target_joint_positions):
+    # def initializeJointPositions(self, target_joint_positions):
     #     # targetPosInitial = np.array([1.0] * 6) * np.pi
     #     # targetPosStraight = np.array([0.66, 1.0, 1.25, 1.5, 1.0, 1.0]) * np.pi
     #     # targetPosHalfWayCube = np.array([0.66, 1.25, 1.25, 1.5, 1.0, 1.0]) * np.pi
@@ -376,22 +403,27 @@ class RobotEnv():
     #             break
     #     self.disableControlLoop()
 
-    def setTargetJointPositions(self, target_joint_positions):
+    def initializeJointPositions(self):
         # targetPosInitial = np.array([1.0] * 6) * np.pi
         # targetPosStraight = np.array([0.66, 1.0, 1.25, 1.5, 1.0, 1.0]) * np.pi
         # targetPosHalfWayCube = np.array([0.66, 1.25, 1.25, 1.5, 1.0, 1.0]) * np.pi
         # targetPosNearCube = np.array([0.66, 1.5, 1.25, 1.5, 1.0, 1.0]) * np.pi
         # enableControlLoop()
         for i in range(6):
-            vrep.simxSetJointPosition(self.clientID, self.jointHandles[i], target_joint_positions[i], vrep.simx_opmode_blocking)
-            vrep.simxSetJointTargetPosition(self.clientID, self.jointHandles[i], target_joint_positions[i], vrep.simx_opmode_blocking)
+            vrep.simxSetJointPosition(self.clientID, self.jointHandles[i], self.initial_joint_positions[i], vrep.simx_opmode_blocking)
+            vrep.simxSetJointTargetPosition(self.clientID, self.jointHandles[i], self.initial_joint_positions[i], vrep.simx_opmode_blocking)
         # check joint positions
         maxDistance = 0.05
         while True:
-            sqDistance = np.sum((self.getJointRawAngles() - target_joint_positions) ** 2)
+            sqDistance = np.sum((self.getJointRawAngles() - self.initial_joint_positions) ** 2)
             if sqDistance < maxDistance ** 2:
                 break
         # disableControlLoop()
+
+    def initializeGoalPosition(self):
+            returnCode, basePosition = vrep.simxGetObjectPosition(self.clientID, self.robotBaseH, -1, vrep.simx_opmode_blocking)
+            targetCubePosition3D = (self.targetCubePosition[0], self.targetCubePosition[1], -basePosition[2] + 1e-3)
+            vrep.simxSetObjectPosition(self.clientID, self.targetCubePositionH, self.robotBaseH, targetCubePosition3D, vrep.simx_opmode_blocking)
 
     def enableControlLoop(self):
         for i in range(6):

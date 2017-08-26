@@ -174,8 +174,8 @@ for curriculum in Curriculums:
     # no_curriculum_name = no_curr.curriculum_name
     # ###
 
-    timestr = time.strftime("%Y-%b-%d_%H-%M-%S", time.gmtime())  # or time.localtime()
-    current_comparison_name = timestr + '_comparison_' + no_curriculum_folder_name + '_' + curriculum_folder_name
+    # timestr = time.strftime("%b-%d_%H-%M-%S", time.gmtime())  # or time.localtime()
+    current_comparison_name = 'comparison_' + no_curriculum_folder_name + '_' + curriculum_folder_name
     current_comparison_dir_path = os.path.join(comparison_plots_dir_path, current_comparison_name)
     os.makedirs(current_comparison_dir_path, exist_ok=True)
 

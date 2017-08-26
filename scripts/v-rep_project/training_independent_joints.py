@@ -186,7 +186,6 @@ class DQLAlgorithm():
                  num_hidden_layers, num_neurons_per_hidden,
                  num_episodes, max_steps_per_episode, e_min,
                  task,
-                 model_saving_period=100,
                  lrate=1E-6,  # scripts/v-rep_project/training_independent_joints.py
                  batch_size=32,
                  replay_start_size=50000,
@@ -210,6 +209,7 @@ class DQLAlgorithm():
                  initial_joint_positions=None,
                  disable_saving=False,
                  sync_mode=True,
+                 shaping_rewards=True,
                  ):
         self.h_params = {}
         self.end_stats_dict = {}
@@ -220,7 +220,7 @@ class DQLAlgorithm():
         self.max_steps_per_episode = max_steps_per_episode
         self.e_min = e_min
         self.task = task
-        self.model_saving_period = model_saving_period
+        self.model_saving_period = self.num_episodes // 3
         self.lrate = lrate
         self.batch_size = batch_size
         self.replay_start_size = replay_start_size
@@ -243,13 +243,12 @@ class DQLAlgorithm():
         self.portNb = portNb
         self.old_bias = old_bias
         self.max_updates_per_env_step = max_updates_per_env_step
-        if initial_joint_positions is not None:
-            self.initial_joint_positions = initial_joint_positions
+        self.initial_joint_positions = initial_joint_positions
         self.disable_saving = disable_saving
         self.h_params["portNb"] = self.portNb
         self.h_params["disable_saving"] = self.disable_saving
         self.sync_mode = sync_mode
-
+        self.shaping_rewards = shaping_rewards,
         # hyper params to save to txt file
         self.h_params["experiment_dir_path"] = self.experiment_dir_path
         self.h_params["showGUI"] = self.showGUI
@@ -259,8 +258,8 @@ class DQLAlgorithm():
         self.h_params['max_steps_per_episode'] = self.max_steps_per_episode
         self.h_params['model_saving_period'] = self.model_saving_period  # in eps
         self.h_params['q_plots_period'] = self.q_plots_period = max(self.model_saving_period // 5, 1)  # in eps
-        self.h_params['q_plots_num_of_points'] = self.q_plots_num_of_points = max(self.q_plots_period // 4, 1) * self.max_steps_per_episode  # in steps
-        self.h_params['tensorboard_log_period'] = self.tensorboard_log_period = max(self.model_saving_period // 10, 1) * self.max_steps_per_episode  # in steps
+        self.h_params['q_plots_num_of_points'] = self.q_plots_num_of_points = self.max_steps_per_episode // 4 # in steps
+        self.h_params['tensorboard_log_period'] = self.tensorboard_log_period = max(self.model_saving_period // 50, 1) * self.max_steps_per_episode  # in steps
         self.h_params['e_min'] = self.e_min
         self.h_params['task'] = self.task
         self.h_params['batch_size'] = self.batch_size  # mnih=32
@@ -297,7 +296,7 @@ class DQLAlgorithm():
         # current_dir_path = os.path.dirname(os.path.realpath(__file__)) # directory of this .py file
         # all_models_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
         # experiment_dir_path = os.path.join(all_models_dir_path, experiment_folder_name)
-        timestr = time.strftime("%Y-%b-%d_%H-%M-%S", time.gmtime())  # or time.localtime()
+        timestr = time.strftime("%b-%d_%H-%M-%S", time.gmtime())  # or time.localtime()
         self.current_model_dir_path = os.path.join(self.experiment_dir_path, "model_and_results_" + timestr)
         self.checkpoints_dir_path = os.path.join(self.current_model_dir_path, "saved_checkpoints")
         self.checkpoint_model_file_path = os.path.join(self.checkpoints_dir_path, "checkpoint_model")
@@ -324,8 +323,10 @@ class DQLAlgorithm():
 
         # plot and save reward function
         self.h_params['rewards_normalizer'] = self.rewards_normalizer = 0.1
-        distanceOfRewardCloseToZero = 1.0
-        self.h_params['rewards_decay_rate'] = self.rewards_decay_rate = 1.0 / (distanceOfRewardCloseToZero / 5)  # =1/0.33 i.e. near 0 at 5 * 0.33 = 1.65m away
+        reachCubeDistanceOfRewardCloseToZero = 1.0
+        # pushCubeDistanceOfRewardCloseToZero = 0.30
+        self.h_params['rewards_decay_rate'] = self.rewards_decay_rate = 1.0 / (reachCubeDistanceOfRewardCloseToZero / 5)  # =1/0.2 i.e. near 0 at 5 * 0.33 = 1.65m away
+        # self.h_params['rewards_decay_rate'] = self.rewards_decay_rate = 1.0 / (pushCubeDistanceOfRewardCloseToZero / 5)
 
         # recursive exponential decay for epsilon
         self.h_params['e_max'] = self.e_max = 1.0  # P(random action in at least one joint) = 1- (1 - epsilon)**nJoints
@@ -385,6 +386,7 @@ class DQLAlgorithm():
                       portNb=self.portNb,
                       initial_joint_positions=self.initial_joint_positions,
                       sync_mode=self.sync_mode,
+                      shaping_rewards=self.shaping_rewards,
                       ) as env:
             tf.reset_default_graph()
 
@@ -458,7 +460,7 @@ class DQLAlgorithm():
 
                 if not self.skip_training:
                     trainer_thread = threading.Thread(name='trainer', target=self.trainer, args=(sess,))
-                    # print("[MAIN] Trainer thread created.")
+                    print("[MAIN] Trainer thread created.")
                     trainer_thread.start()
                 with self.coord.stop_on_exception():
                     self.copyLearnerMainToTarget(sess)  # Set the target network to be equal to the primary network.
@@ -495,6 +497,7 @@ class DQLAlgorithm():
                     collector_start_time = time.time()
                     self.current_episode = 0
                     cumul_test_return = 0
+
                     while (self.current_episode < self.num_episodes or self.testing_policy) and not self.coord.should_stop():
                         if self.testing_policy:
                             testing_policy_episode += 1
@@ -532,7 +535,6 @@ class DQLAlgorithm():
                                 [self.collector_mainDQN.allJointsBestActions, self.collector_mainDQN.allJointsQvalues3D],
                                 feed_dict={self.collector_mainDQN.inState: np.reshape(initialState, (1, self.stateSize))}
                             )
-
                             chosenActions = np.reshape(np.array(chosenActions), self.nAJoints)
                             allJQValues = np.reshape(np.array(allJQValues), (self.nAJoints, self.nActionsPerJoint))
                             maxQvalues = allJQValues[range(self.nAJoints), chosenActions]  # 1 x nJoints
@@ -545,12 +547,12 @@ class DQLAlgorithm():
 
                             # perform action and get new state and reward
                             newState, r, done = env.step(chosenActions)
-
                             # add experience to buffer
                             end_multiplier = 0 if self.current_step == self.max_steps_per_episode else 1
                             transition = np.array([initialState, chosenActions, r, newState, end_multiplier])
                             transition = np.reshape(transition, [1, 5])  # 1 x 5
-                            episodeBuffer.add(transition)  # add step to episode buffer
+                            if not self.skip_training:
+                                episodeBuffer.add(transition)  # add step to episode buffer
 
                             # if not skip_training:
                             # if total_steps > replay_start_size:
@@ -578,7 +580,6 @@ class DQLAlgorithm():
 
                             # end of step, track episode values
                             episode_undisc_return += r
-
                             # save q values
                             if not self.testing_policy:
                                 maxQvalues2 = np.reshape(maxQvalues, (self.nAJoints, 1))
@@ -625,7 +626,8 @@ class DQLAlgorithm():
                                 #         break
                         else:
                             # add current episode's list of transitions to dataset
-                            self.dataset.add(episodeBuffer.data)
+                            if not self.skip_training:
+                                self.dataset.add(episodeBuffer.data)
                             if task_completed:
                                 success_count += 1
                                 success_step = episode_success_step
@@ -633,7 +635,6 @@ class DQLAlgorithm():
                                 success_step = self.max_steps_per_episode
 
                             self.success_step_per_ep.append(success_step)
-                            self.dataset.add(episodeBuffer.data)
                             self.num_steps_per_ep.append(self.current_step)
                             self.undisc_return_per_ep.append(episode_undisc_return)
                             self.cumul_successes_per_ep.append(success_count)
@@ -647,18 +648,18 @@ class DQLAlgorithm():
                             if not self.disable_saving:
                                 self.is_saving = True
                                 saving_start_time = time.time()
-                                if self.current_episode % self.model_saving_period == 0:
+                                if self.current_episode % self.model_saving_period == 0 and self.current_episode < self.num_episodes:
                                     print("[MAIN] Saving model and plots...")
                                     checkpoint_save_path = saver.save(sess, self.checkpoint_model_file_path, global_step=self.current_episode)
                                     # print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(self.current_episode, j, undisc_return, done))
-                                    checkpoints_plots_dir_path = os.path.join(self.current_model_dir_path, "checkpoint_results_ep_" + str(self.current_episode))
+                                    checkpoints_plots_dir_path = os.path.join(self.checkpoint_model_file_path, "checkpoint_results_ep_" + str(self.current_episode))
                                     os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
                                     self.savePlots(checkpoints_plots_dir_path)
 
                                 if self.current_episode % self.q_plots_period == 0:
                                     # plot Q plots
                                     print("[MAIN] Saving Q-plots...")
-                                    Qplots_dir_path = os.path.join(self.current_model_dir_path, "q_plots_ep_" + str(self.current_episode))
+                                    Qplots_dir_path = os.path.join(self.checkpoint_model_file_path, "q_plots_ep_" + str(self.current_episode))
                                     os.makedirs(Qplots_dir_path, exist_ok=True)
                                     # self.lastStatesArray = self.statesArray[:, -self.q_plots_num_of_points:-1]
                                     # self.lastMaxQvaluesArray = self.maxQvaluesArray[:, -self.q_plots_num_of_points:-1]
@@ -739,8 +740,10 @@ class DQLAlgorithm():
                                        test_episodes=self.test_episodes,
                                        test_success_rates=self.test_success_rates,
                                        test_mean_returns=self.test_mean_returns,
-                                       net_updates_per_step=self.net_updates_per_step,
                                        )
+
+        if not self.skip_training:
+            lists_to_serialize_dict = dict(net_updates_per_step=self.net_updates_per_step)
 
         self.serialize_lists(self.serialized_lists_dir_path, lists_to_serialize_dict)
         self.savePlots(self.trained_model_plots_dir_path)
@@ -833,7 +836,7 @@ class DQLAlgorithm():
     def saveRewardFunction(self, robotenv, dir_path):
         fig = plt.figure()
         distance = np.arange(0., 3., 0.05)
-        rewards = robotenv.distance2reward(distance)
+        rewards = robotenv.distance2reward(distance, self.rewards_decay_rate)
         plt.plot(distance, rewards, linewidth=0.5)
         plt.ylabel('reward')
         plt.xlabel('distance to goal (m)')
@@ -895,14 +898,13 @@ class DQLAlgorithm():
             self.savePlot(dir_path, 'episodes', episodes, "average maxQ", self.average_maxQ_per_ep[i], "Average maxQ per episode, joint" + str(i + 1), "average_q" + str(i + 1) + ".svg")
 
     def saveTestPlots(self, dir_path):
-        steps = range(1, len(self.net_updates_per_step) + 1)
-        test_steps = self.test_steps
-        test_episodes = self.test_episodes
-        self.savePlot(dir_path, 'steps', steps, "updates", self.net_updates_per_step, "Network updates per environment step", "net_updates")
-        self.savePlot(dir_path, 'steps', test_steps, "success rate", self.test_success_rates, "Step of first success", "success_step_per_ep")
-        self.savePlot(dir_path, 'episodes', test_episodes, "success rate", self.test_success_rates, "Step of first success", "success_step_per_ep")
-        self.savePlot(dir_path, 'steps', test_steps, "mean return", self.test_mean_returns, "Step of first success", "success_step_per_ep")
-        self.savePlot(dir_path, 'episodes', test_episodes, "mean return", self.test_mean_returns, "Step of first success", "success_step_per_ep")
+        if not self.skip_training:
+            steps = range(1, len(self.net_updates_per_step) + 1)
+            self.savePlot(dir_path, 'steps', steps, "updates", self.net_updates_per_step, "Network updates per environment step", "net_updates")
+        self.savePlot(dir_path, 'steps', self.test_steps, "success rate", self.test_success_rates, "Step of first success", "success_step_per_ep")
+        self.savePlot(dir_path, 'episodes', self.test_episodes, "success rate", self.test_success_rates, "Step of first success", "success_step_per_ep")
+        self.savePlot(dir_path, 'steps', self.test_steps, "mean return", self.test_mean_returns, "Step of first success", "success_step_per_ep")
+        self.savePlot(dir_path, 'episodes', self.test_episodes, "mean return", self.test_mean_returns, "Step of first success", "success_step_per_ep")
 
     def save2txt(self, file_path, dict_to_save):
         with open(file_path, "w") as txt_file:

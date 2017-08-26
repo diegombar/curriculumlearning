@@ -14,7 +14,9 @@ class Curriculum():
     CURRICULUM_DECREASING_SPEED = 1
     CURRICULUM_INCREASING_JOINT_NUMBER = 2
     CURRICULUM_INITIALIZE_FURTHER = 3
-
+    CURRICULUM_DECREASING_SPEED_SPARSE = 4
+    CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE = 5
+    CURRICULUM_INITIALIZE_FURTHER_SPARSE = 6
     def __init__(self,
                  curriculum,
                  task,
@@ -60,6 +62,9 @@ class Curriculum():
             self.task_name = 'reaching'
         elif self.task == RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION:
             self.task_name = 'pushing'
+        else:
+            raise RuntimeError('[CURRICULUM] Not a valid task.')
+
         if self.curriculum == self.NO_CURRICULUM_VEL_025:
             self.curriculum_name = "no_cl_vel_025"
             self.Velocities = [0.25]
@@ -68,30 +73,38 @@ class Curriculum():
             self.curriculum_name = "no_cl_vel_1"
             self.Velocities = [1.0]
             # success_rate_for_subtask_completion = False
-        elif self.curriculum == self.CURRICULUM_DECREASING_SPEED:
+        elif self.curriculum == self.CURRICULUM_DECREASING_SPEED or self.curriculum == self.CURRICULUM_DECREASING_SPEED_SPARSE:
             self.curriculum_name = "cl_decreasing_speeds"
             self.Velocities = [1, 0.5, 0.25]
             self.replay_start_size = self.replay_start_size // len(self.Velocities)
             self.num_episodes = self.num_episodes // len(self.Velocities)
             # success_rate_for_subtask_completion = True
-        elif self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER:
+        elif self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER or self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE:
             self.curriculum_name = "cl_increasing_num_of_joints"
             self.NumOfAJoints = range(1, 7)
             self.replay_start_size = self.replay_start_size // len(self.NumOfAJoints)
             self.num_episodes = self.num_episodes // len(self.NumOfAJoints)
-            self.Velocities = [0.25]
             # success_rate_for_subtask_completion = True
-        elif self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER:
+        elif self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER or self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER_SPARSE:
             self.curriculum_name = "cl_further_initial_states"
             self.Initial_positions = [targetPosNearCube, targetPosHalfWayCube, targetPosInitial]
             self.replay_start_size = self.replay_start_size // len(self.Initial_positions)
             self.num_episodes = self.num_episodes // len(self.Initial_positions)
-            self.Velocities = [0.25]
+        else:
+            raise RuntimeError('[CURRICULUM] Not a valid curriculum.')
+
+        if(self.curriculum == self.CURRICULUM_DECREASING_SPEED_SPARSE or
+           self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE or
+           self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER_SPARSE
+           ):
+            self.shaping_rewards = False
+        else:
+            self.shaping_rewards = True
 
         if self.testing_scripts:
             self.curriculum_name = self.curriculum_name + "_TEST"
 
-        self.timestr = time.strftime("%Y-%b-%d_%H-%M-%S", time.gmtime())  # or time.localtime()
+        self.timestr = time.strftime("%b-%d_%H-%M-%S", time.gmtime())  # or time.localtime()
         self.current_dir_path = os.path.dirname(os.path.realpath(__file__))
         self.all_curriculums_dir_path = os.path.join(self.current_dir_path, 'trained_models_and_results')
         self.folder_name = self.timestr + '_' + self.task_name + '_' + self.curriculum_name
@@ -110,7 +123,6 @@ class Curriculum():
         #    current_dir_path,"trained_models_and_results",
         #    "decreasing_speed","model_and_results_2017-Jul-27_02-49-34_vel=025","trained_model","final_model-400")
         self.targetCubePosition = (0.15, 0.35)  # relative x, y in metres (robot base is at (0,0)), DOABLE
-        model_saving_period = self.num_episodes // 5
         subt_abs_initial_step = 0
         subt_abs_initial_episode = 0
         self.curriculum_switching_episodes = []
@@ -136,7 +148,6 @@ class Curriculum():
                              max_steps_per_episode=self.max_steps_per_episode,  # 200
                              e_min=0.01,
                              task=self.task,
-                             model_saving_period=model_saving_period,
                              lrate=self.lrate,  # 1e-3 seems to work fine
                              batch_size=self.batch_size,
                              replay_start_size=self.replay_start_size,
@@ -149,7 +160,7 @@ class Curriculum():
                              notes=self.curriculum_name,
                              previous_norm=False,
                              targetCubePosition=self.targetCubePosition,
-                             policy_test_period=100,  # episodes
+                             policy_test_period=50,  # episodes
                              policy_test_episodes=20,  # episodes
                              # success_rate_for_subtask_completion=success_rate_for_subtask_completion,  # change with/without CL
                              nSJoints=6,
@@ -159,12 +170,12 @@ class Curriculum():
                              max_updates_per_env_step=self.max_updates_per_env_step,
                              disable_saving=self.disable_saving,
                              sync_mode=self.sync_mode,
+                             shaping_rewards=self.shaping_rewards,
                              )
 
         if self.testing_scripts:
             trainDQL_args.update(dict(num_episodes=10,
                                       max_steps_per_episode=2,
-                                      model_saving_period=2,
                                       batch_size=1,
                                       replay_start_size=6,
                                       replay_memory_size=10,
