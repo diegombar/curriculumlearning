@@ -4,7 +4,7 @@ import os
 import json
 import numpy as np
 from matplotlib import pyplot as plt
-# from robotenv import RobotEnv
+from robotenv import RobotEnv
 
 
 class Curriculum():
@@ -56,12 +56,16 @@ class Curriculum():
         self.Velocities = [0.25]
         self.NumOfAJoints = [6]
         self.Initial_positions = [targetPosInitial]
+        if self.task == RobotEnv.TASK_REACH_CUBE:
+            self.task_name = 'reaching'
+        elif self.task == RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION:
+            self.task_name = 'pushing'
         if self.curriculum == self.NO_CURRICULUM_VEL_025:
-            self.curriculum_name = "no_curriculum_vel_025"
+            self.curriculum_name = "no_cl_vel_025"
             self.Velocities = [0.25]
             # success_rate_for_subtask_completion = False
         elif self.curriculum == self.NO_CURRICULUM_VEL_1:
-            self.curriculum_name = "no_curriculum_vel_1"
+            self.curriculum_name = "no_cl_vel_1"
             self.Velocities = [1.0]
             # success_rate_for_subtask_completion = False
         elif self.curriculum == self.CURRICULUM_DECREASING_SPEED:
@@ -78,7 +82,7 @@ class Curriculum():
             self.Velocities = [0.25]
             # success_rate_for_subtask_completion = True
         elif self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER:
-            self.curriculum_name = "cl_initializing_further"
+            self.curriculum_name = "cl_further_initial_states"
             self.Initial_positions = [targetPosNearCube, targetPosHalfWayCube, targetPosInitial]
             self.replay_start_size = self.replay_start_size // len(self.Initial_positions)
             self.num_episodes = self.num_episodes // len(self.Initial_positions)
@@ -90,7 +94,7 @@ class Curriculum():
         self.timestr = time.strftime("%Y-%b-%d_%H-%M-%S", time.gmtime())  # or time.localtime()
         self.current_dir_path = os.path.dirname(os.path.realpath(__file__))
         self.all_curriculums_dir_path = os.path.join(self.current_dir_path, 'trained_models_and_results')
-        self.folder_name = self.timestr + '_' + self.curriculum_name
+        self.folder_name = self.timestr + '_' + self.task_name + '_' + self.curriculum_name
         self.curriculum_dir_path = os.path.join(self.all_curriculums_dir_path, self.folder_name)
         self.serialized_lists_dir_path = os.path.join(self.curriculum_dir_path, 'serialized_curriculum_lists')
 
