@@ -258,7 +258,7 @@ class DQLAlgorithm():
         self.h_params['max_steps_per_episode'] = self.max_steps_per_episode
         self.h_params['model_saving_period'] = self.model_saving_period  # in eps
         self.h_params['q_plots_period'] = self.q_plots_period = max(self.model_saving_period // 5, 1)  # in eps
-        self.h_params['q_plots_num_of_points'] = self.q_plots_num_of_points = self.max_steps_per_episode // 4 # in steps
+        self.h_params['q_plots_num_of_points'] = self.q_plots_num_of_points = self.max_steps_per_episode // 4  # in steps
         self.h_params['tensorboard_log_period'] = self.tensorboard_log_period = max(self.model_saving_period // 50, 1) * self.max_steps_per_episode  # in steps
         self.h_params['e_min'] = self.e_min
         self.h_params['task'] = self.task
@@ -529,7 +529,7 @@ class DQLAlgorithm():
                         self.current_step = 0
                         while self.current_step < self.max_steps_per_episode and not self.coord.should_stop():
                             self.current_step += 1
-                            # print("\n[MAIN] step:", self.current_step)
+                            print("\n[MAIN] step:", self.current_step)
                             # pick action from the DQN, epsilon greedy
                             chosenActions, allJQValues = sess.run(
                                 [self.collector_mainDQN.allJointsBestActions, self.collector_mainDQN.allJointsQvalues3D],
@@ -743,7 +743,8 @@ class DQLAlgorithm():
                                        )
 
         if not self.skip_training:
-            lists_to_serialize_dict = dict(net_updates_per_step=self.net_updates_per_step)
+            lists_to_serialize_dict.update(dict(net_updates_per_step=self.net_updates_per_step,
+                                                ))
 
         self.serialize_lists(self.serialized_lists_dir_path, lists_to_serialize_dict)
         self.savePlots(self.trained_model_plots_dir_path)

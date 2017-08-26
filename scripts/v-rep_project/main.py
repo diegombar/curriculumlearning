@@ -3,7 +3,8 @@ from robotenv import RobotEnv
 
 testing_scripts = True
 curriculum = Curriculum.CURRICULUM_INITIALIZE_FURTHER
-task = RobotEnv.TASK_REACH_CUBE
+# task = RobotEnv.TASK_REACH_CUBE
+task = RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
 max_steps_per_episode = 200
 num_episodes = 2000
 num_hidden_layers = 2
@@ -14,7 +15,7 @@ lrate = 1e-4
 replay_start_size = (num_episodes // 20) * max_steps_per_episode
 replay_memory_size = 10 * replay_start_size
 disable_saving = True
-sync_mode = False
+sync_mode = True
 portNb = 19999
 
 curr_args = dict(curriculum=curriculum,

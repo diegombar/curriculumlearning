@@ -7,7 +7,8 @@ timestr = time.strftime("%b-%d_%H-%M-%S", time.gmtime())  # or time.localtime()
 
 current_dir_path = os.path.dirname(os.path.realpath(__file__))
 experiments_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
-folder_name = timestr + '_visualization'
+experiment_name = 'visualization'
+folder_name = timestr + '_' + experiment_name
 vis_experiment_dir_path = os.path.join(experiments_dir_path, folder_name)
 
 

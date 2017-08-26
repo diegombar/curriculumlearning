@@ -17,6 +17,7 @@ class Curriculum():
     CURRICULUM_DECREASING_SPEED_SPARSE = 4
     CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE = 5
     CURRICULUM_INITIALIZE_FURTHER_SPARSE = 6
+
     def __init__(self,
                  curriculum,
                  task,
