@@ -54,8 +54,9 @@ class RobotEnv():
                  velocity=1,
                  nSJoints=6,
                  nAJoints=6,
-                 portNb=19998,
-                 initial_joint_positions=None
+                 portNb=19999,
+                 initial_joint_positions=None,
+                 sync_mode=True,
                  ):
         # actions/states/reward/done
         self.task = task  # see tasks 1, 2 above
@@ -89,6 +90,7 @@ class RobotEnv():
         self.showGUI = showGUI
         self.rewards_decay_rate = rewards_decay_rate  # =1/0.3, reward is close to zero for 5 x 0.3 = 1.5 m
         self.rewards_normalizer = rewards_normalizer
+        self.sync_mode = sync_mode
 
         if initial_joint_positions is not None:
             self.initial_joint_positions = initial_joint_positions
@@ -97,8 +99,11 @@ class RobotEnv():
     def __enter__(self):
         print('[ROBOTENV] Starting environment...')
 
+        sync_mode_str = 'TRUE' if self.sync_mode else 'FALSE'
+        portNb_str = str(self.portNb)
+
         # launch v-rep
-        vrep_cmd = [self.vrepPath, '-gREMOTEAPISERVERSERVICE_' + str(self.portNb) + '_FALSE_FALSE']
+        vrep_cmd = [self.vrepPath, '-gREMOTEAPISERVERSERVICE_' + portNb_str + '_FALSE_' + sync_mode_str]
         if not self.showGUI:
             vrep_cmd.append('-h')  # headless mode
         vrep_cmd.append(self.scenePath)
@@ -139,11 +144,14 @@ class RobotEnv():
             # time.sleep(5) # to avoid errors
             # returnCode = vrep.simxLoadScene(self.clientID, self.scenePath, 1, vrep.simx_opmode_oneshot_wait) # vrep.simx_opmode_blocking is recommended
 
-            # Start simulation
-            # vrep.simxSetIntegerSignal(self.clientID, 'dummy', 1, vrep.simx_opmode_blocking)
-            # time.sleep(5)  #to center window for recordings
-            returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
-            printlog('simxStartSimulation', returnCode)
+            # # Start simulation
+            # # vrep.simxSetIntegerSignal(self.clientID, 'dummy', 1, vrep.simx_opmode_blocking)
+            # # time.sleep(5)  #to center window for recordings
+            # if self.initial_joint_positions is not None:
+            #     self.setTargetJointPositions(self.initial_joint_positions)
+            # self.startSimulation()
+            # # returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
+            # # printlog('simxStartSimulation', returnCode)
 
             # get handles and start streaming distance to goal
             for i in range(0, self.nSJoints):
@@ -161,7 +169,18 @@ class RobotEnv():
 
             # get first valid state
 
-            self.updateState()  # default initial state: 180 degrees (=pi radians) for all angles
+            # Start simulation
+            if self.initial_joint_positions is not None:
+                self.setTargetJointPositions(self.initial_joint_positions)
+
+            self.reset()
+
+            # self.startSimulation()
+            # # returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
+            # # printlog('simxStartSimulation', returnCode)
+
+            # self.updateState()  # default initial state: 180 degrees (=pi radians) for all angles
+
             # check the state is valid
             # while True:
             #     self.updateState()
@@ -213,25 +232,21 @@ class RobotEnv():
     # reset the state for each new episode
     def reset(self):
         if vrep.simxGetConnectionId(self.clientID) != -1:
-            self.stop_if_needed()
-            # initialize joint positions
-            if self.initial_joint_positions is not None:
-                self.setTargetJointPositions(self.initial_joint_positions)
-            self.start()
-            # returnCode, self.distanceToGoal = vrep.simxReadDistance(self.clientID, self.distToGoalHandle, vrep.simx_opmode_streaming) #start streaming
-            # returnCode, _, _, floatData, _ = vrep.simxGetObjectGroupData(self.clientID, self.jointsCollectionHandle, 15, vrep.simx_opmode_streaming) #start streaming
+            # activate to change position at each env.reset()
+            # self.stop_if_needed()
+            # if self.initial_joint_positions is not None:
+            #     self.setTargetJointPositions(self.initial_joint_positions)
+            self.startSimulation()
 
             # get new measurements
             self.goalReached = False
             self.updateState()
+
             # check the state is valid
             # while True:
             #     self.updateState()
-            #     print("\nstate: ", self.state)
-            #     print("\nreward: ", self.reward)
             #     # wait for a state
             #     if (self.state.shape == (1,self.observation_space_size) and abs(self.reward) < 1E+5):
-            #         print("sent reward3=", self.reward)
             #         break
             return self.state
 
@@ -239,7 +254,9 @@ class RobotEnv():
         try_count = 0
         while True:
             try_count += 1
-            returnCode, ping = vrep.simxGetPingTime(self.clientID)
+            vrep.simxSetIntegerSignal(self.clientID, 'dummySignal', 1, vrep.simx_opmode_blocking)
+
+            # returnCode, ping = vrep.simxGetPingTime(self.clientID)
             returnCode, serverState = vrep.simxGetInMessageInfo(self.clientID, vrep.simx_headeroffset_server_state)
             # printlog('\nsimxGetInMessageInfo', returnCode)
             # print('\nServer state: ', serverState)
@@ -259,14 +276,13 @@ class RobotEnv():
                     if returnCode != vrep.simx_return_ok:
                         print("[ROBOTENV] simxStopSimulation failed, error code:", returnCode)
 
-    def start(self):
+    def startSimulation(self):
         # make sure simulation is stopped, stop if needed
         self.stop_if_needed()
-        print("[ROBOTENV] Starting simulation...")
-        returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
-        while returnCode != vrep.simx_return_ok:
-            print("[ROBOTENV] simxStartSimulation failed, error code:", returnCode)
-            returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
+        vrep.simxSynchronous(self.clientID, self.sync_mode)
+        vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
+        # while returnCode != vrep.simx_return_ok:
+        #     returnCode = vrep.simxStartSimulation(self.clientID, vrep.simx_opmode_blocking)
 
     def distance2reward(self, distance):
         return self.rewards_normalizer * np.exp(-self.rewards_decay_rate * distance)
@@ -279,21 +295,15 @@ class RobotEnv():
 
             if centerInZeroRad:
                 newJPositions = [angle if angle <= np.pi else angle - 2 * np.pi for angle in jointPositions]  # convert values to ]-pi, +pi]
-                newJPositions = np.array(newJPositions)
-                newJPositions = newJPositions + np.pi  # convert values to ]0, +2*pi]
+                newJPositions = np.array(newJPositions) + np.pi # convert values to ]0, +2*pi]
             else:
                 # center in pi
                 newJPositions = np.array(jointPositions)
 
             # newJPositions2 = newJPositions / np.pi # previous version (mistake), convert to ]0, 2]
             newJPositions2 = newJPositions / (2 * np.pi)  # convert to ]0, 1]
-            # try:
-            newJPositions3 = newJPositions2.reshape(6)
-            # except:
-            #     pass
-            # get reward from distance reading and check goal
-            # print("Reading distance...")
 
+            newJPositions3 = newJPositions2.reshape(6)
             # select the first relevant joints
             self.state = newJPositions3[0:self.nSJoints]
 
@@ -316,7 +326,7 @@ class RobotEnv():
                     self.goalReached = True
                     print('[ROBOTENV] #### SUCCESS ####')
             else:
-                print('[ROBOTENV]################# ERROR: Invalid Task ######################')
+                raise RuntimeError('[ROBOTENV] Invalid Task')
 
     # execute action ACTIONS SHOULD BE THE RIGHT SIZE
     def step(self, actions):
@@ -325,38 +335,27 @@ class RobotEnv():
             # print("actions", actions)
             # jointNumber = action // 3
             velMode = actions % 3 - 1  # speed to apply -1->-Vel;  0->zero;  +1->+Vel
-            # print("velMode", velMode)
             for i in range(0, self.nAJoints):
-                returnCode = vrep.simxSetJointTargetVelocity(self.clientID, self.jointHandles[i], velMode[i] * self.jointVel, vrep.simx_opmode_blocking)
-
-            # printlog('simxSetJointTargetVelocity', returnCode)
-
+                vrep.simxSetJointTargetVelocity(self.clientID, self.jointHandles[i], velMode[i] * self.jointVel, vrep.simx_opmode_blocking)
             # hand actions
             # def openHand(self.clientID):
             #     closingVel = -0.04
             #     returnCode = vrep.simxSetJointTargetVelocity(self.clientID, fingersH1, -closingVel, vrep.simx_opmode_blocking)
             #     returnCode = vrep.simxSetJointTargetVelocity(self.clientID, fingersH2, -closingVel, vrep.simx_opmode_blocking)
-
             # def closeHand(self.clientID):
             #     closingVel = -0.04
             #     returnCode = vrep.simxSetJointTargetVelocity(self.clientID, fingersH1, closingVel, vrep.simx_opmode_blocking)
             #     returnCode = vrep.simxSetJointTargetVelocity(self.clientID, fingersH2, closingVel, vrep.simx_opmode_blocking)
 
-            # set joints target positions
-            # def setJointTargetPositions(self.clientID, targetPositions):
-            #     for i in range(6):
-            #         returnCode = vrep.simxSetJointTargetPosition(self.clientID, jointHandles[i], targetPositions[i], vrep.simx_opmode_blocking)
-            #         if returnCode != vrep.simx_return_ok:
-            #             print("SetJointTargetPosition got error code: %s" % returnCode)
+            # simulation step
+            vrep.simxSynchronousTrigger(self.clientID)
+            vrep.simxGetPingTime(self.clientID)
             self.updateState()
             # check the state is valid
             # while True:
             #     self.updateState()
-            #     print("\nstate: ", self.state)
-            #     print("\nreward: ", self.reward)
             #     # wait for a state
             #     if (self.state.shape == (1,self.observation_space_size) and abs(self.reward) < 1E+5):
-            #         print("sent reward3=", self.reward)
             #         break
             return self.state, self.reward, self.goalReached
 
