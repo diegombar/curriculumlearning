@@ -146,13 +146,14 @@ trainDQL_args = dict(
                     use_variable_names=True,
                     skip_training=True,
                     notes=experiment_name,
-                    previous_norm=False,
+                    previous_norm=False, #note: use previous_norm for first few models (angles were normalized to [0,2] (now fixed))
                     targetRelativePos=targetRelativePos,
                     nSJoints=6,
                     nAJoints=6,
                     portNb=1997,
-                    old_bias=False
+                    old_bias=False #note: use old_bias for some past models (scalar biases) (now fixed))
                     )
 
-training.trainDQL(**trainDQL_args)
-#note: use previous_norm for first few models (angles were normalized to [0,2] (now fixed))
+dql = training.DQLAlgorithm(**trainDQL_args)
+
+dql.run()
