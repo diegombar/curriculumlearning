@@ -614,7 +614,6 @@ class DQLAlgorithm():
                                 test_mean_returns = cumul_test_return / self.policy_test_episodes
                                 self.test_success_rates.append(test_success_rate)
                                 self.test_mean_returns.append(test_mean_returns)
-
                                 # if success_rate_for_subtask_completion and len(test_success_rates)>2:
                                 #     if test_success_rates[-1] < test_success_rates[-2]:
                                 #         no_progress_count += 1
@@ -682,19 +681,19 @@ class DQLAlgorithm():
                                 epsilon_backup = self.epsilon
                                 cumul_test_return = 0
 
-                # end of training, save results
-                collector_end_time = time.time()
-                waiting_for_trainer_to_end_time = 0
-                if not self.skip_training:
-                    self.coord.request_stop()
-                    self.coord.join(threads=[trainer_thread])
-                    # waiting_for_trainer_to_end_time = 3
-                    time.sleep(waiting_for_trainer_to_end_time)
-                # training ended, save results
-                end_time = time.time()
-                print("[MAIN] Training ended. Saving model...")
-                trained_model_save_path = saver.save(sess, self.trained_model_file_path, global_step=self.num_episodes)  # save the trained model
-                print("[MAIN] Trained model saved in file: %s" % trained_model_save_path)
+                    # end of training, save results
+                    collector_end_time = time.time()
+                    waiting_for_trainer_to_end_time = 0
+                    if not self.skip_training:
+                        self.coord.request_stop()
+                        self.coord.join(threads=[trainer_thread])
+                        # waiting_for_trainer_to_end_time = 3
+                        time.sleep(waiting_for_trainer_to_end_time)
+                    # training ended, save results
+                    end_time = time.time()
+                    print("[MAIN] Training ended. Saving model...")
+                    trained_model_save_path = saver.save(sess, self.trained_model_file_path, global_step=self.num_episodes)  # save the trained model
+                    print("[MAIN] Trained model saved in file: %s" % trained_model_save_path)
         # save total time and steps to txt file
         total_training_time_in_secs = end_time - start_time - waiting_for_trainer_to_end_time  # in seconds
         total_training_time_in_hours = total_training_time_in_secs / 3600
@@ -761,11 +760,11 @@ class DQLAlgorithm():
         with self.coord.stop_on_exception():
             self.net_updates_per_step = []
             self.trainer_start_time = time.time()
-            while True:
+            while not self.coord.should_stop():
                 if self.total_steps > 0:
                     last_step = self.total_steps
                     self.net_updates_per_step.append(0)
-                    while True:
+                    while not self.coord.should_stop():
                         if self.total_steps > last_step:
                             break
                 if self.total_steps >= self.replay_start_size:
@@ -773,11 +772,11 @@ class DQLAlgorithm():
             print("[TRAINER] Dataset has minimum size, training starts..")
             self.training_loop_start_time = time.time()
             self.total_network_updates = 0
-            while True:
+            while not self.coord.should_stop():
                 if (not self.is_saving) and (not self.testing_policy):
                     last_step = self.total_steps
                     updates_per_step_counter = 0
-                    while True:
+                    while not self.coord.should_stop():
                         if updates_per_step_counter < self.max_updates_per_env_step:
                             self.total_network_updates += 1
                             updates_per_step_counter += 1
@@ -824,12 +823,10 @@ class DQLAlgorithm():
                                                         self.trainer_mainDQN.chosenActions: actions0})
                             self.softUpdateTarget(sess)  # Soft update of the target network towards the main network.
                         # else: wait for the next environment step
-                        if self.coord.should_stop() or self.total_steps > last_step:
+                        if self.total_steps > last_step:
                             break
                     self.net_updates_per_step.append(updates_per_step_counter)
                     # print("[TRAINER] Network updates during last step: ", updates_per_step_counter)
-                if self.coord.should_stop():
-                        break
             self.training_loop_end_time = time.time()
             print("[TRAINER] Thread ended.")
 

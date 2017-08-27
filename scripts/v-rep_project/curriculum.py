@@ -21,7 +21,7 @@ class Curriculum():
     def __init__(self,
                  curriculum,
                  task,
-                 max_steps_per_episode,
+                 # max_steps_per_episode,
                  num_episodes,
                  num_hidden_layers,
                  num_neurons_per_hidden,
@@ -29,15 +29,15 @@ class Curriculum():
                  lrate,
                  testing_scripts,
                  max_updates_per_env_step,
-                 replay_start_size=50000,
-                 replay_memory_size=500000,
+                 # replay_start_size=50000,
+                 # replay_memory_size=500000,
                  disable_saving=False,
                  sync_mode=True,
                  portNb=19999,
                  ):
         self.curriculum = curriculum
         self.task = task
-        self.max_steps_per_episode = max_steps_per_episode
+        # self.max_steps_per_episode = max_steps_per_episode
         self.num_episodes = num_episodes
         self.num_hidden_layers = num_hidden_layers
         self.num_neurons_per_hidden = num_neurons_per_hidden
@@ -45,20 +45,23 @@ class Curriculum():
         self.lrate = lrate
         self.testing_scripts = testing_scripts
         self.max_updates_per_env_step = max_updates_per_env_step
-        self.replay_start_size = replay_start_size
-        self.replay_memory_size = replay_memory_size
+        # self.replay_start_size = (self.num_episodes // 20) * self.max_steps_per_episode
+        # self.replay_memory_size = 10 * self.replay_start_size
+        # self.replay_start_size = replay_start_size
+        # self.replay_memory_size = replay_memory_size
         self.disable_saving = True if (disable_saving and testing_scripts) else False
         self.sync_mode = sync_mode
         self.portNb = portNb
 
-        targetPosInitial = np.array([1.0] * 6) * np.pi
+        self.targetPosInitial = np.array([1.0] * 6) * np.pi
         # targetPosStraight = np.array([0.66, 1.0, 1.25, 1.5, 1.0, 1.0]) * np.pi
-        targetPosHalfWayCube = np.array([0.66, 1.25, 1.25, 1.5, 1.0, 1.0]) * np.pi
-        targetPosNearCube = np.array([0.66, 1.5, 1.25, 1.5, 1.0, 1.0]) * np.pi
+        self.targetPosHalfWayCube = np.array([0.66, 1.25, 1.25, 1.5, 1.0, 1.0]) * np.pi
+        self.targetPosNearCube = np.array([0.66, 1.5, 1.25, 1.5, 1.0, 1.0]) * np.pi
 
-        self.Velocities = [0.25]
+        # self.Velocities = [0.25]
+        self.Velocities = np.array([1.0])
         self.NumOfAJoints = [6]
-        self.Initial_positions = [targetPosInitial]
+        self.Initial_positions = [self.targetPosInitial]
         if self.task == RobotEnv.TASK_REACH_CUBE:
             self.task_name = 'reaching'
         elif self.task == RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION:
@@ -68,28 +71,28 @@ class Curriculum():
 
         if self.curriculum == self.NO_CURRICULUM_VEL_025:
             self.curriculum_name = "no_cl_vel_025"
-            self.Velocities = [0.25]
+            self.Velocities = np.array([0.25])
             # success_rate_for_subtask_completion = False
         elif self.curriculum == self.NO_CURRICULUM_VEL_1:
             self.curriculum_name = "no_cl_vel_1"
-            self.Velocities = [1.0]
+            self.Velocities = np.array([1.0])
             # success_rate_for_subtask_completion = False
         elif self.curriculum == self.CURRICULUM_DECREASING_SPEED or self.curriculum == self.CURRICULUM_DECREASING_SPEED_SPARSE:
             self.curriculum_name = "cl_decreasing_speeds"
-            self.Velocities = [1, 0.5, 0.25]
-            self.replay_start_size = self.replay_start_size // len(self.Velocities)
+            self.Velocities = np.array([1, 0.5, 0.25])
+            # self.replay_start_size = self.replay_start_size // len(self.Velocities)
             self.num_episodes = self.num_episodes // len(self.Velocities)
             # success_rate_for_subtask_completion = True
         elif self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER or self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE:
             self.curriculum_name = "cl_increasing_num_of_joints"
             self.NumOfAJoints = range(1, 7)
-            self.replay_start_size = self.replay_start_size // len(self.NumOfAJoints)
+            # self.replay_start_size = self.replay_start_size // len(self.NumOfAJoints)
             self.num_episodes = self.num_episodes // len(self.NumOfAJoints)
             # success_rate_for_subtask_completion = True
         elif self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER or self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER_SPARSE:
             self.curriculum_name = "cl_further_initial_states"
-            self.Initial_positions = [targetPosNearCube, targetPosHalfWayCube, targetPosInitial]
-            self.replay_start_size = self.replay_start_size // len(self.Initial_positions)
+            self.Initial_positions = [self.targetPosNearCube, self.targetPosHalfWayCube, self.targetPosInitial]
+            # self.replay_start_size = self.replay_start_size // len(self.Initial_positions)
             self.num_episodes = self.num_episodes // len(self.Initial_positions)
         else:
             raise RuntimeError('[CURRICULUM] Not a valid curriculum.')
@@ -104,6 +107,9 @@ class Curriculum():
 
         if self.testing_scripts:
             self.curriculum_name = self.curriculum_name + "_TEST"
+
+        # if self.sync_mode:
+        #     self.Velocities *= 4
 
         self.timestr = time.strftime("%b-%d_%H-%M-%S", time.gmtime())  # or time.localtime()
         self.current_dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -146,13 +152,13 @@ class Curriculum():
                              num_hidden_layers=self.num_hidden_layers,
                              num_neurons_per_hidden=self.num_neurons_per_hidden,
                              num_episodes=self.num_episodes,  # 400
-                             max_steps_per_episode=self.max_steps_per_episode,  # 200
+                             # max_steps_per_episode=self.max_steps_per_episode,  # 200
                              e_min=0.01,
                              task=self.task,
                              lrate=self.lrate,  # 1e-3 seems to work fine
                              batch_size=self.batch_size,
-                             replay_start_size=self.replay_start_size,
-                             replay_memory_size=self.replay_memory_size,
+                             # replay_start_size=self.replay_start_size,
+                             # replay_memory_size=self.replay_memory_size,
                              showGUI=True,
                              # velocity=0.25,  # 1.0 seems to work fine
                              model_to_load_file_path=subt_trained_model_save_path,
@@ -176,10 +182,10 @@ class Curriculum():
 
         if self.testing_scripts:
             trainDQL_args.update(dict(num_episodes=10,
-                                      max_steps_per_episode=2,
+                                      # max_steps_per_episode=2,
                                       batch_size=1,
-                                      replay_start_size=6,
-                                      replay_memory_size=10,
+                                      # replay_start_size=6,
+                                      # replay_memory_size=10,
                                       policy_test_period=5,  # episodes
                                       policy_test_episodes=2,  # episodes
                                       )
@@ -191,11 +197,35 @@ class Curriculum():
         for vel in self.Velocities:
             for nAJoints in self.NumOfAJoints:
                 for initial_joint_positions in self.Initial_positions:
+                    max_steps_per_episode = 0
+                    if ((self.task == RobotEnv.TASK_REACH_CUBE or
+                         self.task == RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
+                         )):
+                        if np.array_equal(initial_joint_positions, self.targetPosNearCube):
+                            max_steps_per_episode = 10
+                        elif np.array_equal(initial_joint_positions, self.targetPosHalfWayCube):
+                            max_steps_per_episode = 50
+                        elif np.array_equal(initial_joint_positions, self.targetPosInitial):
+                            max_steps_per_episode = 100
+                    if self.task == RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION:
+                        max_steps_per_episode += 20
+                    replay_start_size = (self.num_episodes // 20) * max_steps_per_episode
+                    replay_memory_size = 10 * replay_start_size
+
+                    if self.testing_scripts:
+                        max_steps_per_episode = 2
+                        replay_start_size = 6
+                        replay_memory_size = 10
+
+                    # self.max_steps_per_episode
                     st_num += 1
                     trainDQL_args.update(dict(velocity=vel,
                                               nAJoints=nAJoints,
                                               initial_joint_positions=initial_joint_positions,
                                               model_to_load_file_path=subt_trained_model_save_path,
+                                              max_steps_per_episode=max_steps_per_episode,
+                                              replay_start_size=replay_start_size,
+                                              replay_memory_size=replay_memory_size,
                                               )
                                          )
 

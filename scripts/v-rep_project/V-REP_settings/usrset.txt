@@ -1,3 +1,4 @@
+//V-REP 3.4.0 
 // Debugging
 // =================================================
 alwaysShowConsole = false
@@ -17,10 +18,10 @@ idleFps = 8
 threadedRenderingDuringSimulation = 0 // recommended to keep 0 (-1=disabled, 0=pre-enabled, 1=enabled).
 desiredOpenGlMajor = -1 // recommended to keep -1.
 desiredOpenGlMinor = -1 // recommended to keep -1.
-offscreenContextType = -1 // recommended to keep -1 (-1=default, 0=Qt offscreen, 1=QGLWidget/QOpenGLWidget visible, 2=QGLWidget/QOpenGLWidget invisible). HHH
-fboType = -1 // recommended to keep -1 (-1=default, 0=native, 1=QOpenGLFramebufferObject). HHH
-forceFboViaExt = false // recommended to keep false. HHH
-vboOperation = 1 // recommended to keep -1 (-1=default, 0=always off, 1=on when available). HHH
+offscreenContextType = -1 // recommended to keep -1 (-1=default, 0=Qt offscreen, 1=QGLWidget/QOpenGLWidget visible, 2=QGLWidget/QOpenGLWidget invisible). ##########
+fboType = -1 // recommended to keep -1 (-1=default, 0=native, 1=QOpenGLFramebufferObject). #########
+forceFboViaExt = false // recommended to keep false. ##########
+vboOperation = 1 // recommended to keep -1 (-1=default, 0=always off, 1=on when available). #########
 vboPersistenceInMs = 5000 // recommended to keep 5000.
 oglCompatibilityTweak1 = false // recommended to keep false since it causes small memory leaks.
 visionSensorsUseGuiThread_windowed = -1 // recommended to keep -1 (-1=default, 0=GUI when not otherwise possible, 1=always GUI).
@@ -30,7 +31,7 @@ useGlFinish_visionSensors = false // recommended to keep false. Graphic card dep
 vsync = 0 // recommended to keep at 0. Graphic card dependent.
 debugOpenGl = false
 stereoDist = 0 // 0=no stereo, otherwise the intra occular distance (0.0635 for the human eyes).
-highResDisplay = 1 // -1=automatic, 0=disabled, 1=enabled.
+highResDisplay = -1 // -1=automatic, 0=disabled, 1=enabled.  #################
 noEdgesWhenMouseDownInCameraView = false // if true, rendering is faster during mouse/view interaction
 noTexturesWhenMouseDownInCameraView = false // if true, rendering is faster during mouse/view interaction
 noCustomUisWhenMouseDownInCameraView = true // if true, rendering is faster during mouse/view interaction
@@ -41,7 +42,7 @@ hierarchyRefreshCnt = 3
 // =================================================
 renderingSurfaceVShift = 0
 renderingSurfaceVResize = 0
-displayWorldRef = false
+displayWorldRef = false //##########
 antialiasing = false
 displayBoundingBoxeWhenObjectSelected = true
 guiFontSize_Win = 11
@@ -49,9 +50,9 @@ guiFontSize_Mac = 10
 guiFontSize_Linux = 11
 allowTransparentDialogs = false
 dialogTransparencyFactor = 0.400000006
-statusbarInitiallyVisible = true
-modelBrowserInitiallyVisible = true
-sceneHierarchyInitiallyVisible = true
+statusbarInitiallyVisible = true //##########
+modelBrowserInitiallyVisible = true //##########
+sceneHierarchyInitiallyVisible = true //##########
 scriptEditorFont =  // empty=default.
 scriptEditorFontSize = -1 // -1=default.
 auxConsoleFont =  // empty=default
@@ -174,7 +175,7 @@ defaultDirectoryForRemoteApiFiles =  // absolute path, e.g. d:/myRemoteApiTransf
 
 // Serialization
 // =================================================
-autoSaveDelay = 0 // in minutes. 0 to disable.
+autoSaveDelay = 0 // in minutes. 0 to disable. ##########
 doNotWritePersistentData = false
 compressFiles = true
 saveApproxNormals = true
@@ -185,7 +186,7 @@ bulletSerializationBuffer = 10000000
 
 // Undo/Redo
 // =================================================
-undoRedoEnabled = false
+undoRedoEnabled = false //##########
 undoRedoOnlyPartialWithCameras = true
 undoRedoLevelCount = 16
 undoRedoMaxBufferSize = 80000000
@@ -194,12 +195,12 @@ timeInMsForUndoRedoTooLongWarning = 200
 
 // Messaging
 // =================================================
-doNotShowCrashRecoveryMessage = true
-doNotShowUpdateCheckMessage = true
-doNotShowSceneSelectionThumbnails = false
-doNotShowProgressBars = false
-doNotShowAcknowledgmentMessages = true
-redirectStatusbarMsgToConsoleInHeadlessMode = false
+doNotShowCrashRecoveryMessage = true //##########
+doNotShowUpdateCheckMessage = true //##########
+doNotShowSceneSelectionThumbnails = true //##########
+doNotShowProgressBars = true //##########
+doNotShowAcknowledgmentMessages = true //##########
+redirectStatusbarMsgToConsoleInHeadlessMode = true //##########
 
 
 // Compatibility
@@ -231,7 +232,7 @@ processorCoreAffinity = 0 // recommended to keep 0 (-1:os default, 0:all threads
 freeServerPortStart = 20000
 freeServerPortRange = 2000
 useExternalScriptEditor = false
-externalScriptEditor = /usr/bin/subl
+externalScriptEditor = subl
 abortScriptExecutionButton = 2 // in seconds. Zero to disable.
 triCountInOBB = 8
 removeIdenticalVertices = true

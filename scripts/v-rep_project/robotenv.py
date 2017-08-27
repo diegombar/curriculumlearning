@@ -182,7 +182,7 @@ class RobotEnv():
                 visibility_layer_param_ID = 10
                 visible_layer = 1
                 returnCode = vrep.simxSetObjectIntParameter(self.clientID, self.targetCubePositionH, visibility_layer_param_ID, visible_layer, vrep.simx_opmode_blocking)
-                print('simxSetObjectIntParameter return Code: ', returnCode)
+                # print('simxSetObjectIntParameter return Code: ', returnCode)
                 self.initializeGoalPosition()
 
             # Start simulation
