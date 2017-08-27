@@ -1,4 +1,4 @@
-from evaluate_curriculum import Curriculum
+from curriculum import Curriculum
 from robotenv import RobotEnv
 
 testing_scripts = True

@@ -1,7 +1,7 @@
-import training_independent_joints as training
 import os.path
 import time
 from robotenv import RobotEnv
+from dql_algorithm import DQLAlgorithm
 
 timestr = time.strftime("%b-%d_%H-%M-%S", time.gmtime())  # or time.localtime()
 
@@ -170,6 +170,6 @@ trainDQL_args = dict(experiment_dir_path=vis_experiment_dir_path,
                      # max_updates_per_env_step=self.max_updates_per_env_step,
                      )
 
-dql = training.DQLAlgorithm(**trainDQL_args)
+dql = DQLAlgorithm(**trainDQL_args)
 
 dql.run()

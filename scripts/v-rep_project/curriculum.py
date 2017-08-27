@@ -1,10 +1,10 @@
-import training_independent_joints as training
 import time
 import os
 import json
 import numpy as np
 from matplotlib import pyplot as plt
 from robotenv import RobotEnv
+from dql_algorithm import DQLAlgorithm
 
 
 class Curriculum():
@@ -201,7 +201,7 @@ class Curriculum():
 
                     # model_path, subt_total_steps, subt_cumul_successes_per_ep, subt_test_success_rates, subt_test_steps, subt_total_training_time_in_hours = training.trainDQL(**trainDQL_args)
 
-                    dql = training.DQLAlgorithm(**trainDQL_args)
+                    dql = DQLAlgorithm(**trainDQL_args)
 
                     # model_path, subt_total_steps, subt_cumul_successes_per_ep, subt_total_training_time_in_hours = dql.run()
                     results_dict = dql.run()

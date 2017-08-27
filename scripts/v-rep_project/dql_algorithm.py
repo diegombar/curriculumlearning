@@ -13,7 +13,6 @@ import subprocess
 import socket
 # import logging
 import threading
-# Load environment
 from robotenv import RobotEnv
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'

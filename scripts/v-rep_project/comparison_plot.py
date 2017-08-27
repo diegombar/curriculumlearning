@@ -3,7 +3,7 @@ import os
 # import json
 # import numpy as np
 from matplotlib import pyplot as plt
-from evaluate_curriculum import Curriculum
+from curriculum import Curriculum
 from robotenv import RobotEnv
 
 # exp_with_cl_dir_name = 'cl_decreasing_speeds_2017-Aug-10_16-01-01'  # #######TO CHANGE
