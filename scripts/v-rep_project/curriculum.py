@@ -181,7 +181,8 @@ class Curriculum():
                              )
 
         if self.testing_scripts:
-            trainDQL_args.update(dict(num_episodes=10,
+            self.num_episodes = 5
+            trainDQL_args.update(dict(num_episodes=5,
                                       # max_steps_per_episode=2,
                                       batch_size=1,
                                       # replay_start_size=6,
@@ -202,20 +203,19 @@ class Curriculum():
                          self.task == RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
                          )):
                         if np.array_equal(initial_joint_positions, self.targetPosNearCube):
-                            max_steps_per_episode = 10
+                            max_steps_per_episode = 5
                         elif np.array_equal(initial_joint_positions, self.targetPosHalfWayCube):
-                            max_steps_per_episode = 50
+                            max_steps_per_episode = 20
                         elif np.array_equal(initial_joint_positions, self.targetPosInitial):
-                            max_steps_per_episode = 100
+                            max_steps_per_episode = 50
                     if self.task == RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION:
-                        max_steps_per_episode += 20
-                    replay_start_size = (self.num_episodes // 20) * max_steps_per_episode
+                        max_steps_per_episode += 15
+                    replay_start_size = max((self.num_episodes // 20), 3) * max_steps_per_episode
                     replay_memory_size = 10 * replay_start_size
 
-                    if self.testing_scripts:
-                        max_steps_per_episode = 2
-                        replay_start_size = 6
-                        replay_memory_size = 10
+                    # if self.testing_scripts:
+                    #     replay_start_size = 3 * max_steps_per_episode
+                    #     replay_memory_size = 10 * replay_start_size
 
                     # self.max_steps_per_episode
                     st_num += 1
