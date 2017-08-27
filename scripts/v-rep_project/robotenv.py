@@ -104,6 +104,8 @@ class RobotEnv():
         self.sync_mode = sync_mode
         self.initial_joint_positions = initial_joint_positions
 
+        self.reset_position_for_test = False
+
     # 'with' statement (used to exit the v-rep simulation properly)
     def __enter__(self):
         print('[ROBOTENV] Starting environment...')
@@ -249,9 +251,11 @@ class RobotEnv():
     def reset(self):
         if vrep.simxGetConnectionId(self.clientID) != -1:
             # activate to change position at each env.reset()
-            # self.stop_if_needed()
+            self.stop_if_needed()
             # if self.initial_joint_positions is not None:
             #     self.initializeJointPositions(self.initial_joint_positions)
+            if self.reset_position_for_test:
+                self.initializeJointPositions(True)
             self.startSimulation()
 
             # get new measurements
@@ -265,6 +269,9 @@ class RobotEnv():
             #     if (self.state.shape == (1,self.observation_space_size) and abs(self.reward) < 1E+5):
             #         break
             return self.state
+
+    def set_reset_for_test(self, reset_position_for_test):
+        self.reset_position_for_test = reset_position_for_test
 
     def stop_if_needed(self):
         try_count = 0
@@ -402,15 +409,19 @@ class RobotEnv():
     #             break
     #     self.disableControlLoop()
 
-    def initializeJointPositions(self):
-        # targetPosInitial = np.array([1.0] * 6) * np.pi
+    def initializeJointPositions(self, reset_position_for_test=False):
         # targetPosStraight = np.array([0.66, 1.0, 1.25, 1.5, 1.0, 1.0]) * np.pi
         # targetPosHalfWayCube = np.array([0.66, 1.25, 1.25, 1.5, 1.0, 1.0]) * np.pi
         # targetPosNearCube = np.array([0.66, 1.5, 1.25, 1.5, 1.0, 1.0]) * np.pi
         # enableControlLoop()
+        if reset_position_for_test:
+            targetPos = np.array([1.0] * 6) * np.pi
+        else:
+            targetPos = self.initial_joint_positions
+
         for i in range(6):
-            vrep.simxSetJointPosition(self.clientID, self.jointHandles[i], self.initial_joint_positions[i], vrep.simx_opmode_blocking)
-            vrep.simxSetJointTargetPosition(self.clientID, self.jointHandles[i], self.initial_joint_positions[i], vrep.simx_opmode_blocking)
+            vrep.simxSetJointPosition(self.clientID, self.jointHandles[i], targetPos[i], vrep.simx_opmode_blocking)
+            vrep.simxSetJointTargetPosition(self.clientID, self.jointHandles[i], targetPos[i], vrep.simx_opmode_blocking)
         # check joint positions
         # maxDistance = 0.05
         # while True:

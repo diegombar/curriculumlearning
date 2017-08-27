@@ -95,9 +95,9 @@ class Curriculum():
             self.num_episodes = self.num_episodes // len(self.NumOfAJoints)
             # success_rate_for_subtask_completion = True
         elif self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER_SHAPING or self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER_SPARSE:
-            if self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SHAPING:
+            if self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER_SHAPING:
                 self.curriculum_name = "cl_initial_states_shaping"
-            elif self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE:
+            elif self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER_SPARSE:
                 self.curriculum_name = "cl_initial_states_sparse"
             self.Initial_positions = [self.targetPosNearCube, self.targetPosHalfWayCube, self.targetPosInitial]
             # self.replay_start_size = self.replay_start_size // len(self.Initial_positions)
@@ -117,7 +117,7 @@ class Curriculum():
             self.shaping_rewards = True
 
         if self.testing_scripts:
-            self.curriculum_name = self.curriculum_name + "_TEST"
+            self.curriculum_name += "_TEST"
 
         if not self.sync_mode:
             self.Velocities /= 4
@@ -214,14 +214,17 @@ class Curriculum():
                     if ((self.task == RobotEnv.TASK_REACH_CUBE or
                          self.task == RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
                          )):
+                        test_max_steps_per_episode = 50
                         if np.array_equal(initial_joint_positions, self.targetPosNearCube):
                             max_steps_per_episode = 5
                         elif np.array_equal(initial_joint_positions, self.targetPosHalfWayCube):
                             max_steps_per_episode = 20
                         elif np.array_equal(initial_joint_positions, self.targetPosInitial):
-                            max_steps_per_episode = 50
+                            max_steps_per_episode = test_max_steps_per_episode
                     if self.task == RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION:
-                        max_steps_per_episode += 15
+                        extra_steps_to_push = 15
+                        max_steps_per_episode += extra_steps_to_push
+                        test_max_steps_per_episode += extra_steps_to_push
                     replay_start_size = max((self.num_episodes // 20), 3) * max_steps_per_episode
                     replay_memory_size = 10 * replay_start_size
 
@@ -238,6 +241,7 @@ class Curriculum():
                                               max_steps_per_episode=max_steps_per_episode,
                                               replay_start_size=replay_start_size,
                                               replay_memory_size=replay_memory_size,
+                                              test_max_steps_per_episode=test_max_steps_per_episode,
                                               )
                                          )
 

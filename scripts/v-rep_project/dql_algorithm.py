@@ -185,6 +185,7 @@ class DQLAlgorithm():
                  num_hidden_layers, num_neurons_per_hidden,
                  num_episodes, max_steps_per_episode, e_min,
                  task,
+                 test_max_steps_per_episode,
                  lrate=1E-6,  # scripts/v-rep_project/training_independent_joints.py
                  batch_size=32,
                  replay_start_size=50000,
@@ -217,6 +218,7 @@ class DQLAlgorithm():
         self.num_neurons_per_hidden = num_neurons_per_hidden
         self.num_episodes = num_episodes
         self.max_steps_per_episode = max_steps_per_episode
+        self.test_max_steps_per_episode = test_max_steps_per_episode
         self.e_min = e_min
         self.task = task
         self.model_saving_period = self.num_episodes // 3
@@ -526,7 +528,9 @@ class DQLAlgorithm():
                             episodeBuffer = experience_dataset(self.replay_memory_size)  # temporary buffer
 
                         self.current_step = 0
-                        while self.current_step < self.max_steps_per_episode and not self.coord.should_stop():
+                        while ((self.current_step < self.max_steps_per_episode or
+                                (self.testing_policy and self.current_step < self.test_max_steps_per_episode)) and
+                               not self.coord.should_stop()):
                             self.current_step += 1
                             # print("\n[MAIN] step:", self.current_step)
                             # pick action from the DQN, epsilon greedy
@@ -606,6 +610,7 @@ class DQLAlgorithm():
                                 # back to training
                                 print("[MAIN] Back to training.")
                                 self.testing_policy = False
+                                env.set_reset_for_test(False)
                                 self.skip_training = False
                                 self.epsilon = epsilon_backup
                                 testing_policy_episode = 0
@@ -673,6 +678,7 @@ class DQLAlgorithm():
                             if ((self.current_episode % self.policy_test_period == 0) or (self.current_episode == self.num_episodes)) and not (self.skip_training or self.testing_policy):
                                 # pause training and test current policy for some episodes
                                 self.testing_policy = True
+                                env.set_reset_for_test(True)
                                 print("[MAIN] Testing policy...")
                                 self.test_steps.append(self.total_steps)
                                 self.test_episodes.append(self.current_episode)
