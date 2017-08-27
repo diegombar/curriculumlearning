@@ -35,7 +35,6 @@ os.makedirs(comparison_plots_dir_path, exist_ok=True)
 #     plot_file = os.path.join(dir_path, 'success_rate.svg')
 #     fig.savefig(plot_file, bbox_inches='tight')
 #     plt.close()
-max_updates_per_env_step = 10
 
 
 def savePlot(dir_path,
@@ -50,9 +49,10 @@ def savePlot(dir_path,
     fig = plt.figure()
     plt.plot(curr_x_values, curr_y_values, 'b', linewidth=0.5, label='with curriculum')
     plt.plot(no_curr_x_values, no_curr_y_values, 'r--', linewidth=0.5, label='no curriculum')
-    plt.ylim((None, None))
     plt.legend(loc='best')
     plt.xlabel(x_label)
+    plt.set_xlim([xmin,xmax])
+    plt.set_ylim([ymin,ymax])
     plt.ylabel(y_label)
     plt.title(title)
     if vertical_xs is not None:
@@ -159,8 +159,6 @@ def savePlots(no_curr_shap_folder_name, no_curr_shap_results_dict,
                  'Success rate in test conditions',
                  'curriculum_success_rate_per_step',
                  curriculum_switching_steps,
-                 y_min=-0.1,
-                 y_max=1.1,
                  )
 
         savePlot(current_comparison_dir_path,
@@ -169,8 +167,6 @@ def savePlots(no_curr_shap_folder_name, no_curr_shap_results_dict,
                  'Success rate in test conditions',
                  'curriculum_success_rate_per_ep',
                  curriculum_switching_episodes,
-                 y_min=-0.1,
-                 y_max=1.1,
                  )
 
         savePlot(current_comparison_dir_path,
@@ -195,8 +191,6 @@ def savePlots(no_curr_shap_folder_name, no_curr_shap_results_dict,
                  'Number of network updates',
                  'curriculum_net_updates_per_step',
                  curriculum_switching_steps,
-                 y_min=-0.1,
-                 y_max=max_updates_per_env_step + 0.1,
                  )
 
 
@@ -219,6 +213,7 @@ max_steps_per_episode = 200
 num_episodes = 1000
 num_hidden_layers = 3
 num_neurons_per_hidden = 50
+max_updates_per_env_step = 10
 batch_size = 32
 lrate = 1e-4
 # replay_start_size = (num_episodes // 20) * max_steps_per_episode
