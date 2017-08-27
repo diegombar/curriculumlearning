@@ -241,18 +241,18 @@ no_curriculum_shaping = Curriculum.NO_CURRICULUM_SHAPING
 no_curriculum_sparse = Curriculum.NO_CURRICULUM_SPARSE
 
 Curriculums = [Curriculum.CURRICULUM_INITIALIZE_FURTHER_SHAPING,
-               # Curriculum.CURRICULUM_DECREASING_SPEED_SHAPING,
-               # Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER_SHAPING,
-               # Curriculum.CURRICULUM_DECREASING_SPEED_SPARSE,
-               # Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE,
-               # Curriculum.CURRICULUM_INITIALIZE_FURTHER_SPARSE,
+               Curriculum.CURRICULUM_DECREASING_SPEED_SHAPING,
+               Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER_SHAPING,
+               Curriculum.CURRICULUM_DECREASING_SPEED_SPARSE,
+               Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE,
+               Curriculum.CURRICULUM_INITIALIZE_FURTHER_SPARSE,
                ]
 
-task = RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
+task = RobotEnv.TASK_REACH_CUBE
 
 testing_scripts = True
 # max_steps_per_episode = 200
-num_episodes = 2000  # aproximate
+num_episodes = 1000  # aproximate
 max_steps_per_ep = 50  # aproximate
 max_total_transitions = num_episodes * max_steps_per_ep  # episodes x max_steps_per_ep
 num_hidden_layers = 3

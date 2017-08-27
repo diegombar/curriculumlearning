@@ -230,7 +230,8 @@ class Curriculum():
                         extra_steps_to_push = 15
                         max_steps_per_episode += extra_steps_to_push
                         test_max_steps_per_episode += extra_steps_to_push
-                    replay_start_size = max((self.num_episodes // 20), 3) * max_steps_per_episode
+                    # replay_start_size = max((self.num_episodes // 20), 3) * max_steps_per_episode
+                    replay_start_size = max(self.max_total_transitions // 20, 3 * max_steps_per_episode)
                     replay_memory_size = 10 * replay_start_size
 
                     if self.testing_scripts:

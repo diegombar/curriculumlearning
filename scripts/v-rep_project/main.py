@@ -2,11 +2,13 @@ from curriculum import Curriculum
 from robotenv import RobotEnv
 
 testing_scripts = True
-curriculum = Curriculum.CURRICULUM_DECREASING_SPEED
+curriculum = Curriculum.CURRICULUM_DECREASING_SPEED_SPARSE
 # task = RobotEnv.TASK_REACH_CUBE
 task = RobotEnv.TASK_REACH_CUBE
 # max_steps_per_episode = 100
-num_episodes = 2000
+num_episodes = 2000  # estimate
+max_steps_per_ep = 50  # estimate
+max_total_transitions = num_episodes * max_steps_per_ep
 num_hidden_layers = 3
 num_neurons_per_hidden = 50
 max_updates_per_env_step = 10
@@ -21,7 +23,8 @@ portNb = 19999
 curr_args = dict(curriculum=curriculum,
                  task=task,
                  # max_steps_per_episode=max_steps_per_episode,
-                 num_episodes=num_episodes,
+                 # num_episodes=num_episodes,
+                 max_total_transitions=max_total_transitions,
                  num_hidden_layers=num_hidden_layers,
                  num_neurons_per_hidden=num_neurons_per_hidden,
                  batch_size=batch_size,

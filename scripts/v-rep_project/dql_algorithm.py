@@ -39,6 +39,8 @@ class experience_dataset():
 
     # randomly sample an array of transitions (s,a,r,s',done)
     def sample(self, sample_size):
+        print('\nsample_size: ', sample_size)
+        print('\ndata: ', len(self.data))
         with self.datalock:
             sample = np.array(random.sample(self.data, sample_size))
         return np.reshape(sample, [sample_size, 5])
@@ -211,6 +213,8 @@ class DQLAlgorithm():
                  disable_saving=False,
                  sync_mode=True,
                  shaping_rewards=True,
+                 policy_test_period=None,  # episodes
+                 policy_test_episodes=None,  # episodes
                  ):
         self.h_params = {}
         self.end_stats_dict = {}
@@ -238,8 +242,16 @@ class DQLAlgorithm():
         if targetCubePosition is not None:
             self.targetCubePosition = targetCubePosition
             self.h_params["targetCubePosition"] = self.targetCubePosition
-        self.policy_test_period = min(self.num_episodes // 10, 50)
-        self.policy_test_episodes = 20
+
+        if policy_test_period is not None:
+            self.policy_test_period = policy_test_episodes
+        else:
+            self.policy_test_period = min(self.num_episodes // 10, 50)
+
+        if policy_test_episodes is not None:
+            self.policy_test_episodes = policy_test_episodes
+        else:
+            self.policy_test_episodes = 20
         # self.success_rate_for_subtask_completion = success_rate_for_subtask_completion
         self.nSJoints = nSJoints
         self.nAJoints = nAJoints
@@ -534,7 +546,7 @@ class DQLAlgorithm():
                                 (self.testing_policy and self.current_step < self.test_max_steps_per_episode)) and
                                not self.coord.should_stop()):
                             self.current_step += 1
-                            # print("\n[MAIN] step:", self.current_step)
+                            print("\n[MAIN] step:", self.current_step)
                             # pick action from the DQN, epsilon greedy
                             chosenActions, allJQValues = sess.run(
                                 [self.collector_mainDQN.allJointsBestActions, self.collector_mainDQN.allJointsQvalues3D],
@@ -788,7 +800,7 @@ class DQLAlgorithm():
                         if updates_per_step_counter < self.max_updates_per_env_step:
                             self.total_network_updates += 1
                             updates_per_step_counter += 1
-                            # print("[TRAINER] Current update number: ", updates_per_step_counter)
+                            print("[TRAINER] Current update number: ", updates_per_step_counter)
                             batch = self.dataset.sample(self.batch_size)
                             # states0, actions0, rewards, states1, dones = batch.T
                             states0, actions0, rewards, states1, end_multipliers = batch.T

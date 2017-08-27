@@ -104,7 +104,7 @@ class RobotEnv():
         self.sync_mode = sync_mode
         self.initial_joint_positions = initial_joint_positions
 
-        self.reset_position_for_test = False
+        self.test_task = False
 
     # 'with' statement (used to exit the v-rep simulation properly)
     def __enter__(self):
