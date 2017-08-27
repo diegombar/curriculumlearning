@@ -9,13 +9,13 @@ from dql_algorithm import DQLAlgorithm
 
 class Curriculum():
     # curriculums
-    NO_CURRICULUM_VEL_025 = 0
-    NO_CURRICULUM_VEL_1 = -1
-    CURRICULUM_DECREASING_SPEED = 1
-    CURRICULUM_INCREASING_JOINT_NUMBER = 2
-    CURRICULUM_INITIALIZE_FURTHER = 3
+    NO_CURRICULUM_SHAPING = 0
+    NO_CURRICULUM_SPARSE = -2
+    CURRICULUM_DECREASING_SPEED_SHAPING = 1
     CURRICULUM_DECREASING_SPEED_SPARSE = 4
+    CURRICULUM_INCREASING_JOINT_NUMBER_SHAPING = 2
     CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE = 5
+    CURRICULUM_INITIALIZE_FURTHER_SHAPING = 3
     CURRICULUM_INITIALIZE_FURTHER_SPARSE = 6
 
     def __init__(self,
@@ -58,10 +58,6 @@ class Curriculum():
         self.targetPosHalfWayCube = np.array([0.66, 1.25, 1.25, 1.5, 1.0, 1.0]) * np.pi
         self.targetPosNearCube = np.array([0.66, 1.5, 1.25, 1.5, 1.0, 1.0]) * np.pi
 
-        # self.Velocities = [0.25]
-        self.Velocities = np.array([1.0])
-        self.NumOfAJoints = [6]
-        self.Initial_positions = [self.targetPosInitial]
         if self.task == RobotEnv.TASK_REACH_CUBE:
             self.task_name = 'reaching'
         elif self.task == RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION:
@@ -69,28 +65,40 @@ class Curriculum():
         else:
             raise RuntimeError('[CURRICULUM] Not a valid task.')
 
-        if self.curriculum == self.NO_CURRICULUM_VEL_025:
-            self.curriculum_name = "no_cl_vel_025"
-            self.Velocities = np.array([0.25])
-            # success_rate_for_subtask_completion = False
-        elif self.curriculum == self.NO_CURRICULUM_VEL_1:
-            self.curriculum_name = "no_cl_vel_1"
+        # self.Velocities = [0.25]
+        self.Velocities = np.array([1.0])
+        self.NumOfAJoints = [6]
+        self.Initial_positions = [self.targetPosInitial]
+
+        if self.curriculum == self.NO_CURRICULUM_SHAPING or self.curriculum == self.NO_CURRICULUM_SPARSE:
+            if self.curriculum == self.NO_CURRICULUM_SHAPING:
+                self.curriculum_name = "no_cl_shaping"
+            elif self.curriculum == self.NO_CURRICULUM_SPARSE:
+                self.curriculum_name = "no_cl_sparse"
             self.Velocities = np.array([1.0])
-            # success_rate_for_subtask_completion = False
-        elif self.curriculum == self.CURRICULUM_DECREASING_SPEED or self.curriculum == self.CURRICULUM_DECREASING_SPEED_SPARSE:
-            self.curriculum_name = "cl_decreasing_speeds"
-            self.Velocities = np.array([1, 0.5, 0.25])
+        elif self.curriculum == self.CURRICULUM_DECREASING_SPEED_SHAPING or self.curriculum == self.CURRICULUM_DECREASING_SPEED_SPARSE:
+            if self.curriculum == self.CURRICULUM_DECREASING_SPEED_SHAPING:
+                self.curriculum_name = "cl_speeds_shaping"
+            elif self.curriculum == self.CURRICULUM_DECREASING_SPEED_SPARSE:
+                self.curriculum_name = "cl_speeds_sparse"
+            self.Velocities = np.array([4.0, 2.0, 1.0])
             # self.replay_start_size = self.replay_start_size // len(self.Velocities)
             self.num_episodes = self.num_episodes // len(self.Velocities)
             # success_rate_for_subtask_completion = True
-        elif self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER or self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE:
-            self.curriculum_name = "cl_increasing_num_of_joints"
+        elif self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SHAPING or self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE:
+            if self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SHAPING:
+                self.curriculum_name = "cl_joints_shaping"
+            elif self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE:
+                self.curriculum_name = "cl_joints_sparse"
             self.NumOfAJoints = range(1, 7)
             # self.replay_start_size = self.replay_start_size // len(self.NumOfAJoints)
             self.num_episodes = self.num_episodes // len(self.NumOfAJoints)
             # success_rate_for_subtask_completion = True
-        elif self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER or self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER_SPARSE:
-            self.curriculum_name = "cl_further_initial_states"
+        elif self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER_SHAPING or self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER_SPARSE:
+            if self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SHAPING:
+                self.curriculum_name = "cl_initial_states_shaping"
+            elif self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE:
+                self.curriculum_name = "cl_initial_states_sparse"
             self.Initial_positions = [self.targetPosNearCube, self.targetPosHalfWayCube, self.targetPosInitial]
             # self.replay_start_size = self.replay_start_size // len(self.Initial_positions)
             self.num_episodes = self.num_episodes // len(self.Initial_positions)
@@ -99,17 +107,20 @@ class Curriculum():
 
         if(self.curriculum == self.CURRICULUM_DECREASING_SPEED_SPARSE or
            self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE or
-           self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER_SPARSE
+           self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER_SPARSE or
+           self.curriculum == self.NO_CURRICULUM_SPARSE
            ):
+            # sparse rewards
             self.shaping_rewards = False
         else:
+            # shaping rewards
             self.shaping_rewards = True
 
         if self.testing_scripts:
             self.curriculum_name = self.curriculum_name + "_TEST"
 
-        # if self.sync_mode:
-        #     self.Velocities *= 4
+        if not self.sync_mode:
+            self.Velocities /= 4
 
         self.timestr = time.strftime("%b-%d_%H-%M-%S", time.gmtime())  # or time.localtime()
         self.current_dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -193,12 +204,13 @@ class Curriculum():
                                  )
 
         # run curriculum
-        print('[CURRICULUM] Running new curriculum: ', self.curriculum_name)
+        print('\n[CURRICULUM] Running new curriculum: ', self.curriculum_name)
         st_num = 0
         for vel in self.Velocities:
             for nAJoints in self.NumOfAJoints:
                 for initial_joint_positions in self.Initial_positions:
                     max_steps_per_episode = 0
+                    # adapt number of steps: following values testes with real vel = 1.0
                     if ((self.task == RobotEnv.TASK_REACH_CUBE or
                          self.task == RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
                          )):

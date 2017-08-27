@@ -528,7 +528,7 @@ class DQLAlgorithm():
                         self.current_step = 0
                         while self.current_step < self.max_steps_per_episode and not self.coord.should_stop():
                             self.current_step += 1
-                            print("\n[MAIN] step:", self.current_step)
+                            # print("\n[MAIN] step:", self.current_step)
                             # pick action from the DQN, epsilon greedy
                             chosenActions, allJQValues = sess.run(
                                 [self.collector_mainDQN.allJointsBestActions, self.collector_mainDQN.allJointsQvalues3D],

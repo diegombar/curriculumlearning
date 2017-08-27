@@ -2,9 +2,9 @@ from curriculum import Curriculum
 from robotenv import RobotEnv
 
 testing_scripts = True
-curriculum = Curriculum.CURRICULUM_INITIALIZE_FURTHER
+curriculum = Curriculum.CURRICULUM_DECREASING_SPEED
 # task = RobotEnv.TASK_REACH_CUBE
-task = RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
+task = RobotEnv.TASK_REACH_CUBE
 # max_steps_per_episode = 100
 num_episodes = 2000
 num_hidden_layers = 3
