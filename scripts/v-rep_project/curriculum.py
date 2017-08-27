@@ -184,8 +184,8 @@ class Curriculum():
                              notes=self.curriculum_name,
                              previous_norm=False,
                              targetCubePosition=self.targetCubePosition,
-                             policy_test_period=50,  # episodes
-                             policy_test_episodes=20,  # episodes
+                             # policy_test_period=50,  # episodes
+                             # policy_test_episodes=20,  # episodes
                              # success_rate_for_subtask_completion=success_rate_for_subtask_completion,  # change with/without CL
                              nSJoints=6,
                              # nAJoints=6,

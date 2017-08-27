@@ -182,7 +182,8 @@ class DQN():
 class DQLAlgorithm():
     def __init__(self,
                  experiment_dir_path,
-                 num_hidden_layers, num_neurons_per_hidden,
+                 num_hidden_layers,
+                 num_neurons_per_hidden,
                  max_total_transitions,
                  max_steps_per_episode,
                  e_min,
@@ -200,8 +201,6 @@ class DQLAlgorithm():
                  notes=None,
                  previous_norm=False,
                  targetCubePosition=None,
-                 policy_test_period=100,  # episodes
-                 policy_test_episodes=20,  # episodes
                  # success_rate_for_subtask_completion=False,
                  nSJoints=6,
                  nAJoints=6,
@@ -239,8 +238,8 @@ class DQLAlgorithm():
         if targetCubePosition is not None:
             self.targetCubePosition = targetCubePosition
             self.h_params["targetCubePosition"] = self.targetCubePosition
-        self.policy_test_period = policy_test_period
-        self.policy_test_episodes = policy_test_episodes
+        self.policy_test_period = min(self.num_episodes // 10, 50)
+        self.policy_test_episodes = 20
         # self.success_rate_for_subtask_completion = success_rate_for_subtask_completion
         self.nSJoints = nSJoints
         self.nAJoints = nAJoints
