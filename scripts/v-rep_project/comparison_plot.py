@@ -1,7 +1,7 @@
 import os
 # import time
 # import json
-# import numpy as np
+import numpy as np
 from matplotlib import pyplot as plt
 from curriculum import Curriculum
 from robotenv import RobotEnv
@@ -15,6 +15,9 @@ all_curriculums_dir_path = os.path.join(current_dir_path, "trained_models_and_re
 # exp_without_cl_dir_path = os.path.join(all_models_dir_path, exp_without_cl_dir_name)
 comparison_plots_dir_path = os.path.join(all_curriculums_dir_path, "comparison_plots")
 os.makedirs(comparison_plots_dir_path, exist_ok=True)
+
+max_updates_per_env_step = 10
+
 
 # lists_to_deserialize = ['cl_switching_eps', 'cl_cumul_successes_list', 'cl_switching_steps', 'cl_test_success_rates_list', 'cl_test_steps_list']  # have to be lists
 # for list_to_deserialize in lists_to_deserialize:
@@ -51,8 +54,7 @@ def savePlot(dir_path,
     plt.plot(no_curr_x_values, no_curr_y_values, 'r--', linewidth=0.5, label='no curriculum')
     plt.legend(loc='best')
     plt.xlabel(x_label)
-    plt.set_xlim([xmin,xmax])
-    plt.set_ylim([ymin,ymax])
+    plt.set_ylim([y_min, y_max])
     plt.ylabel(y_label)
     plt.title(title)
     if vertical_xs is not None:
@@ -81,14 +83,14 @@ def savePlots(no_curr_shap_folder_name, no_curr_shap_results_dict,
         no_curriculum_epsilon_per_ep = no_curriculum_results_dict['curriculum_epsilon_per_ep']
         no_curriculum_success_step_per_ep = no_curriculum_results_dict['curriculum_success_step_per_ep']
         no_curriculum_test_steps = no_curriculum_results_dict['curriculum_test_steps']
-        no_curriculum_test_episodes = no_curriculum_results_dict['curriculum_test_episodes']
+        # no_curriculum_test_episodes = no_curriculum_results_dict['curriculum_test_episodes']
         no_curriculum_test_success_rates = no_curriculum_results_dict['curriculum_test_success_rates']
         no_curriculum_test_mean_returns = no_curriculum_results_dict['curriculum_test_mean_returns']
         no_curriculum_net_updates_per_step = no_curriculum_results_dict['curriculum_net_updates_per_step']
         # no_curriculum_switching_episodes = no_curriculum_results_dict['curriculum_switching_episodes']
         # no_curriculum_switching_steps = no_curriculum_results_dict['curriculum_switching_steps']
 
-        no_curriculum_episodes = range(1, len(no_curriculum_undisc_return_per_ep) + 1)
+        no_curriculum_episodes = range(1, len(no_curriculum_num_steps_per_ep) + 1)
         no_curriculum_steps = range(1, len(no_curriculum_net_updates_per_step) + 1)
 
         curriculum_undisc_return_per_ep = curriculum_results_dict['curriculum_undisc_return_per_ep']
@@ -97,14 +99,14 @@ def savePlots(no_curr_shap_folder_name, no_curr_shap_results_dict,
         curriculum_epsilon_per_ep = curriculum_results_dict['curriculum_epsilon_per_ep']
         curriculum_success_step_per_ep = curriculum_results_dict['curriculum_success_step_per_ep']
         curriculum_test_steps = curriculum_results_dict['curriculum_test_steps']
-        curriculum_test_episodes = curriculum_results_dict['curriculum_test_episodes']
+        # curriculum_test_episodes = curriculum_results_dict['curriculum_test_episodes']
         curriculum_test_success_rates = curriculum_results_dict['curriculum_test_success_rates']
         curriculum_test_mean_returns = curriculum_results_dict['curriculum_test_mean_returns']
         curriculum_net_updates_per_step = curriculum_results_dict['curriculum_net_updates_per_step']
         curriculum_switching_episodes = curriculum_results_dict['curriculum_switching_episodes']
         curriculum_switching_steps = curriculum_results_dict['curriculum_switching_steps']
 
-        curriculum_episodes = range(1, len(curriculum_undisc_return_per_ep) + 1)
+        curriculum_episodes = range(1, len(curriculum_num_steps_per_ep) + 1)
         curriculum_steps = range(1, len(curriculum_net_updates_per_step) + 1)
 
         curriculum_folder_name = curr.folder_name
@@ -113,84 +115,124 @@ def savePlots(no_curr_shap_folder_name, no_curr_shap_results_dict,
         current_comparison_dir_path = os.path.join(comparison_plots_dir_path, current_comparison_name)
         os.makedirs(current_comparison_dir_path, exist_ok=True)
 
-        savePlot(current_comparison_dir_path,
-                 'episodes', no_curriculum_episodes, curriculum_episodes,
-                 'returns', no_curriculum_undisc_return_per_ep, curriculum_undisc_return_per_ep,
-                 'Undiscounted returns during training',
-                 'comparison_undisc_return_per_ep',
-                 curriculum_switching_episodes,
-                 )
+        cumul_no_cl_steps = np.cumsum(np.array(no_curriculum_num_steps_per_ep))  # 1 x num episodes
+        cumul_cl_steps = np.cumsum(np.array(curriculum_num_steps_per_ep))  # 1 x num episodes
 
         savePlot(current_comparison_dir_path,
                  'episodes', no_curriculum_episodes, curriculum_episodes,
                  'steps', no_curriculum_num_steps_per_ep, curriculum_num_steps_per_ep,
-                 'Environment steps',
+                 'Environment steps during training',
                  'curriculum_num_steps_per_ep',
                  curriculum_switching_episodes,
+                 y_min=-1,
+                 y_max=100,
                  )
 
+        # savePlot(current_comparison_dir_path,
+        #          'episodes', no_curriculum_episodes, curriculum_episodes,
+        #          'returns', no_curriculum_undisc_return_per_ep, curriculum_undisc_return_per_ep,
+        #          'Undiscounted returns during training',
+        #          'comparison_undisc_return_per_ep',
+        #          curriculum_switching_episodes,
+        #          )
+
         savePlot(current_comparison_dir_path,
-                 'episodes', no_curriculum_episodes, curriculum_episodes,
+                 'transitions', cumul_no_cl_steps, cumul_cl_steps,
+                 'returns', no_curriculum_undisc_return_per_ep, curriculum_undisc_return_per_ep,
+                 'Undiscounted returns during training',
+                 'comparison_undisc_return_by_transitions',
+                 curriculum_switching_steps,
+                 )
+
+        # savePlot(current_comparison_dir_path,
+        #          'episodes', no_curriculum_episodes, curriculum_episodes,
+        #          'successful episodes', no_curriculum_cumul_successes_per_ep, curriculum_cumul_successes_per_ep,
+        #          'Cumulative successful episodes',
+        #          'curriculum_cumul_successes_per_ep',
+        #          curriculum_switching_episodes,
+        #          )
+
+        savePlot(current_comparison_dir_path,
+                 'transitions', cumul_no_cl_steps, cumul_cl_steps,
                  'successful episodes', no_curriculum_cumul_successes_per_ep, curriculum_cumul_successes_per_ep,
-                 'Cumulative successful episodes',
-                 'curriculum_cumul_successes_per_ep',
-                 curriculum_switching_episodes,
+                 'Cumulative successful episodes during training',
+                 'curriculum_cumul_successes_by_transitions',
+                 curriculum_switching_steps,
                  )
 
+        # savePlot(current_comparison_dir_path,
+        #          'episodes', no_curriculum_episodes, curriculum_episodes,
+        #          'epsilon', no_curriculum_epsilon_per_ep, curriculum_epsilon_per_ep,
+        #          'Epsilon evolution',
+        #          'curriculum_epsilon_per_ep',
+        #          curriculum_switching_episodes,
+        #          )
         savePlot(current_comparison_dir_path,
-                 'episodes', no_curriculum_episodes, curriculum_episodes,
+                 'transitions', cumul_no_cl_steps, cumul_cl_steps,
                  'epsilon', no_curriculum_epsilon_per_ep, curriculum_epsilon_per_ep,
-                 'Epsilon evolution',
-                 'curriculum_epsilon_per_ep',
-                 curriculum_switching_episodes,
+                 'Epsilon evolution during training',
+                 'curriculum_epsilon_by_transitions',
+                 curriculum_switching_steps,
                  )
 
-        savePlot(current_comparison_dir_path,
-                 'episodes', no_curriculum_episodes, curriculum_episodes,
-                 'steps', no_curriculum_success_step_per_ep, curriculum_success_step_per_ep,
-                 'Steps to reach a goal state',
-                 'curriculum_success_step_per_ep',
-                 curriculum_switching_episodes,
-                 )
+        # savePlot(current_comparison_dir_path,
+        #          'episodes', no_curriculum_episodes, curriculum_episodes,
+        #          'steps', no_curriculum_success_step_per_ep, curriculum_success_step_per_ep,
+        #          'Steps to reach a goal state',
+        #          'curriculum_success_step_per_ep',
+        #          curriculum_switching_episodes,
+        #          )
 
         savePlot(current_comparison_dir_path,
-                 'steps', no_curriculum_test_steps, curriculum_test_steps,
-                 'success rate', no_curriculum_test_success_rates, curriculum_test_success_rates,
-                 'Success rate in test conditions',
-                 'curriculum_success_rate_per_step',
+                 'transitions', cumul_no_cl_steps, cumul_cl_steps,
+                 'steps to goal state', no_curriculum_success_step_per_ep, curriculum_success_step_per_ep,
+                 'Steps to reach a goal state during training',
+                 'curriculum_success_step_by_transitions',
                  curriculum_switching_steps,
                  )
 
         savePlot(current_comparison_dir_path,
-                 'episodes', no_curriculum_test_episodes, curriculum_test_episodes,
+                 'transitions', no_curriculum_test_steps, curriculum_test_steps,
                  'success rate', no_curriculum_test_success_rates, curriculum_test_success_rates,
                  'Success rate in test conditions',
-                 'curriculum_success_rate_per_ep',
-                 curriculum_switching_episodes,
+                 'curriculum_success_rate_by_transitions',
+                 curriculum_switching_steps,
+                 y_min=-0.1,
+                 y_max=1.1,
                  )
 
+        # savePlot(current_comparison_dir_path,
+        #          'episodes', no_curriculum_test_episodes, curriculum_test_episodes,
+        #          'success rate', no_curriculum_test_success_rates, curriculum_test_success_rates,
+        #          'Success rate in test conditions',
+        #          'curriculum_success_rate_per_ep',
+        #          curriculum_switching_episodes,
+        #          )
+
         savePlot(current_comparison_dir_path,
-                 'steps', no_curriculum_test_steps, curriculum_test_steps,
+                 'transitions', no_curriculum_test_steps, curriculum_test_steps,
                  'mean return', no_curriculum_test_mean_returns, curriculum_test_mean_returns,
                  'Mean undisc. return in test conditions',
-                 'curriculum_test_mean_returns_per_step',
+                 'curriculum_test_mean_returns_by_transitions',
                  curriculum_switching_steps,
                  )
 
-        savePlot(current_comparison_dir_path,
-                 'episodes', no_curriculum_test_episodes, curriculum_test_episodes,
-                 'mean return', no_curriculum_test_mean_returns, curriculum_test_mean_returns,
-                 'Mean undisc. return in test conditions',
-                 'curriculum_test_mean_returns_per_ep',
-                 curriculum_switching_episodes,
-                 )
+        # savePlot(current_comparison_dir_path,
+        #          'transitions', no_curriculum_test_steps, curriculum_test_steps,
+        #          'mean return', no_curriculum_test_mean_returns, curriculum_test_mean_returns,
+        #          'Mean undisc. return in test conditions',
+        #          'curriculum_test_mean_returns_by_transitions',
+        #          curriculum_switching_steps,
+        #          )
 
         savePlot(current_comparison_dir_path,
-                 'steps', no_curriculum_steps, curriculum_steps,
+                 'transitions', no_curriculum_steps, curriculum_steps,
                  'updates', no_curriculum_net_updates_per_step, curriculum_net_updates_per_step,
-                 'Number of network updates',
-                 'curriculum_net_updates_per_step',
+                 'Number of network updates per env. step',
+                 'curriculum_net_updates_by_transitions',
                  curriculum_switching_steps,
+                 y_min=-0,
+                 y_max=max_updates_per_env_step + 1,
                  )
 
 
@@ -199,11 +241,11 @@ no_curriculum_shaping = Curriculum.NO_CURRICULUM_SHAPING
 no_curriculum_sparse = Curriculum.NO_CURRICULUM_SPARSE
 
 Curriculums = [Curriculum.CURRICULUM_INITIALIZE_FURTHER_SHAPING,
-               Curriculum.CURRICULUM_DECREASING_SPEED_SHAPING,
-               Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER_SHAPING,
-               Curriculum.CURRICULUM_DECREASING_SPEED_SPARSE,
-               Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE,
-               Curriculum.CURRICULUM_INITIALIZE_FURTHER_SPARSE,
+               # Curriculum.CURRICULUM_DECREASING_SPEED_SHAPING,
+               # Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER_SHAPING,
+               # Curriculum.CURRICULUM_DECREASING_SPEED_SPARSE,
+               # Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE,
+               # Curriculum.CURRICULUM_INITIALIZE_FURTHER_SPARSE,
                ]
 
 task = RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
@@ -213,7 +255,7 @@ max_steps_per_episode = 200
 num_episodes = 1000
 num_hidden_layers = 3
 num_neurons_per_hidden = 50
-max_updates_per_env_step = 10
+
 batch_size = 32
 lrate = 1e-4
 # replay_start_size = (num_episodes // 20) * max_steps_per_episode

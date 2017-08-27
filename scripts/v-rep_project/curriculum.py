@@ -319,82 +319,84 @@ class Curriculum():
         episodes = range(1, len(self.curriculum_undisc_return_per_ep) + 1)
         steps = range(1, len(self.curriculum_net_updates_per_step) + 1)
 
-        self.savePlot(self.curriculum_dir_path,
-                      'episodes', episodes,
-                      'returns', self.curriculum_undisc_return_per_ep,
-                      'Undiscounted returns during training',
-                      'curriculum_undisc_return_per_ep',
-                      self.curriculum_switching_episodes,
-                      )
+        cumul_cl_steps = np.cumsum(np.array(self.curriculum_num_steps_per_ep))  # 1 x num episodes
 
         self.savePlot(self.curriculum_dir_path,
                       'episodes', episodes,
                       'steps', self.curriculum_num_steps_per_ep,
-                      'Environment steps',
+                      'Environment steps during training',
                       'curriculum_num_steps_per_ep',
                       self.curriculum_switching_episodes,
                       )
 
         self.savePlot(self.curriculum_dir_path,
-                      'episodes', episodes,
+                      'transitions', cumul_cl_steps,
+                      'returns', self.curriculum_undisc_return_per_ep,
+                      'Undiscounted returns during training',
+                      'curriculum_undisc_return_by_transitions',
+                      self.curriculum_switching_steps,
+                      )
+
+        self.savePlot(self.curriculum_dir_path,
+                      'transitions', cumul_cl_steps,
                       'successful episodes', self.curriculum_cumul_successes_per_ep,
-                      'Cumulative successful episodes',
-                      'curriculum_cumul_successes_per_ep',
-                      self.curriculum_switching_episodes,
+                      'Cumulative successful episodes during training',
+                      'curriculum_cumul_successes_by_transition',
+                      self.curriculum_switching_steps,
                       )
 
         self.savePlot(self.curriculum_dir_path,
-                      'episodes', episodes,
+                      'transitions', cumul_cl_steps,
                       'epsilon', self.curriculum_epsilon_per_ep,
-                      'Epsilon evolution',
-                      'curriculum_epsilon_per_ep',
-                      self.curriculum_switching_episodes,
+                      'Epsilon evolution during training',
+                      'curriculum_epsilon_by_transitions',
+                      self.curriculum_switching_steps,
                       )
 
         self.savePlot(self.curriculum_dir_path,
-                      'episodes', episodes,
+                      'transitions', cumul_cl_steps,
                       'steps', self.curriculum_success_step_per_ep,
-                      'Steps to reach a goal state',
-                      'curriculum_success_step_per_ep',
-                      self.curriculum_switching_episodes,
-                      )
-
-        self.savePlot(self.curriculum_dir_path,
-                      'steps', self.curriculum_test_steps,
-                      'success rate', self.curriculum_test_success_rates,
-                      'Success rate in test conditions',
-                      'curriculum_success_rate_per_step',
+                      'Steps to reach a goal state during training',
+                      'curriculum_success_step_by_transitions',
                       self.curriculum_switching_steps,
                       )
 
         self.savePlot(self.curriculum_dir_path,
-                      'episodes', self.curriculum_test_episodes,
+                      'transitions', self.curriculum_test_steps,
                       'success rate', self.curriculum_test_success_rates,
                       'Success rate in test conditions',
-                      'curriculum_success_rate_per_ep',
-                      self.curriculum_switching_episodes,
-                      )
-
-        self.savePlot(self.curriculum_dir_path,
-                      'steps', self.curriculum_test_steps,
-                      'mean return', self.curriculum_test_mean_returns,
-                      'Mean undisc. return in test conditions',
-                      'curriculum_test_mean_returns_per_step',
+                      'curriculum_success_rate_by_transitions',
                       self.curriculum_switching_steps,
                       )
 
-        self.savePlot(self.curriculum_dir_path,
-                      'episodes', self.curriculum_test_episodes,
-                      'mean return', self.curriculum_test_mean_returns,
-                      'Mean undisc. return in test conditions',
-                      'curriculum_test_mean_returns_per_ep',
-                      self.curriculum_switching_episodes,
-                      )
+        # self.savePlot(self.curriculum_dir_path,
+        #               'episodes', self.curriculum_test_episodes,
+        #               'success rate', self.curriculum_test_success_rates,
+        #               'Success rate in test conditions',
+        #               'curriculum_success_rate_per_ep',
+        #               self.curriculum_switching_episodes,
+        #               )
 
         self.savePlot(self.curriculum_dir_path,
-                      'steps', steps,
+                      'transitions', self.curriculum_test_steps,
+                      'mean return', self.curriculum_test_mean_returns,
+                      'Mean undisc. return in test conditions',
+                      'curriculum_test_mean_returns_by_transitions',
+                      self.curriculum_switching_steps,
+                      )
+
+        # self.savePlot(self.curriculum_dir_path,
+        #               'episodes', self.curriculum_test_episodes,
+        #               'mean return', self.curriculum_test_mean_returns,
+        #               'Mean undisc. return in test conditions',
+        #               'curriculum_test_mean_returns_per_ep',
+        #               self.curriculum_switching_episodes,
+        #               )
+
+        self.savePlot(self.curriculum_dir_path,
+                      'transitions', steps,
                       'updates', self.curriculum_net_updates_per_step,
-                      'Number of network updates',
+                      'Number of network updates during training',
                       'curriculum_net_updates_per_step',
                       self.curriculum_switching_steps,
                       )
@@ -412,6 +414,7 @@ class Curriculum():
                                        curriculum_switching_episodes=self.curriculum_switching_episodes,
                                        curriculum_switching_steps=self.curriculum_switching_steps,
                                        )
+
         self.serialize_lists(self.serialized_lists_dir_path, lists_to_serialize_dict)
 
         return lists_to_serialize_dict
