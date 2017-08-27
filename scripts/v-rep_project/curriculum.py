@@ -22,7 +22,8 @@ class Curriculum():
                  curriculum,
                  task,
                  # max_steps_per_episode,
-                 num_episodes,
+                 # num_episodes,
+                 max_total_transitions,
                  num_hidden_layers,
                  num_neurons_per_hidden,
                  batch_size,
@@ -38,7 +39,8 @@ class Curriculum():
         self.curriculum = curriculum
         self.task = task
         # self.max_steps_per_episode = max_steps_per_episode
-        self.num_episodes = num_episodes
+        # self.num_episodes = num_episodes
+        self.max_total_transitions = max_total_transitions
         self.num_hidden_layers = num_hidden_layers
         self.num_neurons_per_hidden = num_neurons_per_hidden
         self.batch_size = batch_size
@@ -83,7 +85,8 @@ class Curriculum():
                 self.curriculum_name = "cl_speeds_sparse"
             self.Velocities = np.array([4.0, 2.0, 1.0])
             # self.replay_start_size = self.replay_start_size // len(self.Velocities)
-            self.num_episodes = self.num_episodes // len(self.Velocities)
+            # self.num_episodes = self.num_episodes // len(self.Velocities)
+            self.max_total_transitions = self.max_total_transitions // len(self.Velocities)
             # success_rate_for_subtask_completion = True
         elif self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SHAPING or self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE:
             if self.curriculum == self.CURRICULUM_INCREASING_JOINT_NUMBER_SHAPING:
@@ -92,7 +95,8 @@ class Curriculum():
                 self.curriculum_name = "cl_joints_sparse"
             self.NumOfAJoints = range(1, 7)
             # self.replay_start_size = self.replay_start_size // len(self.NumOfAJoints)
-            self.num_episodes = self.num_episodes // len(self.NumOfAJoints)
+            # self.num_episodes = self.num_episodes // len(self.NumOfAJoints)
+            self.max_total_transitions = self.max_total_transitions // len(self.NumOfAJoints)
             # success_rate_for_subtask_completion = True
         elif self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER_SHAPING or self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER_SPARSE:
             if self.curriculum == self.CURRICULUM_INITIALIZE_FURTHER_SHAPING:
@@ -101,7 +105,8 @@ class Curriculum():
                 self.curriculum_name = "cl_initial_states_sparse"
             self.Initial_positions = [self.targetPosNearCube, self.targetPosHalfWayCube, self.targetPosInitial]
             # self.replay_start_size = self.replay_start_size // len(self.Initial_positions)
-            self.num_episodes = self.num_episodes // len(self.Initial_positions)
+            # self.num_episodes = self.num_episodes // len(self.Initial_positions)
+            self.max_total_transitions = self.max_total_transitions // len(self.Initial_positions)
         else:
             raise RuntimeError('[CURRICULUM] Not a valid curriculum.')
 
@@ -162,7 +167,8 @@ class Curriculum():
         trainDQL_args = dict(experiment_dir_path=self.curriculum_dir_path,
                              num_hidden_layers=self.num_hidden_layers,
                              num_neurons_per_hidden=self.num_neurons_per_hidden,
-                             num_episodes=self.num_episodes,  # 400
+                             # num_episodes=self.num_episodes,  # 400
+                             max_total_transitions=self.max_total_transitions,
                              # max_steps_per_episode=self.max_steps_per_episode,  # 200
                              e_min=0.01,
                              task=self.task,
@@ -192,16 +198,15 @@ class Curriculum():
                              )
 
         if self.testing_scripts:
-            self.num_episodes = 5
-            trainDQL_args.update(dict(num_episodes=5,
+            trainDQL_args.update(dict(batch_size=1,
+                                      # max_total_transitions=self.max_total_transitions,
+                                      # num_episodes=5,
                                       # max_steps_per_episode=2,
-                                      batch_size=1,
                                       # replay_start_size=6,
                                       # replay_memory_size=10,
                                       policy_test_period=5,  # episodes
                                       policy_test_episodes=2,  # episodes
-                                      )
-                                 )
+                                      ))
 
         # run curriculum
         print('\n[CURRICULUM] Running new curriculum: ', self.curriculum_name)
@@ -228,10 +233,9 @@ class Curriculum():
                     replay_start_size = max((self.num_episodes // 20), 3) * max_steps_per_episode
                     replay_memory_size = 10 * replay_start_size
 
-                    # if self.testing_scripts:
-                    #     replay_start_size = 3 * max_steps_per_episode
-                    #     replay_memory_size = 10 * replay_start_size
-
+                    if self.testing_scripts:
+                        self.max_total_transitions = 5 * max_steps_per_episode
+                        trainDQL_args.update(dict(max_total_transitions=self.max_total_transitions))
                     # self.max_steps_per_episode
                     st_num += 1
                     trainDQL_args.update(dict(velocity=vel,

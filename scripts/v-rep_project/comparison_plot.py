@@ -251,8 +251,10 @@ Curriculums = [Curriculum.CURRICULUM_INITIALIZE_FURTHER_SHAPING,
 task = RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
 
 testing_scripts = True
-max_steps_per_episode = 200
-num_episodes = 1000
+# max_steps_per_episode = 200
+num_episodes = 2000  # aproximate
+max_steps_per_ep = 50  # aproximate
+max_total_transitions = num_episodes * max_steps_per_ep  # episodes x max_steps_per_ep
 num_hidden_layers = 3
 num_neurons_per_hidden = 50
 
@@ -268,7 +270,8 @@ portNb = 19999
 
 curr_args = dict(task=task,
                  # max_steps_per_episode=max_steps_per_episode,
-                 num_episodes=num_episodes,
+                 # num_episodes=num_episodes,
+                 max_total_transitions=max_total_transitions,
                  num_hidden_layers=num_hidden_layers,
                  num_neurons_per_hidden=num_neurons_per_hidden,
                  batch_size=batch_size,

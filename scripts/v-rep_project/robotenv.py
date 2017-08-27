@@ -254,8 +254,8 @@ class RobotEnv():
             self.stop_if_needed()
             # if self.initial_joint_positions is not None:
             #     self.initializeJointPositions(self.initial_joint_positions)
-            if self.reset_position_for_test:
-                self.initializeJointPositions(True)
+            if self.test_task:
+                self.initializeJointPositions()
             self.startSimulation()
 
             # get new measurements
@@ -270,8 +270,8 @@ class RobotEnv():
             #         break
             return self.state
 
-    def set_reset_for_test(self, reset_position_for_test):
-        self.reset_position_for_test = reset_position_for_test
+    def toggle_test_conditions(self, testing_policy):
+        self.test_task = testing_policy
 
     def stop_if_needed(self):
         try_count = 0
@@ -367,9 +367,13 @@ class RobotEnv():
             # 6 * 3 = 18 actions -> action is in [0,17]
             # print("actions", actions)
             # jointNumber = action // 3
+            if self.test_task:
+                vel = 1.0
+            else:
+                vel = self.jointVel
             velMode = actions % 3 - 1  # speed to apply -1->-Vel;  0->zero;  +1->+Vel
             for i in range(0, self.nAJoints):
-                vrep.simxSetJointTargetVelocity(self.clientID, self.jointHandles[i], velMode[i] * self.jointVel, vrep.simx_opmode_blocking)
+                vrep.simxSetJointTargetVelocity(self.clientID, self.jointHandles[i], velMode[i] * vel, vrep.simx_opmode_blocking)
             # hand actions
             # def openHand(self.clientID):
             #     closingVel = -0.04
@@ -409,12 +413,12 @@ class RobotEnv():
     #             break
     #     self.disableControlLoop()
 
-    def initializeJointPositions(self, reset_position_for_test=False):
+    def initializeJointPositions(self):
         # targetPosStraight = np.array([0.66, 1.0, 1.25, 1.5, 1.0, 1.0]) * np.pi
         # targetPosHalfWayCube = np.array([0.66, 1.25, 1.25, 1.5, 1.0, 1.0]) * np.pi
         # targetPosNearCube = np.array([0.66, 1.5, 1.25, 1.5, 1.0, 1.0]) * np.pi
         # enableControlLoop()
-        if reset_position_for_test:
+        if self.test_task:
             targetPos = np.array([1.0] * 6) * np.pi
         else:
             targetPos = self.initial_joint_positions
