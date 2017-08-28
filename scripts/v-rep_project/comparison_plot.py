@@ -52,9 +52,9 @@ def savePlot(dir_path,
     fig = plt.figure()
     plt.plot(curr_x_values, curr_y_values, 'b', linewidth=0.5, label='with curriculum')
     plt.plot(no_curr_x_values, no_curr_y_values, 'r--', linewidth=0.5, label='no curriculum')
+    plt.ylim((y_min, y_max))
     plt.legend(loc='best')
     plt.xlabel(x_label)
-    plt.set_ylim([y_min, y_max])
     plt.ylabel(y_label)
     plt.title(title)
     if vertical_xs is not None:
@@ -250,7 +250,7 @@ Curriculums = [Curriculum.CURRICULUM_INITIALIZE_FURTHER_SHAPING,
 
 task = RobotEnv.TASK_REACH_CUBE
 
-testing_scripts = True
+testing_scripts = False
 # max_steps_per_episode = 200
 num_episodes = 1000  # aproximate
 max_steps_per_ep = 50  # aproximate
