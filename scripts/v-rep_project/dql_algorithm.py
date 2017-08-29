@@ -39,8 +39,6 @@ class experience_dataset():
 
     # randomly sample an array of transitions (s,a,r,s',done)
     def sample(self, sample_size):
-        print('\nsample_size: ', sample_size)
-        print('\ndata: ', len(self.data))
         with self.datalock:
             sample = np.array(random.sample(self.data, sample_size))
         return np.reshape(sample, [sample_size, 5])
@@ -800,7 +798,7 @@ class DQLAlgorithm():
                         if updates_per_step_counter < self.max_updates_per_env_step:
                             self.total_network_updates += 1
                             updates_per_step_counter += 1
-                            print("[TRAINER] Current update number: ", updates_per_step_counter)
+                            # print("[TRAINER] Current update number: ", updates_per_step_counter)
                             batch = self.dataset.sample(self.batch_size)
                             # states0, actions0, rewards, states1, dones = batch.T
                             states0, actions0, rewards, states1, end_multipliers = batch.T
