@@ -2,10 +2,10 @@ import time
 import os
 import json
 import numpy as np
+import socket
 from matplotlib import pyplot as plt
 from robotenv import RobotEnv
 from dql_algorithm import DQLAlgorithm
-
 
 class Curriculum():
     # curriculums
@@ -130,7 +130,8 @@ class Curriculum():
         self.timestr = time.strftime("%b-%d_%H-%M-%S", time.gmtime())  # or time.localtime()
         self.current_dir_path = os.path.dirname(os.path.realpath(__file__))
         self.all_curriculums_dir_path = os.path.join(self.current_dir_path, 'trained_models_and_results')
-        self.folder_name = self.timestr + '_' + self.task_name + '_' + self.curriculum_name
+        self.hostname = socket.gethostname()
+        self.folder_name = self.timestr + '_' + self.hostname + '_' + self.task_name + '_' + self.curriculum_name
         self.curriculum_dir_path = os.path.join(self.all_curriculums_dir_path, self.folder_name)
         self.serialized_lists_dir_path = os.path.join(self.curriculum_dir_path, 'serialized_curriculum_lists')
 
