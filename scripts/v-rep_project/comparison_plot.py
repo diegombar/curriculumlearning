@@ -240,12 +240,12 @@ def savePlots(no_curr_shap_folder_name, no_curr_shap_results_dict,
 no_curriculum_shaping = Curriculum.NO_CURRICULUM_SHAPING
 no_curriculum_sparse = Curriculum.NO_CURRICULUM_SPARSE
 
-Curriculums = [Curriculum.CURRICULUM_INITIALIZE_FURTHER_SHAPING,
-               Curriculum.CURRICULUM_DECREASING_SPEED_SHAPING,
-               Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER_SHAPING,
+Curriculums = [Curriculum.CURRICULUM_INITIALIZE_FURTHER_SPARSE,
+               Curriculum.CURRICULUM_INITIALIZE_FURTHER_SHAPING,
                Curriculum.CURRICULUM_DECREASING_SPEED_SPARSE,
+               Curriculum.CURRICULUM_DECREASING_SPEED_SHAPING,
                Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER_SPARSE,
-               Curriculum.CURRICULUM_INITIALIZE_FURTHER_SPARSE,
+               Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER_SHAPING,
                ]
 
 task = RobotEnv.TASK_REACH_CUBE
