@@ -248,7 +248,7 @@ Curriculums = [Curriculum.CURRICULUM_INITIALIZE_FURTHER_SPARSE,
                Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER_SHAPING,
                ]
 
-task = RobotEnv.TASK_REACH_CUBE
+task = RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
 
 testing_scripts = False
 # max_steps_per_episode = 200
