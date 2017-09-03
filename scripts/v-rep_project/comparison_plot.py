@@ -259,7 +259,7 @@ Curriculums = [Curriculum.CURRICULUM_INITIALIZE_FURTHER_SPARSE,
 
 task = RobotEnv.TASK_REACH_CUBE
 
-testing_scripts = True  # ##################
+testing_scripts = False  # ##################
 load_no_curriculum_prev_results = True  # ################
 # max_steps_per_episode = 200
 num_episodes = 5000  # aproximate
