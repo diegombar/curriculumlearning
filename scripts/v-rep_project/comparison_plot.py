@@ -1,6 +1,6 @@
 import os
 # import time
-# import json
+import json
 import numpy as np
 from matplotlib import pyplot as plt
 from curriculum import Curriculum
@@ -241,7 +241,7 @@ def get_no_curr_prev_runs(serialized_lists_path):
     for list_to_deserialize in lists_to_deserialize:
         list_json_file = os.path.join(serialized_lists_path, list_to_deserialize + '.json')
         with open(list_json_file, "r") as json_file:
-            results_dict[list_json_file] = json.load(json_file)
+            results_dict[list_to_deserialize] = json.load(json_file)
 
     return results_dict
 
