@@ -245,6 +245,7 @@ def get_no_curr_prev_runs(serialized_lists_path):
 
     return results_dict
 
+
 # ###################
 no_curriculum_shaping = Curriculum.NO_CURRICULUM_SHAPING
 no_curriculum_sparse = Curriculum.NO_CURRICULUM_SPARSE
