@@ -258,7 +258,7 @@ Curriculums = [Curriculum.CURRICULUM_INITIALIZE_FURTHER_SPARSE,
                Curriculum.CURRICULUM_INCREASING_JOINT_NUMBER_SHAPING,
                ]
 
-task = RobotEnv.TASK_REACH_CUBE
+task = RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
 
 testing_scripts = False  # ##################
 load_no_curriculum_prev_results = False  # ################
@@ -273,7 +273,7 @@ batch_size = 32
 lrate = 1e-4
 # replay_start_size = (num_episodes // 20) * max_steps_per_episode
 # replay_memory_size = 10 * replay_start_size
-disable_saving = True
+disable_saving = False
 sync_mode = True
 portNb = 19999
 
