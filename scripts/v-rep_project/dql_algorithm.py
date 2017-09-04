@@ -663,7 +663,7 @@ class DQLAlgorithm():
                             if not self.disable_saving:
                                 self.is_saving = True
                                 saving_start_time = time.time()
-                                if self.current_episode % self.model_saving_period == 0 and self.current_episode < self.num_episodes:
+                                if ((self.current_episode % self.model_saving_period == 0) and (self.current_episode < self.num_episodes)):
                                     print("[MAIN] Saving model and plots...")
                                     checkpoint_save_path = saver.save(sess, self.checkpoint_model_file_path, global_step=self.current_episode)
                                     # print("\nepisode: {} steps: {} undiscounted return obtained: {} done: {}".format(self.current_episode, j, undisc_return, done))
@@ -671,7 +671,7 @@ class DQLAlgorithm():
                                     os.makedirs(checkpoints_plots_dir_path, exist_ok=True)
                                     self.savePlots(checkpoints_plots_dir_path)
 
-                                if self.current_episode % self.q_plots_period == 0:
+                                if (self.current_episode % self.q_plots_period == 0):
                                     # plot Q plots
                                     print("[MAIN] Saving Q-plots...")
                                     Qplots_dir_path = os.path.join(self.checkpoint_model_file_path, "q_plots_ep_" + str(self.current_episode))

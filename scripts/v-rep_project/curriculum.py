@@ -220,15 +220,15 @@ class Curriculum():
                     if ((self.task == RobotEnv.TASK_REACH_CUBE or
                          self.task == RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
                          )):
-                        test_max_steps_per_episode = 50
+                        test_max_steps_per_episode = 90
                         if np.array_equal(initial_joint_positions, self.targetPosNearCube):
-                            max_steps_per_episode = 5
+                            max_steps_per_episode = 15
                         elif np.array_equal(initial_joint_positions, self.targetPosHalfWayCube):
-                            max_steps_per_episode = 20
+                            max_steps_per_episode = 40
                         elif np.array_equal(initial_joint_positions, self.targetPosInitial):
                             max_steps_per_episode = test_max_steps_per_episode
                     if self.task == RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION:
-                        extra_steps_to_push = 15
+                        extra_steps_to_push = 20
                         max_steps_per_episode += extra_steps_to_push
                         test_max_steps_per_episode += extra_steps_to_push
                     # replay_start_size = max((self.num_episodes // 20), 3) * max_steps_per_episode
