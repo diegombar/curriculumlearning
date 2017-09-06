@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 from robotenv import RobotEnv
 from dql_algorithm import DQLAlgorithm
 
+
 class Curriculum():
     # curriculums
     NO_CURRICULUM_SHAPING = 0
