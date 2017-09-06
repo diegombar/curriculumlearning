@@ -1,6 +1,6 @@
 import os
 # import time
-# import json
+import json
 import numpy as np
 from matplotlib import pyplot as plt
 from curriculum import Curriculum
@@ -9,35 +9,26 @@ from robotenv import RobotEnv
 # exp_with_cl_dir_name = 'cl_decreasing_speeds_2017-Aug-10_16-01-01'  # #######TO CHANGE
 # exp_without_cl_dir_name = 'cl_decreasing_speeds_2017-Aug-10_16-01-01'  # #######TO CHANGE
 
+
 current_dir_path = os.path.dirname(os.path.realpath(__file__))
 all_curriculums_dir_path = os.path.join(current_dir_path, "trained_models_and_results")
+
+exp_no_curr_sparse_folder_name = "Sep-02_02-39-59_graphic04.doc.ic.ac.uk_reaching_no_cl_sparse"  # #########
+exp_no_curr_shaping_folder_name = "Sep-01_14-53-22_graphic04.doc.ic.ac.uk_reaching_no_cl_shaping"  # #########
+
+exp_no_curr_sparse_path = os.path.join(all_curriculums_dir_path, exp_no_curr_sparse_folder_name)
+exp_no_curr_shaping_path = os.path.join(all_curriculums_dir_path, exp_no_curr_shaping_folder_name)
+
+serialized_no_curr_sparse_path = os.path.join(exp_no_curr_sparse_path, "serialized_curriculum_lists")
+serialized_no_curr_shaping_path = os.path.join(exp_no_curr_shaping_path, "serialized_curriculum_lists")
+
+
 # exp_with_cl_dir_path = os.path.join(all_models_dir_path, exp_with_cl_dir_name)
 # exp_without_cl_dir_path = os.path.join(all_models_dir_path, exp_without_cl_dir_name)
 comparison_plots_dir_path = os.path.join(all_curriculums_dir_path, "comparison_plots")
 os.makedirs(comparison_plots_dir_path, exist_ok=True)
 
 max_updates_per_env_step = 10
-
-
-# lists_to_deserialize = ['cl_switching_eps', 'cl_cumul_successes_list', 'cl_switching_steps', 'cl_test_success_rates_list', 'cl_test_steps_list']  # have to be lists
-# for list_to_deserialize in lists_to_deserialize:
-#     list_json_file = os.path.join(experiment_dir_path, list_to_deserialize + '.json')
-#     with open(list_json_file, "r") as json_file:
-#         # json.dump(eval(list_to_serialize), json_file)
-
-# data  = json.loads(array)
-
-#     fig = plt.figure()
-#     plt.plot(test_step_numbers, test_success_rate, linewidth=0.5)
-#     plt.ylabel('success rate')
-#     plt.xlabel('steps')
-#     plt.title('Success rate in test conditions')
-#     # vertical lines at subtask switching
-#     for switch_ep in subtask_switch_steps:
-#         plt.axvline(x=switch_ep, ls='dashed', color='r')
-#     plot_file = os.path.join(dir_path, 'success_rate.svg')
-#     fig.savefig(plot_file, bbox_inches='tight')
-#     plt.close()
 
 
 def savePlot(dir_path,
@@ -66,9 +57,7 @@ def savePlot(dir_path,
     plt.close()
 
 
-def savePlots(no_curr_shap_folder_name, no_curr_shap_results_dict,
-              no_curr_shaping_folder_name, no_curr_sparse_results_dict,
-              curriculum_folder_name, curriculum_results_dict):
+def savePlots(no_curr_shap_folder_name, no_curr_shap_results_dict, no_curr_shaping_folder_name, no_curr_sparse_results_dict, curriculum_folder_name, curriculum_results_dict):
     no_curr_num = 0
     for no_curriculum_results_dict in [no_curr_shap_results_dict, no_curr_sparse_results_dict]:
         no_curr_num += 1
@@ -108,8 +97,6 @@ def savePlots(no_curr_shap_folder_name, no_curr_shap_results_dict,
 
         curriculum_episodes = range(1, len(curriculum_num_steps_per_ep) + 1)
         curriculum_steps = range(1, len(curriculum_net_updates_per_step) + 1)
-
-        curriculum_folder_name = curr.folder_name
 
         current_comparison_name = 'comparison_' + no_curriculum_folder_name + '_' + curriculum_folder_name
         current_comparison_dir_path = os.path.join(comparison_plots_dir_path, current_comparison_name)
@@ -236,6 +223,29 @@ def savePlots(no_curr_shap_folder_name, no_curr_shap_results_dict,
                  )
 
 
+def get_no_curr_prev_runs(serialized_lists_path):
+    results_dict = {}
+    lists_to_deserialize = ['curriculum_cumul_successes_per_ep',
+                            'curriculum_epsilon_per_ep',
+                            'curriculum_net_updates_per_step',
+                            'curriculum_num_steps_per_ep',
+                            'curriculum_success_step_per_ep',
+                            'curriculum_switching_episodes',
+                            'curriculum_switching_steps',
+                            'curriculum_test_episodes',
+                            'curriculum_test_mean_returns',
+                            'curriculum_test_steps',
+                            'curriculum_test_success_rates',
+                            'curriculum_undisc_return_per_ep',
+                            ]  # have to be lists
+    for list_to_deserialize in lists_to_deserialize:
+        list_json_file = os.path.join(serialized_lists_path, list_to_deserialize + '.json')
+        with open(list_json_file, "r") as json_file:
+            results_dict[list_to_deserialize] = json.load(json_file)
+
+    return results_dict
+
+
 # ###################
 no_curriculum_shaping = Curriculum.NO_CURRICULUM_SHAPING
 no_curriculum_sparse = Curriculum.NO_CURRICULUM_SPARSE
@@ -250,9 +260,10 @@ Curriculums = [Curriculum.CURRICULUM_INITIALIZE_FURTHER_SPARSE,
 
 task = RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
 
-testing_scripts = False
+testing_scripts = False  # ##################
+load_no_curriculum_prev_results = False  # ################
 # max_steps_per_episode = 200
-num_episodes = 5000  # aproximate
+num_episodes = 1000  # aproximate
 max_steps_per_ep = 50  # aproximate
 max_total_transitions = num_episodes * max_steps_per_ep  # episodes x max_steps_per_ep
 num_hidden_layers = 3
@@ -262,7 +273,7 @@ batch_size = 32
 lrate = 1e-4
 # replay_start_size = (num_episodes // 20) * max_steps_per_episode
 # replay_memory_size = 10 * replay_start_size
-disable_saving = True
+disable_saving = False
 sync_mode = True
 portNb = 19999
 
@@ -285,15 +296,22 @@ curr_args = dict(task=task,
                  portNb=portNb,
                  )
 
-curr_args.update(dict(curriculum=no_curriculum_shaping))
-no_curr_shap = Curriculum(**curr_args)
-no_curr_shap_results_dict = no_curr_shap.run()
-no_curr_shap_folder_name = no_curr_shap.folder_name
+if load_no_curriculum_prev_results:
+    no_curr_sparse_folder_name = exp_no_curr_sparse_folder_name
+    no_curr_shap_folder_name = exp_no_curr_shaping_folder_name
+    no_curr_shap_results_dict = get_no_curr_prev_runs(serialized_no_curr_shaping_path)
+    no_curr_sparse_results_dict = get_no_curr_prev_runs(serialized_no_curr_sparse_path)
 
-curr_args.update(dict(curriculum=no_curriculum_sparse))
-no_curr_sparse = Curriculum(**curr_args)
-no_curr_sparse_results_dict = no_curr_sparse.run()
-no_curr_sparse_folder_name = no_curr_sparse.folder_name
+else:
+    curr_args.update(dict(curriculum=no_curriculum_shaping))
+    no_curr_shap = Curriculum(**curr_args)
+    no_curr_shap_results_dict = no_curr_shap.run()
+    no_curr_shap_folder_name = no_curr_shap.folder_name
+
+    curr_args.update(dict(curriculum=no_curriculum_sparse))
+    no_curr_sparse = Curriculum(**curr_args)
+    no_curr_sparse_results_dict = no_curr_sparse.run()
+    no_curr_sparse_folder_name = no_curr_sparse.folder_name
 
 for curriculum in Curriculums:
     curr_args.update(dict(curriculum=curriculum))

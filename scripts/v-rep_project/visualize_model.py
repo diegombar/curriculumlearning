@@ -93,27 +93,25 @@ vis_experiment_dir_path = os.path.join(experiments_dir_path, folder_name)
 #    "longer_training_vel025_2017-Jul-27_17-29-43/model_and_results_2017-Jul-27_17-29-43/trained_model",
 #    "final_model-1000")
 
-cl_decreasing_speeds = os.path.join(experiments_dir_path,
-                                    "cl_decreasing_speeds_2017-Aug-10_21-22-07/model_and_results_2017-Aug-10_21-22-07/trained_model",
-                                    "final_model-1666")
+# cl_decreasing_speeds = os.path.join(experiments_dir_path,
+#                                     "cl_decreasing_speeds_2017-Aug-10_21-22-07/model_and_results_2017-Aug-10_21-22-07/trained_model",
+#                                     "final_model-1666")
 
-no_cl_5000_vel025_new = os.path.join(experiments_dir_path,
-                                     "no_curriculum_vel_025_2017-Aug-12_19-01-58/model_and_results_2017-Aug-12_19-01-58/trained_model",
-                                     "final_model-5000")  # 3 hlayers x 100 neurons
+# no_cl_5000_vel025_new = os.path.join(experiments_dir_path,
+#                                      "no_curriculum_vel_025_2017-Aug-12_19-01-58/model_and_results_2017-Aug-12_19-01-58/trained_model",
+#                                      "final_model-5000")  # 3 hlayers x 100 neurons
 
-no_cl_5000_vel025_old = os.path.join(experiments_dir_path,
-                                     "no_curriculum_vel_025_2017-Aug-11_16-24-22/model_and_results_2017-Aug-11_16-24-22/trained_model",
-                                     "final_model-5000")  # 2 hlayers x 50 neurons
+# no_cl_5000_vel025_old = os.path.join(experiments_dir_path,
+#                                      "no_curriculum_vel_025_2017-Aug-11_16-24-22/model_and_results_2017-Aug-11_16-24-22/trained_model",
+#                                      "final_model-5000")  # 2 hlayers x 50 neurons
 
-no_cl_5000_vel1 = os.path.join(experiments_dir_path,
-                               "no_curriculum_vel_025_2017-Aug-11_16-24-22/model_and_results_2017-Aug-11_16-24-22/trained_model",
-                               "final_model-5000")  # 2 hlayers x 50 neurons
-pushing_1 = os.path.join(experiments_dir_path,
-                         "2017-Aug-26_06-04-58_pushing_cl_increasing_num_of_joints/model_and_results_2017-Aug-26_12-23-00/trained_model",
-                         "final_model-166")  # 2 hlayers x 50 neurons
+# no_cl_5000_vel1 = os.path.join(experiments_dir_path,
+#                                "no_curriculum_vel_025_2017-Aug-11_16-24-22/model_and_results_2017-Aug-11_16-24-22/trained_model",
+#                                "final_model-5000")  # 2 hlayers x 50 neurons
+# pushing_1 = os.path.join(experiments_dir_path,
+#                          "2017-Aug-26_06-04-58_pushing_cl_increasing_num_of_joints/model_and_results_2017-Aug-26_12-23-00/trained_model",
+#                          "final_model-166")  # 2 hlayers x 50 neurons
 
-
-model_to_load = pushing_1
 
 # tasks
 
@@ -122,11 +120,40 @@ model_to_load = pushing_1
 
 # ##### CHOOSE
 
+
+reaching_no_cl_shaping = os.path.join(experiments_dir_path,
+                                      "Sep-01_14-53-22_graphic04.doc.ic.ac.uk_reaching_no_cl_shaping/model_and_results_Sep-01_14-53-22/trained_model",
+                                      "final_model-5000")  # 2 hlayers x 50 neurons
+
+reaching_no_cl_sparse = os.path.join(experiments_dir_path,
+                                     "Sep-02_02-39-59_graphic04.doc.ic.ac.uk_reaching_no_cl_sparse/model_and_results_Sep-02_02-39-59/trained_model",
+                                     "final_model-5000")  # 2 hlayers x 50 neurons
+
+reaching_no_cl_shaping_point03 = os.path.join(experiments_dir_path,
+                                              "point03/Sep-04_16-35-41_point03.doc.ic.ac.uk_reaching_no_cl_shaping/model_and_results_Sep-04_16-35-41/trained_model",
+                                              "final_model-555")  # 2 hlayers x 50 neurons
+
+reaching_no_cl_sparse_point03 = os.path.join(experiments_dir_path,
+                                             "point03/Sep-04_18-46-32_point03.doc.ic.ac.uk_reaching_no_cl_sparse/model_and_results_Sep-04_18-46-32/trained_model",
+                                             "final_model-555")  # 2 hlayers x 50 neurons
+
+pushing_no_cl_shaping_matrix18 = os.path.join(experiments_dir_path,
+                                              "matrix18/Sep-04_17-06-32_matrix18.doc.ic.ac.uk_pushing_no_cl_shaping/model_and_results_Sep-04_17-06-32/trained_model",
+                                              "final_model-454")  # 2 hlayers x 50 neurons
+
+pushing_no_cl_sparse_matrix18 = os.path.join(experiments_dir_path,
+                                             "matrix18/Sep-04_19-51-35_matrix18.doc.ic.ac.uk_pushing_no_cl_sparse/model_and_results_Sep-04_19-51-35/trained_model",
+                                             "final_model-454")  # 2 hlayers x 50 neurons
+
+model_to_load = pushing_no_cl_shaping_matrix18
+
+
 task = RobotEnv.TASK_PUSH_CUBE_TO_TARGET_POSITION
-vel = 0.25
+vel = 1.0
 targetCubePosition = (0.15, 0.35)
-max_steps_per_episode = 200
+max_steps_per_episode = 80
 num_episodes = 10
+max_total_transitions = num_episodes * max_steps_per_episode
 model_saving_period = num_episodes * 10
 num_hidden_layers = 3
 num_neurons_per_hidden = 50
@@ -136,13 +163,15 @@ lrate = 1e-4
 replay_start_size = (num_episodes // 20) * max_steps_per_episode
 replay_memory_size = 10 * replay_start_size
 disable_saving = True
-sync_mode = False
+sync_mode = True
 portNb = 19999
+test_max_steps_per_episode = 90
 
 trainDQL_args = dict(experiment_dir_path=vis_experiment_dir_path,
                      num_hidden_layers=num_hidden_layers,
                      num_neurons_per_hidden=num_neurons_per_hidden,
-                     num_episodes=num_episodes,  # 400
+                     # num_episodes=num_episodes,  # 400
+                     max_total_transitions=max_total_transitions,
                      max_steps_per_episode=max_steps_per_episode,  # 200
                      e_min=0.01,
                      task=task,
@@ -152,7 +181,7 @@ trainDQL_args = dict(experiment_dir_path=vis_experiment_dir_path,
                      # replay_start_size=50000,
                      # replay_memory_size=500000,
                      showGUI=True,
-                     velocity=0.25,  # 1.0 seems to work fine
+                     velocity=vel,  # 1.0 seems to work fine
                      model_to_load_file_path=model_to_load,
                      use_variable_names=True,
                      skip_training=True,
@@ -165,10 +194,29 @@ trainDQL_args = dict(experiment_dir_path=vis_experiment_dir_path,
                      old_bias=False,  # note: use old_bias for some past models (scalar biases) (now fixed))
                      disable_saving=disable_saving,
                      sync_mode=sync_mode,
+                     test_max_steps_per_episode=test_max_steps_per_episode,
                      # policy_test_period=100,  # episodes
                      # policy_test_episodes=20,  # episodes
                      # max_updates_per_env_step=self.max_updates_per_env_step,
                      )
+
+# curr_args = dict(curriculum=curriculum,
+#                  task=task,
+#                  # max_steps_per_episode=max_steps_per_episode,
+#                  # num_episodes=num_episodes,
+#                  max_total_transitions=max_total_transitions,
+#                  num_hidden_layers=num_hidden_layers,
+#                  num_neurons_per_hidden=num_neurons_per_hidden,
+#                  batch_size=batch_size,
+#                  lrate=lrate,
+#                  testing_scripts=testing_scripts,  # ##
+#                  max_updates_per_env_step=max_updates_per_env_step,
+#                  # replay_start_size=replay_start_size,
+#                  # replay_memory_size=replay_memory_size,
+#                  disable_saving=disable_saving,
+#                  sync_mode=sync_mode,
+#                  portNb=portNb,
+#                  )
 
 dql = DQLAlgorithm(**trainDQL_args)
 
